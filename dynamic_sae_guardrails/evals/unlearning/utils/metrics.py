@@ -486,11 +486,27 @@ def get_output_probs_abcd(model, prompts, batch_size=2, n_batches=100, verbose=T
             b_U = model.unembed.b_U
             chunk_size = 8192
 
+            # Gemma-2 applies a final logit softcap (logits = cap * tanh(logits / cap))
+            # before the softmax; TransformerLens does this internally in the normal
+            # forward pass (see HookedTransformer.forward / apply_softcap), so we must
+            # replicate it here too, otherwise probabilities diverge from the model's
+            # actual output distribution even though argmax predictions are usually
+            # unaffected.
+            softcap = getattr(model.cfg, "output_logits_soft_cap", None)
+            softcap_active = softcap is not None and softcap > 0
+
+            def _apply_softcap(x):
+                if softcap_active:
+                    return softcap * torch.tanh(x / softcap)
+                return x
+
+            # Accumulate in float32: summing exp() over 256k vocab entries in bf16
+            # loses meaningful precision compared to a non-chunked float32 softmax.
             max_logit = torch.full(
                 (current_batch_size,),
                 -float("inf"),
                 device=resid.device,
-                dtype=resid.dtype,
+                dtype=torch.float32,
             )
 
             for start in range(0, W_U.shape[1], chunk_size):
@@ -500,6 +516,7 @@ def get_output_probs_abcd(model, prompts, batch_size=2, n_batches=100, verbose=T
                     W_U[:, start:end].T.contiguous(),
                     b_U[start:end],
                 )
+                logits_chunk = _apply_softcap(logits_chunk).float()
                 max_logit = torch.maximum(
                     max_logit,
                     logits_chunk.max(dim=-1).values,
@@ -508,7 +525,7 @@ def get_output_probs_abcd(model, prompts, batch_size=2, n_batches=100, verbose=T
             exp_sum = torch.zeros(
                 current_batch_size,
                 device=resid.device,
-                dtype=resid.dtype,
+                dtype=torch.float32,
             )
 
             answer_W = W_U[:, answer_tokens]
@@ -519,6 +536,7 @@ def get_output_probs_abcd(model, prompts, batch_size=2, n_batches=100, verbose=T
                 answer_W.T.contiguous(),
                 answer_b,
             )
+            answer_logits = _apply_softcap(answer_logits).float()
 
             for start in range(0, W_U.shape[1], chunk_size):
                 end = min(start + chunk_size, W_U.shape[1])
@@ -527,6 +545,7 @@ def get_output_probs_abcd(model, prompts, batch_size=2, n_batches=100, verbose=T
                     W_U[:, start:end].T.contiguous(),
                     b_U[start:end],
                 )
+                logits_chunk = _apply_softcap(logits_chunk).float()
                 exp_sum += torch.exp(logits_chunk - max_logit.unsqueeze(-1)).sum(dim=-1)
 
             vals = torch.exp(answer_logits - max_logit.unsqueeze(-1)) / exp_sum.unsqueeze(-1)
