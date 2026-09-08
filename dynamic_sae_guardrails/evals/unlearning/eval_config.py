@@ -212,7 +212,7 @@ class UnlearningEvalConfigBooks(UnlearningEvalConfig):
         description="We ignore features that activate more than this threshold on the retain dataset",
     )
     n_features_list: list[int] = Field(
-        default_factory=lambda: [10, 20, 30],
+        default_factory=lambda: [30],
         title="N Features List",
         description="Each N is the number of features we select and clamp to a negative value",
     )

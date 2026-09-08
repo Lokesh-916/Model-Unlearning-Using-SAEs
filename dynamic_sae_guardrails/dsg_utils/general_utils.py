@@ -6,7 +6,7 @@ from typing import Optional, Callable, Any, Union, Type
 import time
 import functools
 import random
-from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
+from sae_lens.evals import get_pretrained_saes_directory
 from sae_lens import SAE
 
 

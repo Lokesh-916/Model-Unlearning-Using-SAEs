@@ -168,7 +168,7 @@ def get_feature_activation_sparsity(
     layer: int,
     hook_name: str,
     mask_bos_pad_eos_tokens: bool = False,
-) -> Float[torch.Tensor, "d_sae"]:
+) -> tuple[Float[torch.Tensor, "d_sae"], list]:
     """Get the activation sparsity for each SAE feature based on squared activations.
     Returns the average squared activation per feature across all tokens.
     Note: If evaluating many SAEs, it is more efficient to use save_activations() and get the sparsity from the saved activations."""
@@ -186,7 +186,7 @@ def get_feature_activation_sparsity(
         
         # Square the activations
         sae_act_squared = sae_act_BLF #** 2 # Both perform about the same
-        activation_list.append(sae_act_squared.cpu().numpy())
+        activation_list.append(sae_act_squared.float().cpu().numpy())
         activation_list[-1][:, 0, :] = 0.0
         
         if mask_bos_pad_eos_tokens:

@@ -63,7 +63,7 @@ def get_forget_retain_data(
 ) -> tuple[list[str], list[str]]:
     retain_dataset = []
     if retain_corpora == "wikitext":
-        raw_retain = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
+        raw_retain = load_dataset("Salesforce/wikitext", "wikitext-2-raw-v1", split="test")
         for x in raw_retain:
             if len(x["text"]) > min_len:
                 retain_dataset.append(str(x["text"]))
@@ -405,14 +405,18 @@ def calculate_sparsity(
         tuple: (forget_sparsity, retain_sparsity) as numpy arrays
     """
 
+    # Get hook information from the new SAE-Lens API
+    hook_name = sae.cfg.metadata.hook_name
+    layer = int(hook_name.split(".")[1])
+
     # Calculate sparsity for forget dataset
     feature_sparsity_forget, act_fgt = get_feature_activation_sparsity(
         forget_tokens,
         model,
         sae,
         batch_size=batch_size,
-        layer=sae.cfg.hook_layer,
-        hook_name=sae.cfg.hook_name,
+        layer=layer,
+        hook_name=hook_name,
         mask_bos_pad_eos_tokens=True,
     )
 
@@ -422,8 +426,8 @@ def calculate_sparsity(
         model,
         sae,
         batch_size=batch_size,
-        layer=sae.cfg.hook_layer,
-        hook_name=sae.cfg.hook_name,
+        layer=layer,
+        hook_name=hook_name,
         mask_bos_pad_eos_tokens=True,
     )
     

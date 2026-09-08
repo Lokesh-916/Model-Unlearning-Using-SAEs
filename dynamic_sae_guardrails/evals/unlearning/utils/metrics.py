@@ -5,7 +5,7 @@ This module provides functions for:
 - Calculating accuracy metrics on multiple choice questions
 - Evaluating unlearning performance on WMDP and MMLU datasets
 """
-
+import itertools
 import gc
 import json
 import os
@@ -198,7 +198,7 @@ def get_distrib(
         n_batches = n_batches + 1
 
     if isinstance(model, HookedTransformer):
-        output_activ=get_feature_activation(data=prompts,model=model,sae=sae,layer= sae.cfg.hook_layer,hook_name=sae.cfg.hook_name,activations=activations,batch_size=batch_size,n_batches=n_batches)
+        output_activ=get_feature_activation(data=prompts,model=model,sae=sae,layer= int(sae.cfg.metadata.hook_name.split('.')[1]),hook_name=sae.cfg.metadata.hook_name,activations=activations,batch_size=batch_size,n_batches=n_batches)
     
     return output_activ
 
@@ -464,11 +464,73 @@ def get_output_probs_abcd(model, prompts, batch_size=2, n_batches=100, verbose=T
             token_lens = [len(model.to_tokens(x, prepend_bos=False)[0]) for x in prompt_batch]
             next_token_indices = torch.tensor([x - 1 for x in token_lens]).to("cuda")
 
-            vals = model(token_batch, return_type="logits")
-            vals = vals[torch.arange(current_batch_size).to("cuda"), next_token_indices].softmax(-1)
-            # vals = torch.vstack([x[i] for x, i in zip(vals, next_token_indices)]).softmax(-1)
-            # vals = vals[0, -1].softmax(-1)
-            vals = vals[:, answer_tokens]
+            # Stop before the final unembedding so we don't create the
+            # enormous [batch, pos, vocab] logits tensor.
+            resid = model(
+                token_batch,
+                return_type=None,
+                stop_at_layer=model.cfg.n_layers,
+            )
+
+            resid = model.ln_final(resid)
+            resid = resid[
+                torch.arange(current_batch_size, device=token_batch.device),
+                next_token_indices,
+            ]
+
+            # Compute the exact full-vocabulary softmax denominator in
+            # manageable chunks. This is mathematically equivalent to:
+            # model(...).softmax(-1), but avoids materializing
+            # [batch, 256000] logits.
+            W_U = model.unembed.W_U
+            b_U = model.unembed.b_U
+            chunk_size = 8192
+
+            max_logit = torch.full(
+                (current_batch_size,),
+                -float("inf"),
+                device=resid.device,
+                dtype=resid.dtype,
+            )
+
+            for start in range(0, W_U.shape[1], chunk_size):
+                end = min(start + chunk_size, W_U.shape[1])
+                logits_chunk = torch.nn.functional.linear(
+                    resid,
+                    W_U[:, start:end].T.contiguous(),
+                    b_U[start:end],
+                )
+                max_logit = torch.maximum(
+                    max_logit,
+                    logits_chunk.max(dim=-1).values,
+                )
+
+            exp_sum = torch.zeros(
+                current_batch_size,
+                device=resid.device,
+                dtype=resid.dtype,
+            )
+
+            answer_W = W_U[:, answer_tokens]
+            answer_b = b_U[answer_tokens]
+
+            answer_logits = torch.nn.functional.linear(
+                resid,
+                answer_W.T.contiguous(),
+                answer_b,
+            )
+
+            for start in range(0, W_U.shape[1], chunk_size):
+                end = min(start + chunk_size, W_U.shape[1])
+                logits_chunk = torch.nn.functional.linear(
+                    resid,
+                    W_U[:, start:end].T.contiguous(),
+                    b_U[start:end],
+                )
+                exp_sum += torch.exp(logits_chunk - max_logit.unsqueeze(-1)).sum(dim=-1)
+
+            vals = torch.exp(answer_logits - max_logit.unsqueeze(-1)) / exp_sum.unsqueeze(-1)
+
             if model.cfg.model_name in spaces_and_single_models:
                 vals = vals.reshape(-1, 2, 4).max(dim=1)[0]
             output_probs.append(vals)
@@ -627,7 +689,7 @@ def modify_model(model, sae, **ablate_params):
 
     # Hook point
     if "custom_hook_point" not in ablate_params or ablate_params["custom_hook_point"] is None:
-        hook_point = sae.cfg.hook_name
+        hook_point = sae.cfg.metadata.hook_name
     else:
         hook_point = ablate_params["custom_hook_point"]
 
@@ -906,7 +968,8 @@ def calculate_metrics_list(
         multiplier = ablate_params["multiplier"]
         activation_threshold = ablate_params["activation_threshold"]
         n_features = len(ablate_params["features_to_ablate"])
-        layer = sae.cfg.hook_layer
+        hook_name = sae.cfg.metadata.hook_name
+        layer = int(hook_name.split('.')[1])
 
         save_file_name = f"{intervention_method}_multiplier{multiplier}_nfeatures{n_features}_layer{layer}_retainthres{retain_threshold}_seed{seed}.pkl"#_act_th_{activation_threshold}.pkl"#
         full_path = os.path.join(save_metrics_dir, save_file_name)

@@ -1,0 +1,8 @@
+# Large generated artifacts / caches — never commit these
+artifacts_dynamic_bs1_*/
+__pycache__/
+*.pyc
+
+# Large forget-corpus data (downloaded separately, not source)
+dynamic_sae_guardrails/evals/unlearning/data/
+evals/unlearning/data/

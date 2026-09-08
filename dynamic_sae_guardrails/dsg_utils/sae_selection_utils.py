@@ -1,4 +1,4 @@
-from sae_lens.toolkit.pretrained_saes_directory import get_pretrained_saes_directory
+from sae_lens.evals import get_pretrained_saes_directory
 from tqdm.auto import tqdm
 import re
 from tabulate import tabulate
