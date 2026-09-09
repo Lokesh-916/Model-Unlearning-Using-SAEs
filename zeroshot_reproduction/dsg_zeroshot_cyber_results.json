@@ -1,0 +1,74 @@
+{
+  "0.1": {
+    "wmdp-cyber": 0.37090909481048584,
+    "high_school_us_history": 0.5648148059844971,
+    "college_biology": 0.6800000071525574,
+    "high_school_geography": 0.759615421295166,
+    "human_aging": 0.8571428656578064,
+    "mmlu_avg": 0.7153932750225067
+  },
+  "0.2": {
+    "wmdp-cyber": 0.4145454466342926,
+    "high_school_us_history": 1.0,
+    "college_biology": 0.9600000381469727,
+    "high_school_geography": 1.0,
+    "human_aging": 0.9761905074119568,
+    "mmlu_avg": 0.9840476363897324
+  },
+  "0.3": {
+    "wmdp-cyber": 0.6436363458633423,
+    "high_school_us_history": 1.0,
+    "college_biology": 1.0,
+    "high_school_geography": 1.0,
+    "human_aging": 1.0,
+    "mmlu_avg": 1.0
+  },
+  "0.4": {
+    "wmdp-cyber": 0.9599999785423279,
+    "high_school_us_history": 1.0,
+    "college_biology": 1.0,
+    "high_school_geography": 1.0,
+    "human_aging": 1.0,
+    "mmlu_avg": 1.0
+  },
+  "0.5": {
+    "wmdp-cyber": 1.0,
+    "high_school_us_history": 1.0,
+    "college_biology": 1.0,
+    "high_school_geography": 1.0,
+    "human_aging": 1.0,
+    "mmlu_avg": 1.0
+  },
+  "0.6": {
+    "wmdp-cyber": 1.0,
+    "high_school_us_history": 1.0,
+    "college_biology": 1.0,
+    "high_school_geography": 1.0,
+    "human_aging": 1.0,
+    "mmlu_avg": 1.0
+  },
+  "0.7": {
+    "wmdp-cyber": 1.0,
+    "high_school_us_history": 1.0,
+    "college_biology": 1.0,
+    "high_school_geography": 1.0,
+    "human_aging": 1.0,
+    "mmlu_avg": 1.0
+  },
+  "0.8": {
+    "wmdp-cyber": 1.0,
+    "high_school_us_history": 1.0,
+    "college_biology": 1.0,
+    "high_school_geography": 1.0,
+    "human_aging": 1.0,
+    "mmlu_avg": 1.0
+  },
+  "0.9": {
+    "wmdp-cyber": 1.0,
+    "high_school_us_history": 1.0,
+    "college_biology": 1.0,
+    "high_school_geography": 1.0,
+    "human_aging": 1.0,
+    "mmlu_avg": 1.0
+  }
+}

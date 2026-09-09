@@ -1,0 +1,74 @@
+{
+  "0.1": {
+    "wmdp-bio": 0.25836431980133057,
+    "high_school_us_history": 0.18518519401550293,
+    "college_computer_science": 0.2222222238779068,
+    "high_school_geography": 0.24271844327449799,
+    "human_aging": 0.3176470696926117,
+    "mmlu_avg": 0.24194323271512985
+  },
+  "0.2": {
+    "wmdp-bio": 0.25836431980133057,
+    "high_school_us_history": 0.18518519401550293,
+    "college_computer_science": 0.2222222238779068,
+    "high_school_geography": 0.24271844327449799,
+    "human_aging": 0.3176470696926117,
+    "mmlu_avg": 0.24194323271512985
+  },
+  "0.3": {
+    "wmdp-bio": 0.26022303104400635,
+    "high_school_us_history": 0.18518519401550293,
+    "college_computer_science": 0.2222222238779068,
+    "high_school_geography": 0.3009708821773529,
+    "human_aging": 0.3294117748737335,
+    "mmlu_avg": 0.25944751873612404
+  },
+  "0.4": {
+    "wmdp-bio": 0.2639405131340027,
+    "high_school_us_history": 0.29629629850387573,
+    "college_computer_science": 0.2222222238779068,
+    "high_school_geography": 0.582524299621582,
+    "human_aging": 0.48235294222831726,
+    "mmlu_avg": 0.39584894105792046
+  },
+  "0.5": {
+    "wmdp-bio": 0.2769516706466675,
+    "high_school_us_history": 0.6666666865348816,
+    "college_computer_science": 0.7777777910232544,
+    "high_school_geography": 0.8932039141654968,
+    "human_aging": 0.7411764860153198,
+    "mmlu_avg": 0.7697062194347382
+  },
+  "0.6": {
+    "wmdp-bio": 0.31040892004966736,
+    "high_school_us_history": 0.9629629850387573,
+    "college_computer_science": 1.0,
+    "high_school_geography": 0.9708737730979919,
+    "human_aging": 0.9176470637321472,
+    "mmlu_avg": 0.9628709554672241
+  },
+  "0.7": {
+    "wmdp-bio": 0.4553903341293335,
+    "high_school_us_history": 1.0,
+    "college_computer_science": 1.0,
+    "high_school_geography": 1.0,
+    "human_aging": 0.9882352948188782,
+    "mmlu_avg": 0.9970588237047195
+  },
+  "0.8": {
+    "wmdp-bio": 0.8513011336326599,
+    "high_school_us_history": 1.0,
+    "college_computer_science": 1.0,
+    "high_school_geography": 1.0,
+    "human_aging": 1.0,
+    "mmlu_avg": 1.0
+  },
+  "0.9": {
+    "wmdp-bio": 1.0,
+    "high_school_us_history": 1.0,
+    "college_computer_science": 1.0,
+    "high_school_geography": 1.0,
+    "human_aging": 1.0,
+    "mmlu_avg": 1.0
+  }
+}
