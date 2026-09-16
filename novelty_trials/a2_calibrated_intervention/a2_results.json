@@ -1,0 +1,34 @@
+{
+  "reference_set_size": 318,
+  "reference_mean_confidence": 0.3252807557582855,
+  "overall_mean_confidence": 0.6669321060180664,
+  "grid_results": {
+    "0.5": 0.9925650358200073,
+    "1.0": 0.9944238066673279,
+    "2.0": 0.9981412291526794,
+    "4.0": 0.9944238066673279
+  },
+  "best_strength": 0.5,
+  "a2_results": {
+    "wmdp-bio": 0.9925650358200073,
+    "high_school_us_history": 1.0,
+    "college_computer_science": 1.0,
+    "high_school_geography": 1.0,
+    "human_aging": 1.0
+  },
+  "mmlu_a2": 1.0,
+  "entropy_confidence": {
+    "base": {
+      "entropy": 0.23689204454421997,
+      "maxprob": 0.9247715473175049
+    },
+    "dsg_clamp": {
+      "entropy": 0.7586766481399536,
+      "maxprob": 0.7398324012756348
+    },
+    "a2_best": {
+      "entropy": 0.2431631088256836,
+      "maxprob": 0.9194891452789307
+    }
+  }
+}
