@@ -1,0 +1,15 @@
+{
+  "acc_base_no_intervention": 0.675,
+  "acc_dsg_hook": 0.455,
+  "acc_student_hook_removed": 0.4,
+  "retain_acc_student": {
+    "high_school_us_history": 0.68,
+    "college_computer_science": 0.48,
+    "high_school_geography": 0.7133333333333334,
+    "human_aging": 0.6466666666666666
+  },
+  "training_losses": {
+    "first": 2.181845188140869,
+    "last": 0.4138040542602539
+  }
+}
