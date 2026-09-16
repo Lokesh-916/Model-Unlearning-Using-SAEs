@@ -1,0 +1,9 @@
+FINAL SUMMARY: multi-layer (layer 3 + layer 8) vs single-layer-3 vs paper baseline
+======================================================================
+                      config     WMDP-bio     MMLU_avg
+       paper/original cached      29.368%      99.412%
+     layer-3-only (this run)      29.368%      99.412%
+   layer-3 + layer-8 (multi)      27.695%      97.941%
+DONE
+28:Layer 3: 20 features, threshold=0.5458
+35:Layer 8: 20 features, threshold=0.4289
