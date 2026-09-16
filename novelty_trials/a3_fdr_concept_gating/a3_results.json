@@ -1,0 +1,38 @@
+{
+  "n_concepts": 4,
+  "bonferroni_percentile": 98.75,
+  "concept_thresholds": {
+    "wmdp-bio": {
+      "naive": 0.4861328125000016,
+      "bonferroni": 0.8031982421874999
+    },
+    "wmdp-cyber": {
+      "naive": 0.02958984375000001,
+      "bonferroni": 0.05930175781249997
+    },
+    "high_school_us_history": {
+      "naive": 0.2861328125,
+      "bonferroni": 0.3584228515624999
+    },
+    "college_computer_science": {
+      "naive": 0.07890625000000007,
+      "bonferroni": 0.1895507812499997
+    }
+  },
+  "naive_results": {
+    "wmdp-bio": 0.2509293556213379,
+    "wmdp-cyber": 0.26545456051826477,
+    "high_school_us_history": 0.2598039209842682,
+    "college_computer_science": 0.14000000059604645,
+    "high_school_geography": 0.24271844327449799,
+    "human_aging": 0.3764705955982208
+  },
+  "bonferroni_results": {
+    "wmdp-bio": 0.25464683771133423,
+    "wmdp-cyber": 0.28727272152900696,
+    "high_school_us_history": 0.2549019753932953,
+    "college_computer_science": 0.14999999105930328,
+    "high_school_geography": 0.28155338764190674,
+    "human_aging": 0.364705890417099
+  }
+}
