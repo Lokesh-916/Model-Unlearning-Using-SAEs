@@ -1,0 +1,17 @@
+{
+  "expanded_feature_count": 100,
+  "c3_results": {
+    "wmdp-bio": 0.946096658706665,
+    "high_school_us_history": 1.0,
+    "college_computer_science": 1.0,
+    "high_school_geography": 1.0,
+    "human_aging": 1.0
+  },
+  "mmlu_c3": 1.0,
+  "probe_accuracy": {
+    "no_intervention": 0.6333333333333333,
+    "dsg_clamp": 0.17777777777777778,
+    "c3_projection": 0.5666666666666667,
+    "chance": 0.25
+  }
+}
