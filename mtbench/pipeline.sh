@@ -4,7 +4,7 @@ cd "$(dirname "$0")/.."
 LOG=mtbench/logs/pipeline.log
 say() { echo "[$(date +%T)] $*" | tee -a $LOG; }
 wait_for() { until grep -q "DONE mode=$1" "mtbench/logs/generate_$1.log" 2>/dev/null; do sleep 30; done; }
-wait_key() { until [ -n "$OPENROUTER_API_KEY" ] || [ -s ~/.openrouter_key ]; do sleep 30; done; }
+wait_key() { until [ -n "$OPENROUTER_API_KEY" ] || { grep -Eq "^OPENROUTER_API_KEY=.+" .env && ! grep -q "PASTE_YOUR_KEY_HERE" .env; }; do sleep 30; done; }
 ship() { git add mtbench && git commit -q -m "$1" && git push -q origin main && say "pushed: $1" || say "nothing to push / push failed: $1"; }
 
 say "pipeline started"

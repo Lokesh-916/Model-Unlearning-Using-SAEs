@@ -4,7 +4,7 @@ Uses FastChat's own judge prompts (reference-guided for math / reasoning / codin
 with its token usage and cost, and the run stops before a hard spend cap is exceeded. Resumable: rows
 already in mtbench/results/judgments_<mode>.jsonl are skipped, and the cap counts spend from earlier runs.
 
-The API key is read from $OPENROUTER_API_KEY or ~/.openrouter_key and is never written anywhere.
+The API key is read from $OPENROUTER_API_KEY, then .env in the repo root (git-ignored), then ~/.openrouter_key and is never written anywhere.
 """
 import argparse, json, os, re, sys, time, urllib.request, urllib.error
 
@@ -18,10 +18,21 @@ ap.add_argument("--limit", type=int, default=None, help="only first N answers (s
 ap.add_argument("--max_tokens", type=int, default=500)
 args = ap.parse_args()
 
-key = os.environ.get("OPENROUTER_API_KEY") or (
-    open(os.path.expanduser("~/.openrouter_key")).read().strip() if os.path.exists(os.path.expanduser("~/.openrouter_key")) else None)
+def read_key():
+    if os.environ.get("OPENROUTER_API_KEY"):
+        return os.environ["OPENROUTER_API_KEY"]
+    for path in (".env", os.path.expanduser("~/.openrouter_key")):
+        if os.path.exists(path):
+            for line in open(path):
+                line = line.strip()
+                v = line.split("=", 1)[1].strip().strip("\"'") if line.startswith("OPENROUTER_API_KEY=") else (line if path.endswith("_key") else "")
+                if v and v != "PASTE_YOUR_KEY_HERE":
+                    return v
+    return None
+
+key = read_key()
 if not key:
-    sys.exit("No OpenRouter key: set OPENROUTER_API_KEY or put it in ~/.openrouter_key")
+    sys.exit("No OpenRouter key: put it in .env as OPENROUTER_API_KEY=...")
 
 R = "mtbench/results"
 qs = {q["question_id"]: q for q in map(json.loads, open("mtbench/data/question.jsonl"))}

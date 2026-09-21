@@ -6,3 +6,6 @@ __pycache__/
 # Large forget-corpus data (downloaded separately, not source)
 dynamic_sae_guardrails/evals/unlearning/data/
 evals/unlearning/data/
+
+# secrets
+.env
