@@ -4,3 +4,5 @@
 [01:57:41] base answers done
 [01:57:44] pushed: Add MT-Bench answers from base gemma-2-2b-it with generation log
 [03:36:45] dsg answers done
+[03:36:49] pushed: Add MT-Bench answers from DSG-guarded gemma-2-2b-it with generation log
+[03:36:49] pipeline finished (judging pending)

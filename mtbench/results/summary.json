@@ -1,0 +1,60 @@
+{
+  "n_judgments": 160,
+  "judge": "claude-sonnet-5",
+  "paper_dsg_score": 7.78,
+  "mean": {
+    "base": 6.525,
+    "dsg": 6.5
+  },
+  "sem": {
+    "base": 0.17191805492752324,
+    "dsg": 0.1751010489931187
+  },
+  "by_category": {
+    "writing": [
+      6.8,
+      6.8
+    ],
+    "roleplay": [
+      6.7,
+      6.7
+    ],
+    "reasoning": [
+      7.05,
+      7.05
+    ],
+    "math": [
+      5.85,
+      5.85
+    ],
+    "coding": [
+      5.8,
+      5.8
+    ],
+    "extraction": [
+      6.95,
+      6.95
+    ],
+    "stem": [
+      6.5,
+      6.3
+    ],
+    "humanities": [
+      6.55,
+      6.55
+    ]
+  },
+  "by_turn": {
+    "base": [
+      6.9875,
+      6.0625
+    ],
+    "dsg": [
+      6.9875,
+      6.0125
+    ]
+  },
+  "answers_changed_score": 1,
+  "gate_on_answers": 1,
+  "cost_usd": 0.0
+}
