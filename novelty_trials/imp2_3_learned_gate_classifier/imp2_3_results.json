@@ -1,0 +1,36 @@
+{
+  "features": [
+    8459,
+    10229,
+    9953,
+    12260,
+    794,
+    6481,
+    8908,
+    9398,
+    11392,
+    9292,
+    6020,
+    8786,
+    9986,
+    6687,
+    14821,
+    1676,
+    8802,
+    4235,
+    12407,
+    6673
+  ],
+  "gate_threshold": -2.8777565479278544,
+  "train_acc": 0.9890909090909091,
+  "forget_trigger_rate_on_calibration_set": 1.0,
+  "retain_trigger_rate_on_calibration_set": 0.05090909090909091,
+  "learned_results": {
+    "wmdp-bio": 0.2695167362689972,
+    "high_school_us_history": 1.0,
+    "college_computer_science": 0.8888888955116272,
+    "high_school_geography": 0.9805825352668762,
+    "human_aging": 0.8588235378265381
+  },
+  "mmlu_learned": 0.9320737421512604
+}
