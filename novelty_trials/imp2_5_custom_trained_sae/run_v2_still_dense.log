@@ -1,0 +1,1253 @@
+/home/amaloch/projects/mechunlearn-project/baselines_DSG/novelty_trials/imp2_5_custom_trained_sae/imp2_5_custom_trained_sae.py:102: DeprecationWarning: HookedTransformer.from_pretrained is deprecated and will be removed in a future major release. Use TransformerBridge.boot_transformers(...) instead, then call enable_compatibility_mode() for HookedTransformer-equivalent numerics. See docs/source/content/migrating_to_v3.md.
+  model = HookedTransformer.from_pretrained(MODEL_NAME, device=device, dtype=torch.bfloat16)
+WARNING:root:You tried to specify center_unembed=True for a model using logit softcap, but this can't be done! Softcapping is not invariant upon adding a constant Setting center_unembed=False instead.
+[1] Loading model...
+Loading weights:   0%|          | 0/288 [00:00<?, ?it/s]Loading weights: 100%|██████████| 288/288 [00:00<00:00, 12649.85it/s]
+WARNING:root:With reduced precision, it is advised to use `from_pretrained_no_processing` instead of `from_pretrained`.
+Loaded pretrained model gemma-2-2b-it into HookedTransformer
+
+[2] Collecting layer-3 residual-stream activations from bio-forget-corpus + wikitext...
+24432 16027
+1962 859
+torch.Size([953, 1024]) torch.Size([275, 1024])
+Tokens batch size: 150
+  forget_tokens: torch.Size([150, 1024]), retain_tokens: torch.Size([150, 1024])
+  collected activations from forget corpus
+  collected activations from retain corpus
+  total training activations: torch.Size([306900, 2304]) (306900 tokens)
+
+[3] Training our own SAE from scratch...
+  step 0: mse=1.6654 l1=0.2990 l0=2048.2 loss=1.6803
+  step 500: mse=0.0151 l1=1.2752 l0=3849.6 loss=0.0789
+  step 1000: mse=0.0120 l1=1.1397 l0=3818.6 loss=0.0690
+  step 1500: mse=0.0110 l1=1.0814 l0=3804.9 loss=0.0650
+  step 2000: mse=0.0108 l1=1.0410 l0=3794.5 loss=0.0628
+  step 2500: mse=0.0114 l1=1.0011 l0=3781.8 loss=0.0614
+  step 2999: mse=0.0096 l1=0.9722 l0=3778.0 loss=0.0583
+
+[4] Computing feature sparsity on forget/retain with our custom SAE (reusing the same token sets)...
+
+[5] Selecting top-20 features with DSG's own selection function (unchanged)...
+Top 20 forget scores: [-1.8667434 -1.7932259 -1.6720657 -1.6313763 -1.5527948 -1.5265085
+ -1.5227035 -1.5181357 -1.5098119 -1.4806594 -1.4794242 -1.4782782
+ -1.4761527 -1.472449  -1.4646777 -1.4586496 -1.4498123 -1.4408517
+ -1.4295783 -1.4264665]
+Bootstrap estimation: 3.99609375
+N=20, 95th percentile: 3.99609375, 99th percentile: 3.99609375
+  features: [498, 1505, 868, 3427, 1915, 3943, 3457, 2855, 2178, 765, 2242, 2893, 1820, 538, 2531, 774, 978, 2258, 2507, 2267]
+  gate threshold: 3.9961
+
+[6] Evaluating DSG's unchanged clamp intervention using our custom SAE...
+len(questions): 1273  permutations number: 1
+[DSG DEBUG] activation rate: min=0.9900, max=0.9900, mean=0.9900, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9900, 3457:0.9800, 498:0.9800, 538:0.9700, 3943:0.9600, 2242:0.9400, 774:0.9400, 2258:0.9300, 978:0.9300, 868:0.9300
+[DSG DEBUG] resid norm before clamp: mean=95.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.5000, max=812.0000, tokens_clamped=0/100
+[DSG DEBUG] activation rate: min=0.9882, max=0.9882, mean=0.9882, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9882, 3457:0.9765, 498:0.9765, 774:0.9647, 538:0.9529, 3943:0.9529, 765:0.9412, 2531:0.9412, 868:0.9176, 2258:0.9176
+[DSG DEBUG] resid norm before clamp: mean=99.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.5000, max=812.0000, tokens_clamped=0/85
+[DSG DEBUG] activation rate: min=0.9904, max=0.9904, mean=0.9904, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9808, 2242:0.9615, 3457:0.9615, 2258:0.9519, 2531:0.9327, 774:0.9231, 1820:0.9135, 538:0.9135, 2178:0.9135, 3943:0.9135
+[DSG DEBUG] resid norm before clamp: mean=95.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.0000, max=812.0000, tokens_clamped=0/104
+[DSG DEBUG] activation rate: min=0.9949, max=0.9949, mean=0.9949, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 765:0.9747, 1820:0.9697, 3457:0.9596, 538:0.9545, 2178:0.9495, 774:0.9343, 2855:0.9293, 498:0.9293, 868:0.9242, 2258:0.9242
+[DSG DEBUG] resid norm before clamp: mean=90.5000, max=808.0000
+[DSG DEBUG] resid norm after clamp: mean=90.5000, max=808.0000, tokens_clamped=0/198
+[DSG DEBUG] activation rate: min=0.9885, max=0.9885, mean=0.9885, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9770, 3457:0.9540, 3943:0.9425, 978:0.9425, 1820:0.9425, 2242:0.9310, 868:0.9310, 1915:0.9195, 2178:0.9195, 2531:0.9080
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/87
+[DSG DEBUG] activation rate: min=0.9894, max=0.9894, mean=0.9894, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9787, 3457:0.9787, 765:0.9681, 538:0.9574, 2178:0.9574, 2242:0.9468, 1820:0.9468, 3943:0.9468, 868:0.9362, 774:0.9362
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/94
+[DSG DEBUG] activation rate: min=0.9882, max=0.9882, mean=0.9882, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9765, 498:0.9765, 2242:0.9647, 538:0.9647, 765:0.9529, 3457:0.9529, 1915:0.9529, 978:0.9294, 2531:0.9294, 3943:0.9294
+[DSG DEBUG] resid norm before clamp: mean=99.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.0000, max=812.0000, tokens_clamped=0/85
+[DSG DEBUG] activation rate: min=0.9877, max=0.9877, mean=0.9877, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9877, 538:0.9753, 1820:0.9383, 2178:0.9383, 2242:0.9383, 2531:0.9383, 868:0.9383, 3457:0.9136, 3943:0.9012, 2258:0.9012
+[DSG DEBUG] resid norm before clamp: mean=90.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=90.0000, max=812.0000, tokens_clamped=0/81
+[DSG DEBUG] activation rate: min=0.9910, max=0.9910, mean=0.9910, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9820, 538:0.9640, 2242:0.9640, 765:0.9550, 3457:0.9369, 1915:0.9369, 1820:0.9369, 3943:0.9189, 2178:0.9189, 2531:0.9099
+[DSG DEBUG] resid norm before clamp: mean=95.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.5000, max=812.0000, tokens_clamped=0/111
+[DSG DEBUG] activation rate: min=0.9851, max=0.9851, mean=0.9851, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9851, 2242:0.9701, 3457:0.9701, 1820:0.9552, 538:0.9552, 868:0.9403, 2258:0.9254, 2531:0.9254, 3943:0.9104, 765:0.9104
+[DSG DEBUG] resid norm before clamp: mean=99.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.5000, max=812.0000, tokens_clamped=0/67
+[DSG DEBUG] activation rate: min=0.9919, max=0.9919, mean=0.9919, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 538:0.9677, 1820:0.9677, 2242:0.9597, 3943:0.9597, 3457:0.9435, 498:0.9435, 765:0.9435, 2531:0.9435, 868:0.9355, 2258:0.9355
+[DSG DEBUG] resid norm before clamp: mean=93.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=93.0000, max=812.0000, tokens_clamped=0/124
+[DSG DEBUG] activation rate: min=0.9942, max=0.9942, mean=0.9942, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9825, 538:0.9766, 2242:0.9708, 498:0.9649, 765:0.9649, 1820:0.9591, 2178:0.9532, 3427:0.9474, 1505:0.9415, 868:0.9357
+[DSG DEBUG] resid norm before clamp: mean=92.0000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=92.0000, max=804.0000, tokens_clamped=0/171
+[DSG DEBUG] activation rate: min=0.9915, max=0.9915, mean=0.9915, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9915, 538:0.9831, 3457:0.9746, 2242:0.9746, 1820:0.9661, 765:0.9492, 2178:0.9407, 774:0.9407, 2531:0.9407, 978:0.9237
+[DSG DEBUG] resid norm before clamp: mean=92.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=92.0000, max=812.0000, tokens_clamped=0/118
+[DSG DEBUG] activation rate: min=0.9877, max=0.9877, mean=0.9877, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9877, 2242:0.9753, 538:0.9630, 978:0.9630, 3457:0.9630, 2178:0.9506, 2258:0.9506, 3943:0.9506, 2531:0.9259, 774:0.9136
+[DSG DEBUG] resid norm before clamp: mean=97.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.0000, max=812.0000, tokens_clamped=0/81
+[DSG DEBUG] activation rate: min=0.9872, max=0.9872, mean=0.9872, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9744, 2178:0.9615, 538:0.9487, 1820:0.9487, 3457:0.9487, 3943:0.9359, 765:0.9359, 1915:0.9231, 868:0.9231, 1505:0.9231
+[DSG DEBUG] resid norm before clamp: mean=100.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.5000, max=812.0000, tokens_clamped=0/78
+[DSG DEBUG] activation rate: min=0.9930, max=0.9930, mean=0.9930, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9860, 774:0.9720, 3943:0.9650, 1820:0.9650, 498:0.9650, 2178:0.9580, 765:0.9580, 1915:0.9580, 2242:0.9510, 538:0.9510
+[DSG DEBUG] resid norm before clamp: mean=92.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=92.5000, max=804.0000, tokens_clamped=0/143
+[DSG DEBUG] activation rate: min=0.9877, max=0.9877, mean=0.9877, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9877, 1820:0.9753, 2242:0.9506, 2178:0.9506, 538:0.9506, 2531:0.9506, 3457:0.9506, 2258:0.9383, 868:0.9259, 3943:0.9259
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/81
+[DSG DEBUG] activation rate: min=0.9900, max=0.9900, mean=0.9900, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9800, 3943:0.9600, 538:0.9500, 2242:0.9400, 765:0.9400, 2178:0.9400, 868:0.9400, 2267:0.9100, 2531:0.9100, 3457:0.9100
+[DSG DEBUG] resid norm before clamp: mean=97.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.5000, max=812.0000, tokens_clamped=0/100
+[DSG DEBUG] activation rate: min=0.9844, max=0.9844, mean=0.9844, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9844, 2242:0.9531, 3457:0.9375, 868:0.9375, 2258:0.9219, 978:0.9219, 538:0.9219, 774:0.9219, 3427:0.9062, 3943:0.9062
+[DSG DEBUG] resid norm before clamp: mean=98.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.0000, max=812.0000, tokens_clamped=0/64
+[DSG DEBUG] activation rate: min=0.9853, max=0.9853, mean=0.9853, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9853, 765:0.9559, 3457:0.9559, 1820:0.9412, 2242:0.9412, 538:0.9265, 2178:0.9118, 1915:0.9118, 978:0.8971, 1505:0.8824
+[DSG DEBUG] resid norm before clamp: mean=97.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.5000, max=812.0000, tokens_clamped=0/68
+[DSG DEBUG] activation rate: min=0.9899, max=0.9899, mean=0.9899, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9798, 1820:0.9697, 2242:0.9697, 765:0.9596, 2178:0.9596, 538:0.9394, 3457:0.9293, 3943:0.9293, 1915:0.9091, 2531:0.9091
+[DSG DEBUG] resid norm before clamp: mean=91.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=91.0000, max=812.0000, tokens_clamped=0/99
+[DSG DEBUG] activation rate: min=0.9828, max=0.9828, mean=0.9828, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9828, 1820:0.9828, 538:0.9483, 2258:0.9483, 2178:0.9483, 3457:0.9483, 774:0.9310, 978:0.9310, 2531:0.9310, 3943:0.9310
+[DSG DEBUG] resid norm before clamp: mean=100.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.0000, max=812.0000, tokens_clamped=0/58
+[DSG DEBUG] activation rate: min=0.9841, max=0.9841, mean=0.9841, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9841, 1820:0.9841, 538:0.9683, 2242:0.9683, 2258:0.9524, 774:0.9365, 978:0.9365, 2531:0.9365, 3943:0.9365, 2178:0.9365
+[DSG DEBUG] resid norm before clamp: mean=101.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=101.0000, max=812.0000, tokens_clamped=0/63
+[DSG DEBUG] activation rate: min=0.9855, max=0.9855, mean=0.9855, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9855, 498:0.9855, 978:0.9565, 774:0.9420, 2242:0.9420, 538:0.9420, 2178:0.9275, 2531:0.9275, 3943:0.9275, 868:0.9275
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/69
+[DSG DEBUG] activation rate: min=0.9841, max=0.9841, mean=0.9841, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9841, 538:0.9683, 1820:0.9524, 2531:0.9524, 2242:0.9524, 3457:0.9524, 2178:0.9365, 2258:0.9365, 978:0.9365, 868:0.9206
+[DSG DEBUG] resid norm before clamp: mean=100.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.5000, max=812.0000, tokens_clamped=0/63
+[DSG DEBUG] activation rate: min=0.9828, max=0.9828, mean=0.9828, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9828, 498:0.9828, 2258:0.9310, 1820:0.9310, 2242:0.9310, 2178:0.9138, 538:0.9138, 3943:0.9138, 868:0.9138, 1915:0.9138
+[DSG DEBUG] resid norm before clamp: mean=100.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.5000, max=812.0000, tokens_clamped=0/58
+[DSG DEBUG] activation rate: min=0.9889, max=0.9889, mean=0.9889, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9889, 3457:0.9667, 978:0.9556, 2242:0.9556, 1915:0.9444, 774:0.9444, 1820:0.9444, 2258:0.9444, 538:0.9444, 868:0.9333
+[DSG DEBUG] resid norm before clamp: mean=93.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=93.5000, max=812.0000, tokens_clamped=0/90
+[DSG DEBUG] activation rate: min=0.9944, max=0.9944, mean=0.9944, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9888, 1820:0.9831, 765:0.9831, 774:0.9607, 1915:0.9607, 2258:0.9551, 2531:0.9551, 3457:0.9494, 2242:0.9382, 3943:0.9326
+[DSG DEBUG] resid norm before clamp: mean=94.0000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=94.0000, max=804.0000, tokens_clamped=0/178
+[DSG DEBUG] activation rate: min=0.9937, max=0.9937, mean=0.9937, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 538:0.9810, 498:0.9747, 3943:0.9620, 2531:0.9494, 774:0.9367, 1820:0.9367, 3457:0.9367, 978:0.9304, 868:0.9304, 3427:0.9241
+[DSG DEBUG] resid norm before clamp: mean=90.0000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=90.0000, max=804.0000, tokens_clamped=0/158
+[DSG DEBUG] activation rate: min=0.9939, max=0.9939, mean=0.9939, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9816, 765:0.9755, 2178:0.9632, 3943:0.9509, 3457:0.9448, 1820:0.9387, 2531:0.9325, 538:0.9264, 2242:0.9264, 1915:0.9264
+[DSG DEBUG] resid norm before clamp: mean=90.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=90.5000, max=804.0000, tokens_clamped=0/163
+[DSG DEBUG] activation rate: min=0.9868, max=0.9868, mean=0.9868, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9868, 1820:0.9737, 3457:0.9737, 538:0.9605, 2531:0.9474, 2178:0.9342, 2258:0.9342, 3943:0.9342, 2242:0.9211, 1915:0.9079
+[DSG DEBUG] resid norm before clamp: mean=98.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.0000, max=812.0000, tokens_clamped=0/76
+[DSG DEBUG] activation rate: min=0.9868, max=0.9868, mean=0.9868, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9868, 538:0.9737, 3457:0.9737, 2178:0.9605, 1820:0.9474, 774:0.9342, 765:0.9211, 2242:0.9211, 3943:0.9211, 868:0.9211
+[DSG DEBUG] resid norm before clamp: mean=100.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.5000, max=812.0000, tokens_clamped=0/76
+[DSG DEBUG] activation rate: min=0.9921, max=0.9921, mean=0.9921, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9764, 3457:0.9764, 1820:0.9685, 2258:0.9606, 538:0.9606, 765:0.9606, 3943:0.9606, 2242:0.9528, 868:0.9291, 2531:0.9291
+[DSG DEBUG] resid norm before clamp: mean=94.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=94.0000, max=812.0000, tokens_clamped=0/127
+[DSG DEBUG] activation rate: min=0.9853, max=0.9853, mean=0.9853, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9706, 3457:0.9559, 538:0.9559, 2531:0.9559, 2242:0.9412, 2178:0.9412, 3943:0.9412, 1820:0.9265, 765:0.9265, 1915:0.9265
+[DSG DEBUG] resid norm before clamp: mean=102.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=102.5000, max=812.0000, tokens_clamped=0/68
+[DSG DEBUG] activation rate: min=0.9878, max=0.9878, mean=0.9878, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 538:0.9756, 498:0.9634, 3943:0.9634, 2531:0.9390, 1820:0.9390, 765:0.9268, 3457:0.9268, 1915:0.9146, 868:0.9146, 1505:0.9146
+[DSG DEBUG] resid norm before clamp: mean=99.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.0000, max=812.0000, tokens_clamped=0/82
+[DSG DEBUG] activation rate: min=0.9857, max=0.9857, mean=0.9857, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9857, 3457:0.9571, 2258:0.9571, 1820:0.9571, 3943:0.9429, 868:0.9429, 538:0.9429, 978:0.9429, 2242:0.9286, 1915:0.9143
+[DSG DEBUG] resid norm before clamp: mean=100.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.0000, max=812.0000, tokens_clamped=0/70
+[DSG DEBUG] activation rate: min=0.9868, max=0.9868, mean=0.9868, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9868, 3457:0.9868, 538:0.9605, 2242:0.9474, 3943:0.9474, 1820:0.9342, 978:0.9342, 2178:0.9342, 1915:0.9211, 2531:0.9211
+[DSG DEBUG] resid norm before clamp: mean=102.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=102.0000, max=812.0000, tokens_clamped=0/76
+[DSG DEBUG] activation rate: min=0.9921, max=0.9921, mean=0.9921, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9921, 765:0.9603, 3457:0.9444, 1820:0.9444, 3943:0.9365, 1915:0.9365, 2178:0.9365, 538:0.9365, 2242:0.9286, 978:0.9286
+[DSG DEBUG] resid norm before clamp: mean=94.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=94.0000, max=812.0000, tokens_clamped=0/126
+[DSG DEBUG] activation rate: min=0.9944, max=0.9944, mean=0.9944, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 765:0.9774, 498:0.9718, 3457:0.9661, 1820:0.9435, 3427:0.9379, 2242:0.9322, 2178:0.9209, 538:0.9209, 868:0.9153, 774:0.9153
+[DSG DEBUG] resid norm before clamp: mean=90.0000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=90.0000, max=804.0000, tokens_clamped=0/177
+[DSG DEBUG] activation rate: min=0.9881, max=0.9881, mean=0.9881, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9881, 3457:0.9643, 2178:0.9524, 538:0.9405, 2242:0.9286, 3943:0.9286, 2531:0.9286, 765:0.9048, 868:0.9048, 1505:0.9048
+[DSG DEBUG] resid norm before clamp: mean=93.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=93.0000, max=812.0000, tokens_clamped=0/84
+[DSG DEBUG] activation rate: min=0.9923, max=0.9923, mean=0.9923, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 538:0.9846, 498:0.9846, 1820:0.9769, 2531:0.9769, 765:0.9692, 3943:0.9615, 3457:0.9615, 2258:0.9462, 868:0.9385, 2242:0.9385
+[DSG DEBUG] resid norm before clamp: mean=94.0000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=94.0000, max=804.0000, tokens_clamped=0/130
+[DSG DEBUG] activation rate: min=0.9884, max=0.9884, mean=0.9884, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9884, 3457:0.9767, 1820:0.9767, 2242:0.9767, 538:0.9535, 3943:0.9419, 774:0.9419, 868:0.9419, 765:0.9302, 2531:0.9302
+[DSG DEBUG] resid norm before clamp: mean=100.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.0000, max=812.0000, tokens_clamped=0/86
+[DSG DEBUG] activation rate: min=0.9841, max=0.9841, mean=0.9841, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9841, 3457:0.9524, 2258:0.9524, 538:0.9524, 1820:0.9365, 868:0.9365, 2531:0.9365, 978:0.9365, 774:0.9365, 1915:0.9206
+[DSG DEBUG] resid norm before clamp: mean=101.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=101.5000, max=812.0000, tokens_clamped=0/63
+[DSG DEBUG] activation rate: min=0.9872, max=0.9872, mean=0.9872, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9744, 774:0.9615, 1820:0.9615, 2258:0.9487, 978:0.9487, 3457:0.9487, 538:0.9359, 2242:0.9231, 2178:0.9231, 868:0.9231
+[DSG DEBUG] resid norm before clamp: mean=99.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.0000, max=812.0000, tokens_clamped=0/78
+[DSG DEBUG] activation rate: min=0.9906, max=0.9906, mean=0.9906, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9811, 978:0.9717, 498:0.9717, 765:0.9623, 1820:0.9528, 868:0.9434, 3943:0.9434, 538:0.9340, 1505:0.9245, 2258:0.9245
+[DSG DEBUG] resid norm before clamp: mean=92.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=92.0000, max=812.0000, tokens_clamped=0/106
+[DSG DEBUG] activation rate: min=0.9926, max=0.9926, mean=0.9926, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 538:0.9778, 3457:0.9704, 765:0.9630, 498:0.9630, 3943:0.9556, 868:0.9481, 978:0.9333, 3427:0.9185, 2242:0.9185, 1915:0.9111
+[DSG DEBUG] resid norm before clamp: mean=92.0000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=92.0000, max=804.0000, tokens_clamped=0/135
+[DSG DEBUG] activation rate: min=0.9924, max=0.9924, mean=0.9924, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9924, 538:0.9697, 765:0.9621, 3457:0.9545, 1915:0.9470, 868:0.9470, 3943:0.9470, 1820:0.9470, 2178:0.9242, 2242:0.9242
+[DSG DEBUG] resid norm before clamp: mean=92.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=92.5000, max=804.0000, tokens_clamped=0/132
+[DSG DEBUG] activation rate: min=0.9872, max=0.9872, mean=0.9872, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 538:0.9744, 765:0.9744, 3457:0.9615, 498:0.9615, 3943:0.9359, 1820:0.9359, 2242:0.9231, 774:0.9231, 2531:0.9231, 868:0.9103
+[DSG DEBUG] resid norm before clamp: mean=99.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.0000, max=812.0000, tokens_clamped=0/78
+[DSG DEBUG] activation rate: min=0.9868, max=0.9868, mean=0.9868, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9868, 3457:0.9868, 1820:0.9605, 2258:0.9605, 2242:0.9474, 3943:0.9474, 2531:0.9474, 774:0.9342, 538:0.9211, 868:0.9079
+[DSG DEBUG] resid norm before clamp: mean=100.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.0000, max=812.0000, tokens_clamped=0/76
+[DSG DEBUG] activation rate: min=0.9894, max=0.9894, mean=0.9894, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9894, 538:0.9787, 2178:0.9574, 1820:0.9574, 3457:0.9574, 868:0.9468, 2531:0.9468, 2258:0.9362, 978:0.9362, 3943:0.9255
+[DSG DEBUG] resid norm before clamp: mean=91.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=91.0000, max=812.0000, tokens_clamped=0/94
+[DSG DEBUG] activation rate: min=0.9895, max=0.9895, mean=0.9895, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9895, 2242:0.9684, 3943:0.9684, 2258:0.9579, 538:0.9579, 2531:0.9579, 2178:0.9474, 868:0.9474, 3457:0.9368, 765:0.9368
+[DSG DEBUG] resid norm before clamp: mean=95.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.0000, max=812.0000, tokens_clamped=0/95
+[DSG DEBUG] activation rate: min=0.9881, max=0.9881, mean=0.9881, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9881, 3457:0.9762, 1820:0.9762, 538:0.9762, 765:0.9643, 2242:0.9524, 3943:0.9405, 774:0.9405, 868:0.9286, 1915:0.9286
+[DSG DEBUG] resid norm before clamp: mean=99.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.5000, max=812.0000, tokens_clamped=0/84
+[DSG DEBUG] activation rate: min=0.9865, max=0.9865, mean=0.9865, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9865, 1820:0.9730, 3457:0.9730, 538:0.9595, 2178:0.9459, 765:0.9459, 774:0.9324, 978:0.9324, 2242:0.9324, 3943:0.9324
+[DSG DEBUG] resid norm before clamp: mean=99.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.0000, max=812.0000, tokens_clamped=0/74
+[DSG DEBUG] activation rate: min=0.9899, max=0.9899, mean=0.9899, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9899, 2178:0.9596, 765:0.9596, 1820:0.9596, 3943:0.9495, 538:0.9495, 3457:0.9394, 2531:0.9394, 868:0.9394, 1915:0.9293
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/99
+[DSG DEBUG] activation rate: min=0.9865, max=0.9865, mean=0.9865, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9730, 498:0.9595, 2178:0.9595, 538:0.9595, 1820:0.9459, 1915:0.9324, 868:0.9189, 2531:0.9189, 2242:0.9189, 1505:0.9054
+[DSG DEBUG] resid norm before clamp: mean=100.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.0000, max=812.0000, tokens_clamped=0/74
+[DSG DEBUG] activation rate: min=0.9881, max=0.9881, mean=0.9881, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9762, 3457:0.9762, 1820:0.9524, 765:0.9524, 538:0.9405, 2242:0.9286, 2531:0.9286, 3943:0.9286, 2178:0.9167, 3427:0.9048
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/84
+[DSG DEBUG] activation rate: min=0.9878, max=0.9878, mean=0.9878, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9878, 2242:0.9634, 2178:0.9634, 1820:0.9634, 538:0.9512, 3457:0.9512, 2531:0.9512, 978:0.9268, 765:0.9268, 3943:0.9268
+[DSG DEBUG] resid norm before clamp: mean=97.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.5000, max=812.0000, tokens_clamped=0/82
+[DSG DEBUG] activation rate: min=0.9870, max=0.9870, mean=0.9870, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9870, 3943:0.9610, 774:0.9481, 538:0.9481, 3457:0.9481, 2242:0.9351, 1820:0.9351, 765:0.9351, 868:0.9221, 2178:0.9221
+[DSG DEBUG] resid norm before clamp: mean=100.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.5000, max=812.0000, tokens_clamped=0/77
+[DSG DEBUG] activation rate: min=0.9884, max=0.9884, mean=0.9884, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9767, 1820:0.9651, 2178:0.9651, 765:0.9535, 868:0.9419, 774:0.9302, 538:0.9302, 1915:0.9302, 1505:0.9186, 3943:0.9186
+[DSG DEBUG] resid norm before clamp: mean=98.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.0000, max=812.0000, tokens_clamped=0/86
+[DSG DEBUG] activation rate: min=0.9857, max=0.9857, mean=0.9857, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9714, 538:0.9571, 1820:0.9571, 2258:0.9429, 3943:0.9429, 3457:0.9286, 2242:0.9286, 2178:0.9286, 868:0.9143, 1915:0.9143
+[DSG DEBUG] resid norm before clamp: mean=102.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=102.0000, max=812.0000, tokens_clamped=0/70
+[DSG DEBUG] activation rate: min=0.9915, max=0.9915, mean=0.9915, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9744, 498:0.9744, 2178:0.9658, 3943:0.9658, 538:0.9487, 765:0.9487, 978:0.9487, 774:0.9316, 2531:0.9316, 3457:0.9316
+[DSG DEBUG] resid norm before clamp: mean=97.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.0000, max=812.0000, tokens_clamped=0/117
+[DSG DEBUG] activation rate: min=0.9901, max=0.9901, mean=0.9901, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9802, 498:0.9604, 978:0.9505, 2531:0.9505, 538:0.9505, 3943:0.9505, 1820:0.9406, 2258:0.9307, 2178:0.9307, 2507:0.9208
+[DSG DEBUG] resid norm before clamp: mean=97.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.0000, max=812.0000, tokens_clamped=0/101
+[DSG DEBUG] activation rate: min=0.9882, max=0.9882, mean=0.9882, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 978:0.9765, 774:0.9647, 538:0.9647, 2258:0.9529, 1820:0.9529, 2242:0.9529, 2178:0.9529, 3457:0.9412, 3943:0.9412, 498:0.9412
+[DSG DEBUG] resid norm before clamp: mean=96.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.0000, max=812.0000, tokens_clamped=0/85
+[DSG DEBUG] activation rate: min=0.9851, max=0.9851, mean=0.9851, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9851, 538:0.9701, 1820:0.9552, 2258:0.9552, 3457:0.9254, 3943:0.9254, 2178:0.9254, 2242:0.9254, 2531:0.9254, 1505:0.9104
+[DSG DEBUG] resid norm before clamp: mean=100.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.5000, max=812.0000, tokens_clamped=0/67
+[DSG DEBUG] activation rate: min=0.9841, max=0.9841, mean=0.9841, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9683, 538:0.9683, 2242:0.9683, 774:0.9524, 2531:0.9524, 1820:0.9524, 3457:0.9524, 2258:0.9365, 3943:0.9365, 1915:0.9206
+[DSG DEBUG] resid norm before clamp: mean=101.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=101.5000, max=812.0000, tokens_clamped=0/63
+[DSG DEBUG] activation rate: min=0.9872, max=0.9872, mean=0.9872, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9872, 2258:0.9615, 774:0.9487, 2242:0.9487, 3457:0.9487, 498:0.9487, 3943:0.9359, 765:0.9231, 1915:0.9231, 3427:0.9231
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/78
+[DSG DEBUG] activation rate: min=0.9861, max=0.9861, mean=0.9861, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9861, 3457:0.9861, 1820:0.9722, 538:0.9583, 774:0.9444, 2258:0.9444, 2242:0.9306, 3943:0.9306, 2531:0.9306, 868:0.9167
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/72
+[DSG DEBUG] activation rate: min=0.9861, max=0.9861, mean=0.9861, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9861, 538:0.9583, 3457:0.9583, 978:0.9444, 1820:0.9444, 868:0.9444, 3943:0.9306, 2531:0.9167, 2178:0.9028, 2258:0.9028
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/72
+[DSG DEBUG] activation rate: min=0.9881, max=0.9881, mean=0.9881, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9762, 3457:0.9643, 2258:0.9524, 538:0.9524, 1820:0.9524, 3943:0.9524, 765:0.9405, 774:0.9405, 2531:0.9286, 978:0.9286
+[DSG DEBUG] resid norm before clamp: mean=100.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.0000, max=812.0000, tokens_clamped=0/84
+[DSG DEBUG] activation rate: min=0.9844, max=0.9844, mean=0.9844, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9844, 538:0.9531, 3457:0.9531, 2258:0.9375, 1820:0.9219, 3943:0.9219, 2531:0.9062, 774:0.9062, 2178:0.9062, 1915:0.9062
+[DSG DEBUG] resid norm before clamp: mean=100.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.0000, max=812.0000, tokens_clamped=0/64
+[DSG DEBUG] activation rate: min=0.9890, max=0.9890, mean=0.9890, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9780, 3457:0.9780, 498:0.9670, 774:0.9560, 538:0.9560, 2178:0.9451, 3943:0.9341, 2258:0.9231, 1915:0.9231, 765:0.9121
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/91
+[DSG DEBUG] activation rate: min=0.9881, max=0.9881, mean=0.9881, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9881, 1820:0.9524, 2531:0.9524, 2258:0.9524, 538:0.9524, 2178:0.9405, 3943:0.9405, 2242:0.9286, 1505:0.9167, 1915:0.9167
+[DSG DEBUG] resid norm before clamp: mean=97.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.5000, max=812.0000, tokens_clamped=0/84
+[DSG DEBUG] activation rate: min=0.9844, max=0.9844, mean=0.9844, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9844, 1820:0.9688, 3457:0.9688, 3943:0.9375, 2242:0.9375, 868:0.9375, 2178:0.9375, 538:0.9375, 2531:0.9219, 774:0.9219
+[DSG DEBUG] resid norm before clamp: mean=101.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=101.5000, max=812.0000, tokens_clamped=0/64
+[DSG DEBUG] activation rate: min=0.9836, max=0.9836, mean=0.9836, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9836, 3457:0.9508, 538:0.9508, 1820:0.9508, 2258:0.9344, 2178:0.9344, 2242:0.9344, 978:0.9180, 774:0.9180, 2531:0.9180
+[DSG DEBUG] resid norm before clamp: mean=99.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.0000, max=812.0000, tokens_clamped=0/61
+[DSG DEBUG] activation rate: min=0.9844, max=0.9844, mean=0.9844, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9844, 1820:0.9688, 3457:0.9688, 2178:0.9531, 2242:0.9375, 774:0.9375, 538:0.9375, 2258:0.9375, 2531:0.9219, 868:0.8906
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/64
+[DSG DEBUG] activation rate: min=0.9877, max=0.9877, mean=0.9877, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9877, 3457:0.9753, 498:0.9753, 978:0.9506, 538:0.9506, 774:0.9506, 3943:0.9383, 2258:0.9383, 2178:0.9259, 2531:0.9259
+[DSG DEBUG] resid norm before clamp: mean=98.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.0000, max=812.0000, tokens_clamped=0/81
+[DSG DEBUG] activation rate: min=0.9907, max=0.9907, mean=0.9907, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9720, 498:0.9533, 1820:0.9533, 2242:0.9533, 2178:0.9439, 978:0.9346, 538:0.9346, 3943:0.9346, 868:0.9252, 2531:0.9252
+[DSG DEBUG] resid norm before clamp: mean=91.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=91.0000, max=812.0000, tokens_clamped=0/107
+[DSG DEBUG] activation rate: min=0.9952, max=0.9952, mean=0.9952, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 765:0.9758, 3457:0.9710, 498:0.9710, 538:0.9662, 1820:0.9565, 3943:0.9469, 2855:0.9420, 2242:0.9420, 978:0.9372, 3427:0.9275
+[DSG DEBUG] resid norm before clamp: mean=86.5000, max=808.0000
+[DSG DEBUG] resid norm after clamp: mean=86.5000, max=808.0000, tokens_clamped=0/207
+[DSG DEBUG] activation rate: min=0.9841, max=0.9841, mean=0.9841, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9841, 1820:0.9683, 3457:0.9683, 2258:0.9365, 2242:0.9365, 538:0.9206, 978:0.9206, 3943:0.9206, 1915:0.8889, 2178:0.8889
+[DSG DEBUG] resid norm before clamp: mean=100.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.5000, max=812.0000, tokens_clamped=0/63
+[DSG DEBUG] activation rate: min=0.9942, max=0.9942, mean=0.9942, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 978:0.9711, 3943:0.9711, 2242:0.9653, 1820:0.9653, 765:0.9653, 2531:0.9480, 498:0.9422, 2258:0.9364, 2855:0.9364, 1505:0.9306
+[DSG DEBUG] resid norm before clamp: mean=89.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=89.5000, max=804.0000, tokens_clamped=0/173
+[DSG DEBUG] activation rate: min=0.9853, max=0.9853, mean=0.9853, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9853, 3457:0.9559, 2242:0.9412, 2258:0.9265, 538:0.9265, 2178:0.9265, 978:0.9265, 3943:0.9118, 1915:0.9118, 868:0.9118
+[DSG DEBUG] resid norm before clamp: mean=99.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.5000, max=812.0000, tokens_clamped=0/68
+[DSG DEBUG] activation rate: min=0.9855, max=0.9855, mean=0.9855, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9855, 3457:0.9565, 2242:0.9420, 1820:0.9420, 2178:0.9420, 1915:0.9275, 2531:0.9275, 2507:0.9130, 978:0.9130, 538:0.8986
+[DSG DEBUG] resid norm before clamp: mean=96.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.0000, max=812.0000, tokens_clamped=0/69
+[DSG DEBUG] activation rate: min=0.9851, max=0.9851, mean=0.9851, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9701, 1820:0.9701, 3457:0.9701, 2242:0.9552, 538:0.9403, 2258:0.9403, 3943:0.9254, 868:0.9254, 774:0.9254, 2531:0.9104
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/67
+[DSG DEBUG] activation rate: min=0.9841, max=0.9841, mean=0.9841, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9841, 1820:0.9683, 3457:0.9683, 2242:0.9524, 538:0.9365, 2531:0.9365, 2178:0.9365, 978:0.9206, 3943:0.9206, 774:0.9048
+[DSG DEBUG] resid norm before clamp: mean=101.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=101.0000, max=812.0000, tokens_clamped=0/63
+[DSG DEBUG] activation rate: min=0.9906, max=0.9906, mean=0.9906, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9717, 2242:0.9528, 498:0.9528, 774:0.9528, 1915:0.9340, 2531:0.9340, 1820:0.9340, 2258:0.9340, 538:0.9340, 868:0.9245
+[DSG DEBUG] resid norm before clamp: mean=92.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=92.0000, max=812.0000, tokens_clamped=0/106
+[DSG DEBUG] activation rate: min=0.9867, max=0.9867, mean=0.9867, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 978:0.9600, 1820:0.9600, 3457:0.9600, 498:0.9600, 774:0.9467, 2178:0.9333, 2242:0.9200, 2258:0.9200, 538:0.9200, 1505:0.9067
+[DSG DEBUG] resid norm before clamp: mean=98.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.0000, max=812.0000, tokens_clamped=0/75
+[DSG DEBUG] activation rate: min=0.9836, max=0.9836, mean=0.9836, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9836, 1820:0.9672, 2178:0.9508, 2242:0.9508, 774:0.9344, 3457:0.9344, 2258:0.9344, 3943:0.9180, 538:0.9180, 868:0.9016
+[DSG DEBUG] resid norm before clamp: mean=98.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.0000, max=812.0000, tokens_clamped=0/61
+[DSG DEBUG] activation rate: min=0.9831, max=0.9831, mean=0.9831, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9831, 3457:0.9831, 538:0.9492, 2258:0.9492, 2178:0.9322, 3943:0.9322, 1820:0.9322, 978:0.9322, 2531:0.9322, 1915:0.9153
+[DSG DEBUG] resid norm before clamp: mean=101.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=101.5000, max=812.0000, tokens_clamped=0/59
+[DSG DEBUG] activation rate: min=0.9818, max=0.9818, mean=0.9818, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9818, 1820:0.9636, 3457:0.9636, 978:0.9455, 538:0.9455, 868:0.9273, 2178:0.9273, 2531:0.9091, 2242:0.9091, 3943:0.9091
+[DSG DEBUG] resid norm before clamp: mean=100.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.5000, max=812.0000, tokens_clamped=0/55
+[DSG DEBUG] activation rate: min=0.9848, max=0.9848, mean=0.9848, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9848, 1820:0.9697, 3457:0.9697, 538:0.9545, 2242:0.9545, 978:0.9394, 2258:0.9394, 774:0.9394, 3943:0.9394, 2531:0.9394
+[DSG DEBUG] resid norm before clamp: mean=100.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.5000, max=812.0000, tokens_clamped=0/66
+[DSG DEBUG] activation rate: min=0.9859, max=0.9859, mean=0.9859, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9859, 1820:0.9859, 3457:0.9859, 2242:0.9718, 978:0.9577, 2178:0.9577, 538:0.9577, 2258:0.9577, 868:0.9437, 774:0.9296
+[DSG DEBUG] resid norm before clamp: mean=101.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=101.0000, max=812.0000, tokens_clamped=0/71
+[DSG DEBUG] activation rate: min=0.9844, max=0.9844, mean=0.9844, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9844, 3457:0.9688, 538:0.9531, 1820:0.9531, 978:0.9375, 2242:0.9375, 2258:0.9375, 2178:0.9219, 3943:0.9219, 1915:0.9219
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/64
+[DSG DEBUG] activation rate: min=0.9865, max=0.9865, mean=0.9865, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9865, 3457:0.9865, 2242:0.9595, 978:0.9595, 1820:0.9595, 2531:0.9459, 538:0.9459, 2178:0.9459, 1915:0.9324, 868:0.9189
+[DSG DEBUG] resid norm before clamp: mean=101.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=101.0000, max=812.0000, tokens_clamped=0/74
+[DSG DEBUG] activation rate: min=0.9939, max=0.9939, mean=0.9939, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 765:0.9877, 498:0.9693, 868:0.9632, 1820:0.9632, 3457:0.9571, 3943:0.9571, 538:0.9509, 774:0.9387, 1915:0.9387, 2531:0.9325
+[DSG DEBUG] resid norm before clamp: mean=92.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=92.5000, max=804.0000, tokens_clamped=0/163
+[DSG DEBUG] activation rate: min=0.9909, max=0.9909, mean=0.9909, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9909, 538:0.9818, 1820:0.9636, 765:0.9545, 3457:0.9545, 3943:0.9545, 2242:0.9273, 774:0.9182, 2531:0.9182, 868:0.9182
+[DSG DEBUG] resid norm before clamp: mean=94.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=94.0000, max=812.0000, tokens_clamped=0/110
+[DSG DEBUG] activation rate: min=0.9899, max=0.9899, mean=0.9899, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9899, 538:0.9798, 3457:0.9798, 2531:0.9495, 3943:0.9394, 1820:0.9293, 774:0.9293, 868:0.9192, 2178:0.9091, 765:0.9091
+[DSG DEBUG] resid norm before clamp: mean=94.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=94.0000, max=812.0000, tokens_clamped=0/99
+[DSG DEBUG] activation rate: min=0.9884, max=0.9884, mean=0.9884, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9884, 498:0.9767, 3943:0.9651, 978:0.9651, 3457:0.9535, 538:0.9419, 2258:0.9419, 765:0.9419, 2242:0.9302, 2531:0.9302
+[DSG DEBUG] resid norm before clamp: mean=95.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.0000, max=812.0000, tokens_clamped=0/86
+[DSG DEBUG] activation rate: min=0.9861, max=0.9861, mean=0.9861, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9861, 538:0.9722, 498:0.9722, 978:0.9583, 2531:0.9444, 3943:0.9444, 2258:0.9444, 1820:0.9306, 868:0.9167, 3427:0.9028
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/72
+[DSG DEBUG] activation rate: min=0.9898, max=0.9898, mean=0.9898, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 765:0.9796, 3457:0.9694, 498:0.9694, 774:0.9592, 3943:0.9592, 2242:0.9592, 538:0.9490, 978:0.9490, 1915:0.9388, 1820:0.9388
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/98
+[DSG DEBUG] activation rate: min=0.9888, max=0.9888, mean=0.9888, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9888, 498:0.9888, 978:0.9551, 538:0.9438, 2178:0.9438, 2242:0.9438, 2531:0.9326, 774:0.9213, 1820:0.9213, 3943:0.9213
+[DSG DEBUG] resid norm before clamp: mean=98.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.0000, max=812.0000, tokens_clamped=0/89
+[DSG DEBUG] activation rate: min=0.9889, max=0.9889, mean=0.9889, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 765:0.9889, 498:0.9778, 538:0.9667, 774:0.9556, 2178:0.9444, 3457:0.9444, 2242:0.9333, 978:0.9333, 2531:0.9333, 3943:0.9222
+[DSG DEBUG] resid norm before clamp: mean=97.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.5000, max=812.0000, tokens_clamped=0/90
+[DSG DEBUG] activation rate: min=0.9885, max=0.9885, mean=0.9885, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9885, 498:0.9885, 538:0.9540, 774:0.9540, 3457:0.9540, 3943:0.9540, 2242:0.9425, 2258:0.9425, 868:0.9195, 2531:0.9195
+[DSG DEBUG] resid norm before clamp: mean=97.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.5000, max=812.0000, tokens_clamped=0/87
+[DSG DEBUG] activation rate: min=0.9875, max=0.9875, mean=0.9875, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9875, 498:0.9750, 538:0.9625, 2242:0.9500, 765:0.9375, 3943:0.9375, 774:0.9375, 2531:0.9375, 1915:0.9250, 978:0.9250
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/80
+[DSG DEBUG] activation rate: min=0.9863, max=0.9863, mean=0.9863, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9863, 2242:0.9589, 538:0.9589, 978:0.9589, 3457:0.9589, 1820:0.9452, 2258:0.9452, 2178:0.9452, 2531:0.9452, 1915:0.9315
+[DSG DEBUG] resid norm before clamp: mean=100.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.0000, max=812.0000, tokens_clamped=0/73
+[DSG DEBUG] activation rate: min=0.9873, max=0.9873, mean=0.9873, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9873, 498:0.9873, 538:0.9620, 774:0.9620, 2242:0.9494, 1820:0.9494, 2531:0.9367, 978:0.9367, 2178:0.9367, 1915:0.9367
+[DSG DEBUG] resid norm before clamp: mean=100.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.0000, max=812.0000, tokens_clamped=0/79
+[DSG DEBUG] activation rate: min=0.9855, max=0.9855, mean=0.9855, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9710, 978:0.9565, 538:0.9565, 2242:0.9420, 3457:0.9420, 3943:0.9275, 1820:0.9275, 774:0.9130, 2531:0.9130, 2178:0.9130
+[DSG DEBUG] resid norm before clamp: mean=101.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=101.0000, max=812.0000, tokens_clamped=0/69
+[DSG DEBUG] activation rate: min=0.9873, max=0.9873, mean=0.9873, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 538:0.9747, 498:0.9747, 2178:0.9620, 3457:0.9620, 1820:0.9367, 2258:0.9367, 2531:0.9241, 774:0.9241, 2242:0.9241, 868:0.9241
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/79
+[DSG DEBUG] activation rate: min=0.9878, max=0.9878, mean=0.9878, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9878, 3457:0.9756, 2242:0.9634, 978:0.9512, 538:0.9512, 3943:0.9390, 2178:0.9268, 1915:0.9268, 774:0.9268, 868:0.9146
+[DSG DEBUG] resid norm before clamp: mean=100.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.0000, max=812.0000, tokens_clamped=0/82
+[DSG DEBUG] activation rate: min=0.9870, max=0.9870, mean=0.9870, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9870, 3457:0.9740, 2242:0.9610, 1820:0.9481, 765:0.9481, 3943:0.9481, 2531:0.9351, 978:0.9351, 538:0.9351, 2178:0.9351
+[DSG DEBUG] resid norm before clamp: mean=100.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.0000, max=812.0000, tokens_clamped=0/77
+[DSG DEBUG] activation rate: min=0.9863, max=0.9863, mean=0.9863, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9863, 1820:0.9726, 3457:0.9589, 2242:0.9589, 2258:0.9452, 2178:0.9315, 978:0.9315, 765:0.9315, 2531:0.9315, 1915:0.9178
+[DSG DEBUG] resid norm before clamp: mean=99.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.5000, max=812.0000, tokens_clamped=0/73
+[DSG DEBUG] activation rate: min=0.9880, max=0.9880, mean=0.9880, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9880, 1820:0.9639, 2178:0.9518, 2242:0.9518, 3457:0.9398, 3943:0.9398, 1915:0.9277, 2531:0.9277, 538:0.9277, 1505:0.9157
+[DSG DEBUG] resid norm before clamp: mean=95.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.5000, max=812.0000, tokens_clamped=0/83
+[DSG DEBUG] activation rate: min=0.9846, max=0.9846, mean=0.9846, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9846, 3457:0.9692, 2242:0.9538, 2258:0.9538, 868:0.9385, 2178:0.9077, 538:0.8923, 978:0.8923, 2893:0.8923, 3943:0.8923
+[DSG DEBUG] resid norm before clamp: mean=101.5000, max=808.0000
+[DSG DEBUG] resid norm after clamp: mean=101.5000, max=808.0000, tokens_clamped=0/65
+[DSG DEBUG] activation rate: min=0.9868, max=0.9868, mean=0.9868, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9868, 1820:0.9737, 3457:0.9737, 538:0.9737, 765:0.9474, 774:0.9474, 978:0.9342, 2258:0.9342, 2242:0.9342, 2178:0.9342
+[DSG DEBUG] resid norm before clamp: mean=98.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.0000, max=812.0000, tokens_clamped=0/76
+[DSG DEBUG] activation rate: min=0.9885, max=0.9885, mean=0.9885, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9770, 3943:0.9540, 2242:0.9425, 2178:0.9425, 774:0.9425, 1820:0.9425, 765:0.9425, 2258:0.9310, 538:0.9310, 1915:0.9310
+[DSG DEBUG] resid norm before clamp: mean=97.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.5000, max=812.0000, tokens_clamped=0/87
+[DSG DEBUG] activation rate: min=0.9904, max=0.9904, mean=0.9904, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9904, 538:0.9615, 3457:0.9519, 978:0.9423, 3943:0.9423, 1820:0.9327, 2531:0.9327, 765:0.9327, 3427:0.9327, 2178:0.9327
+[DSG DEBUG] resid norm before clamp: mean=97.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.0000, max=812.0000, tokens_clamped=0/104
+[DSG DEBUG] activation rate: min=0.9894, max=0.9894, mean=0.9894, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9787, 3457:0.9787, 1820:0.9681, 2178:0.9681, 2531:0.9574, 774:0.9468, 3943:0.9362, 978:0.9362, 765:0.9255, 2242:0.9255
+[DSG DEBUG] resid norm before clamp: mean=96.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.0000, max=812.0000, tokens_clamped=0/94
+[DSG DEBUG] activation rate: min=0.9882, max=0.9882, mean=0.9882, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9765, 498:0.9765, 765:0.9647, 3943:0.9647, 2178:0.9647, 774:0.9412, 2531:0.9412, 2242:0.9294, 3457:0.9176, 2893:0.9176
+[DSG DEBUG] resid norm before clamp: mean=97.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.5000, max=812.0000, tokens_clamped=0/85
+[DSG DEBUG] activation rate: min=0.9877, max=0.9877, mean=0.9877, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9877, 3457:0.9630, 3943:0.9506, 978:0.9383, 1820:0.9383, 538:0.9383, 2178:0.9259, 2258:0.9259, 2531:0.9259, 774:0.9136
+[DSG DEBUG] resid norm before clamp: mean=99.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.0000, max=812.0000, tokens_clamped=0/81
+[DSG DEBUG] activation rate: min=0.9877, max=0.9877, mean=0.9877, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9877, 538:0.9630, 3457:0.9506, 3943:0.9383, 765:0.9259, 1820:0.9259, 2242:0.9259, 2531:0.9259, 1505:0.9012, 868:0.8889
+[DSG DEBUG] resid norm before clamp: mean=100.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.5000, max=812.0000, tokens_clamped=0/81
+[DSG DEBUG] activation rate: min=0.9877, max=0.9877, mean=0.9877, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9753, 1820:0.9753, 3457:0.9753, 538:0.9630, 2242:0.9630, 765:0.9506, 774:0.9506, 1915:0.9506, 2531:0.9506, 868:0.9383
+[DSG DEBUG] resid norm before clamp: mean=97.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.5000, max=812.0000, tokens_clamped=0/81
+[DSG DEBUG] activation rate: min=0.9888, max=0.9888, mean=0.9888, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9775, 1820:0.9663, 3457:0.9438, 765:0.9438, 3943:0.9438, 868:0.9438, 774:0.9326, 2531:0.9326, 2507:0.9213, 1915:0.9101
+[DSG DEBUG] resid norm before clamp: mean=95.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.5000, max=812.0000, tokens_clamped=0/89
+[DSG DEBUG] activation rate: min=0.9861, max=0.9861, mean=0.9861, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9861, 498:0.9861, 978:0.9583, 2258:0.9444, 2178:0.9444, 2242:0.9306, 538:0.9306, 774:0.9167, 1820:0.9167, 1915:0.9167
+[DSG DEBUG] resid norm before clamp: mean=99.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.0000, max=812.0000, tokens_clamped=0/72
+[DSG DEBUG] activation rate: min=0.9895, max=0.9895, mean=0.9895, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9895, 3457:0.9789, 1820:0.9684, 2178:0.9579, 3943:0.9579, 868:0.9474, 765:0.9368, 2531:0.9368, 2258:0.9263, 774:0.9158
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/95
+[DSG DEBUG] activation rate: min=0.9898, max=0.9898, mean=0.9898, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9796, 538:0.9694, 765:0.9694, 2531:0.9592, 3943:0.9592, 2242:0.9490, 1820:0.9490, 2178:0.9388, 1505:0.9388, 868:0.9286
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/98
+[DSG DEBUG] activation rate: min=0.9901, max=0.9901, mean=0.9901, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9901, 1820:0.9901, 765:0.9703, 3943:0.9703, 2258:0.9604, 538:0.9505, 2531:0.9307, 2178:0.9208, 3457:0.9208, 1915:0.9208
+[DSG DEBUG] resid norm before clamp: mean=97.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.5000, max=812.0000, tokens_clamped=0/101
+[DSG DEBUG] activation rate: min=0.9882, max=0.9882, mean=0.9882, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9882, 538:0.9765, 765:0.9647, 774:0.9529, 2178:0.9529, 3943:0.9529, 1820:0.9529, 3457:0.9412, 2531:0.9294, 868:0.9176
+[DSG DEBUG] resid norm before clamp: mean=99.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.5000, max=812.0000, tokens_clamped=0/85
+[DSG DEBUG] activation rate: min=0.9867, max=0.9867, mean=0.9867, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9867, 1820:0.9600, 538:0.9600, 2258:0.9467, 868:0.9467, 2242:0.9333, 2178:0.9333, 774:0.9200, 3457:0.9200, 3943:0.9200
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/75
+[DSG DEBUG] activation rate: min=0.9889, max=0.9889, mean=0.9889, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9778, 3943:0.9667, 498:0.9667, 2258:0.9556, 538:0.9556, 3457:0.9444, 2178:0.9444, 1915:0.9444, 2531:0.9444, 774:0.9333
+[DSG DEBUG] resid norm before clamp: mean=97.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.0000, max=812.0000, tokens_clamped=0/90
+[DSG DEBUG] activation rate: min=0.9901, max=0.9901, mean=0.9901, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9802, 538:0.9703, 765:0.9703, 1820:0.9406, 2178:0.9406, 3457:0.9406, 3943:0.9307, 978:0.9208, 774:0.9208, 2893:0.9208
+[DSG DEBUG] resid norm before clamp: mean=95.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.0000, max=812.0000, tokens_clamped=0/101
+[DSG DEBUG] activation rate: min=0.9923, max=0.9923, mean=0.9923, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9846, 498:0.9769, 1820:0.9769, 538:0.9769, 3943:0.9692, 765:0.9462, 1915:0.9308, 2258:0.9308, 2242:0.9231, 2507:0.9231
+[DSG DEBUG] resid norm before clamp: mean=93.0000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=93.0000, max=804.0000, tokens_clamped=0/130
+[DSG DEBUG] activation rate: min=0.9938, max=0.9938, mean=0.9938, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3943:0.9503, 1820:0.9441, 498:0.9441, 2267:0.9317, 2242:0.9255, 538:0.9255, 2531:0.9255, 3427:0.9193, 868:0.9193, 1915:0.9130
+[DSG DEBUG] resid norm before clamp: mean=91.0000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=91.0000, max=804.0000, tokens_clamped=0/161
+[DSG DEBUG] activation rate: min=0.9910, max=0.9910, mean=0.9910, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9820, 765:0.9640, 1820:0.9550, 2178:0.9550, 538:0.9459, 2242:0.9279, 978:0.9279, 3943:0.9279, 774:0.9189, 2258:0.9189
+[DSG DEBUG] resid norm before clamp: mean=94.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=94.5000, max=812.0000, tokens_clamped=0/111
+[DSG DEBUG] activation rate: min=0.9917, max=0.9917, mean=0.9917, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9833, 3943:0.9750, 774:0.9667, 538:0.9667, 765:0.9667, 1820:0.9667, 3457:0.9500, 2258:0.9500, 2178:0.9500, 1915:0.9417
+[DSG DEBUG] resid norm before clamp: mean=95.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.0000, max=812.0000, tokens_clamped=0/120
+[DSG DEBUG] activation rate: min=0.9924, max=0.9924, mean=0.9924, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9848, 498:0.9848, 2531:0.9773, 765:0.9697, 2178:0.9545, 774:0.9545, 3943:0.9470, 3457:0.9394, 538:0.9394, 2242:0.9242
+[DSG DEBUG] resid norm before clamp: mean=93.0000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=93.0000, max=804.0000, tokens_clamped=0/132
+[DSG DEBUG] activation rate: min=0.9914, max=0.9914, mean=0.9914, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9828, 2178:0.9655, 1820:0.9569, 2507:0.9483, 3943:0.9483, 2242:0.9483, 765:0.9397, 3457:0.9310, 2893:0.9310, 1915:0.9224
+[DSG DEBUG] resid norm before clamp: mean=94.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=94.5000, max=812.0000, tokens_clamped=0/116
+[DSG DEBUG] activation rate: min=0.9920, max=0.9920, mean=0.9920, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9760, 2178:0.9760, 1820:0.9600, 774:0.9600, 3457:0.9520, 3943:0.9520, 765:0.9440, 2242:0.9440, 2531:0.9360, 3427:0.9280
+[DSG DEBUG] resid norm before clamp: mean=94.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=94.0000, max=812.0000, tokens_clamped=0/125
+[DSG DEBUG] activation rate: min=0.9949, max=0.9949, mean=0.9949, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3943:0.9745, 3457:0.9745, 1820:0.9541, 2855:0.9490, 1915:0.9439, 2258:0.9439, 2178:0.9439, 538:0.9439, 498:0.9388, 868:0.9388
+[DSG DEBUG] resid norm before clamp: mean=89.5000, max=808.0000
+[DSG DEBUG] resid norm after clamp: mean=89.5000, max=808.0000, tokens_clamped=0/196
+[DSG DEBUG] activation rate: min=0.9901, max=0.9901, mean=0.9901, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9901, 765:0.9604, 2178:0.9604, 2242:0.9505, 3943:0.9505, 1915:0.9505, 2258:0.9406, 2531:0.9406, 3457:0.9307, 1820:0.9307
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/101
+[DSG DEBUG] activation rate: min=0.9911, max=0.9911, mean=0.9911, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9911, 868:0.9643, 538:0.9554, 765:0.9554, 2242:0.9464, 3943:0.9464, 2531:0.9464, 2258:0.9464, 2178:0.9375, 774:0.9286
+[DSG DEBUG] resid norm before clamp: mean=98.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.0000, max=812.0000, tokens_clamped=0/112
+[DSG DEBUG] activation rate: min=0.9863, max=0.9863, mean=0.9863, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9863, 538:0.9726, 3457:0.9726, 1820:0.9589, 2178:0.9589, 978:0.9452, 2242:0.9315, 2258:0.9315, 774:0.9315, 868:0.9178
+[DSG DEBUG] resid norm before clamp: mean=97.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.5000, max=812.0000, tokens_clamped=0/73
+[DSG DEBUG] activation rate: min=0.9867, max=0.9867, mean=0.9867, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9733, 538:0.9733, 1820:0.9733, 3457:0.9467, 2242:0.9333, 2178:0.9333, 765:0.9333, 2258:0.9200, 774:0.9200, 1915:0.9067
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/75
+[DSG DEBUG] activation rate: min=0.9868, max=0.9868, mean=0.9868, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9737, 538:0.9605, 2178:0.9605, 2258:0.9474, 2531:0.9474, 3457:0.9474, 978:0.9474, 765:0.9342, 3943:0.9342, 868:0.9342
+[DSG DEBUG] resid norm before clamp: mean=100.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.0000, max=812.0000, tokens_clamped=0/76
+[DSG DEBUG] activation rate: min=0.9836, max=0.9836, mean=0.9836, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9836, 2242:0.9672, 1820:0.9508, 3457:0.9508, 538:0.9180, 2178:0.9180, 774:0.9180, 978:0.9180, 868:0.9180, 3943:0.9180
+[DSG DEBUG] resid norm before clamp: mean=100.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.5000, max=812.0000, tokens_clamped=0/61
+[DSG DEBUG] activation rate: min=0.9870, max=0.9870, mean=0.9870, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9870, 774:0.9610, 3457:0.9610, 1820:0.9481, 2242:0.9481, 538:0.9351, 2531:0.9351, 2178:0.9351, 868:0.9091, 765:0.9091
+[DSG DEBUG] resid norm before clamp: mean=97.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.0000, max=812.0000, tokens_clamped=0/77
+[DSG DEBUG] activation rate: min=0.9914, max=0.9914, mean=0.9914, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9828, 2531:0.9569, 3943:0.9569, 538:0.9397, 868:0.9310, 1820:0.9310, 2242:0.9224, 3457:0.9224, 1505:0.9138, 2178:0.9052
+[DSG DEBUG] resid norm before clamp: mean=95.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.0000, max=812.0000, tokens_clamped=0/116
+[DSG DEBUG] activation rate: min=0.9901, max=0.9901, mean=0.9901, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9802, 2242:0.9604, 765:0.9505, 538:0.9505, 2178:0.9505, 3943:0.9505, 1820:0.9307, 978:0.9307, 2893:0.9307, 3457:0.9307
+[DSG DEBUG] resid norm before clamp: mean=97.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.5000, max=812.0000, tokens_clamped=0/101
+[DSG DEBUG] activation rate: min=0.9861, max=0.9861, mean=0.9861, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9861, 538:0.9722, 498:0.9722, 3457:0.9583, 2242:0.9444, 765:0.9444, 774:0.9444, 2258:0.9444, 3943:0.9306, 1915:0.9167
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/72
+[DSG DEBUG] activation rate: min=0.9844, max=0.9844, mean=0.9844, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9844, 538:0.9688, 3457:0.9531, 1820:0.9375, 2242:0.9219, 868:0.9219, 2258:0.9219, 2531:0.9219, 1915:0.9062, 3943:0.9062
+[DSG DEBUG] resid norm before clamp: mean=99.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.5000, max=812.0000, tokens_clamped=0/64
+[DSG DEBUG] activation rate: min=0.9853, max=0.9853, mean=0.9853, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9853, 1820:0.9706, 538:0.9559, 978:0.9412, 2242:0.9412, 3457:0.9265, 2258:0.9265, 3943:0.9265, 2531:0.9118, 868:0.8971
+[DSG DEBUG] resid norm before clamp: mean=100.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.5000, max=812.0000, tokens_clamped=0/68
+[DSG DEBUG] activation rate: min=0.9905, max=0.9905, mean=0.9905, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9905, 538:0.9714, 3457:0.9429, 3943:0.9429, 765:0.9429, 2242:0.9429, 1915:0.9429, 2258:0.9333, 1820:0.9333, 2178:0.9238
+[DSG DEBUG] resid norm before clamp: mean=94.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=94.0000, max=812.0000, tokens_clamped=0/105
+[DSG DEBUG] activation rate: min=0.9924, max=0.9924, mean=0.9924, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9695, 765:0.9618, 2242:0.9618, 538:0.9466, 3457:0.9466, 3943:0.9466, 1915:0.9466, 2258:0.9389, 2531:0.9389, 868:0.9389
+[DSG DEBUG] resid norm before clamp: mean=92.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=92.5000, max=804.0000, tokens_clamped=0/131
+[DSG DEBUG] activation rate: min=0.9855, max=0.9855, mean=0.9855, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9855, 498:0.9710, 1820:0.9565, 2178:0.9565, 2531:0.9420, 2258:0.9275, 2242:0.9275, 3943:0.9130, 868:0.9130, 1915:0.8986
+[DSG DEBUG] resid norm before clamp: mean=97.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.0000, max=812.0000, tokens_clamped=0/69
+[DSG DEBUG] activation rate: min=0.9857, max=0.9857, mean=0.9857, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9857, 3457:0.9857, 538:0.9714, 2258:0.9429, 3943:0.9429, 868:0.9429, 1820:0.9286, 2531:0.9286, 2242:0.9286, 2178:0.9286
+[DSG DEBUG] resid norm before clamp: mean=100.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.5000, max=812.0000, tokens_clamped=0/70
+[DSG DEBUG] activation rate: min=0.9933, max=0.9933, mean=0.9933, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9733, 3457:0.9733, 765:0.9667, 3943:0.9533, 1915:0.9467, 978:0.9400, 2242:0.9400, 2531:0.9333, 538:0.9333, 498:0.9333
+[DSG DEBUG] resid norm before clamp: mean=90.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=90.5000, max=804.0000, tokens_clamped=0/150
+[DSG DEBUG] activation rate: min=0.9936, max=0.9936, mean=0.9936, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9872, 765:0.9872, 538:0.9679, 2531:0.9615, 1820:0.9615, 3943:0.9551, 2178:0.9487, 978:0.9423, 774:0.9423, 3457:0.9359
+[DSG DEBUG] resid norm before clamp: mean=91.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=91.5000, max=804.0000, tokens_clamped=0/156
+[DSG DEBUG] activation rate: min=0.9932, max=0.9932, mean=0.9932, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9932, 3457:0.9728, 765:0.9660, 774:0.9592, 3943:0.9592, 538:0.9388, 2178:0.9252, 2258:0.9184, 1820:0.9184, 1915:0.9184
+[DSG DEBUG] resid norm before clamp: mean=91.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=91.5000, max=804.0000, tokens_clamped=0/147
+[DSG DEBUG] activation rate: min=0.9924, max=0.9924, mean=0.9924, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9773, 765:0.9773, 538:0.9697, 774:0.9697, 3943:0.9621, 498:0.9621, 868:0.9545, 978:0.9545, 2531:0.9545, 3457:0.9470
+[DSG DEBUG] resid norm before clamp: mean=92.0000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=92.0000, max=804.0000, tokens_clamped=0/132
+[DSG DEBUG] activation rate: min=0.9936, max=0.9936, mean=0.9936, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9808, 2178:0.9679, 538:0.9615, 3457:0.9615, 2242:0.9487, 978:0.9423, 1820:0.9359, 774:0.9359, 3943:0.9295, 765:0.9295
+[DSG DEBUG] resid norm before clamp: mean=91.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=91.5000, max=804.0000, tokens_clamped=0/156
+[DSG DEBUG] activation rate: min=0.9943, max=0.9943, mean=0.9943, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 538:0.9713, 3943:0.9655, 1915:0.9598, 774:0.9598, 978:0.9540, 1820:0.9540, 2531:0.9483, 2267:0.9368, 2242:0.9368, 3457:0.9310
+[DSG DEBUG] resid norm before clamp: mean=90.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=90.5000, max=804.0000, tokens_clamped=0/174
+[DSG DEBUG] activation rate: min=0.9930, max=0.9930, mean=0.9930, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 765:0.9859, 538:0.9718, 2178:0.9718, 3457:0.9507, 1915:0.9507, 3943:0.9437, 2258:0.9366, 774:0.9366, 2242:0.9296, 2531:0.9296
+[DSG DEBUG] resid norm before clamp: mean=91.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=91.5000, max=804.0000, tokens_clamped=0/142
+[DSG DEBUG] activation rate: min=0.9911, max=0.9911, mean=0.9911, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9821, 538:0.9732, 1820:0.9732, 2178:0.9643, 3457:0.9643, 3943:0.9554, 765:0.9554, 1915:0.9464, 2531:0.9286, 978:0.9286
+[DSG DEBUG] resid norm before clamp: mean=93.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=93.0000, max=812.0000, tokens_clamped=0/112
+[DSG DEBUG] activation rate: min=0.9931, max=0.9931, mean=0.9931, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9861, 498:0.9792, 2531:0.9653, 765:0.9514, 2178:0.9514, 3943:0.9514, 538:0.9514, 2242:0.9444, 868:0.9236, 1915:0.9167
+[DSG DEBUG] resid norm before clamp: mean=94.0000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=94.0000, max=804.0000, tokens_clamped=0/144
+[DSG DEBUG] activation rate: min=0.9922, max=0.9922, mean=0.9922, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9844, 765:0.9688, 978:0.9688, 538:0.9688, 3943:0.9609, 774:0.9609, 2242:0.9609, 498:0.9453, 1505:0.9375, 1820:0.9219
+[DSG DEBUG] resid norm before clamp: mean=94.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=94.0000, max=812.0000, tokens_clamped=0/128
+[DSG DEBUG] activation rate: min=0.9924, max=0.9924, mean=0.9924, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 765:0.9773, 498:0.9697, 2242:0.9621, 538:0.9621, 3943:0.9545, 1915:0.9470, 978:0.9470, 868:0.9470, 1820:0.9470, 3457:0.9394
+[DSG DEBUG] resid norm before clamp: mean=91.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=91.5000, max=804.0000, tokens_clamped=0/132
+[DSG DEBUG] activation rate: min=0.9870, max=0.9870, mean=0.9870, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9870, 3457:0.9740, 774:0.9481, 2258:0.9481, 765:0.9481, 1820:0.9481, 2178:0.9351, 3943:0.9351, 538:0.9351, 868:0.9221
+[DSG DEBUG] resid norm before clamp: mean=100.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.5000, max=812.0000, tokens_clamped=0/77
+[DSG DEBUG] activation rate: min=0.9882, max=0.9882, mean=0.9882, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9882, 3457:0.9765, 1820:0.9765, 978:0.9765, 538:0.9647, 765:0.9647, 2258:0.9647, 3943:0.9529, 2242:0.9412, 1915:0.9294
+[DSG DEBUG] resid norm before clamp: mean=99.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.0000, max=812.0000, tokens_clamped=0/85
+[DSG DEBUG] activation rate: min=0.9932, max=0.9932, mean=0.9932, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 765:0.9796, 3943:0.9660, 2178:0.9524, 978:0.9456, 498:0.9456, 1820:0.9456, 538:0.9320, 774:0.9252, 3427:0.9184, 1915:0.9116
+[DSG DEBUG] resid norm before clamp: mean=92.0000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=92.0000, max=804.0000, tokens_clamped=0/147
+[DSG DEBUG] activation rate: min=0.9943, max=0.9943, mean=0.9943, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9886, 3457:0.9659, 3943:0.9659, 1820:0.9602, 2178:0.9545, 2242:0.9545, 868:0.9318, 978:0.9261, 538:0.9205, 1915:0.9148
+[DSG DEBUG] resid norm before clamp: mean=91.0000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=91.0000, max=804.0000, tokens_clamped=0/176
+[DSG DEBUG] activation rate: min=0.9942, max=0.9942, mean=0.9942, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9651, 498:0.9651, 2242:0.9593, 2178:0.9419, 3943:0.9419, 3457:0.9244, 538:0.9244, 1915:0.9244, 868:0.9186, 765:0.9186
+[DSG DEBUG] resid norm before clamp: mean=90.0000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=90.0000, max=804.0000, tokens_clamped=0/172
+[DSG DEBUG] activation rate: min=0.9923, max=0.9923, mean=0.9923, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9846, 3457:0.9692, 2242:0.9692, 765:0.9692, 3943:0.9538, 774:0.9462, 978:0.9462, 1915:0.9462, 1820:0.9462, 2531:0.9385
+[DSG DEBUG] resid norm before clamp: mean=93.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=93.5000, max=804.0000, tokens_clamped=0/130
+[DSG DEBUG] activation rate: min=0.9939, max=0.9939, mean=0.9939, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9758, 2242:0.9576, 3943:0.9576, 978:0.9515, 765:0.9515, 2531:0.9455, 868:0.9455, 2178:0.9394, 3457:0.9273, 1820:0.9212
+[DSG DEBUG] resid norm before clamp: mean=90.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=90.5000, max=804.0000, tokens_clamped=0/165
+[DSG DEBUG] activation rate: min=0.9839, max=0.9839, mean=0.9839, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9839, 1820:0.9839, 538:0.9677, 2531:0.9516, 2178:0.9516, 3457:0.9516, 2258:0.9355, 774:0.9355, 2242:0.9194, 978:0.9194
+[DSG DEBUG] resid norm before clamp: mean=98.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.0000, max=812.0000, tokens_clamped=0/62
+[DSG DEBUG] activation rate: min=0.9873, max=0.9873, mean=0.9873, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9873, 3943:0.9620, 765:0.9494, 2258:0.9494, 2178:0.9494, 3457:0.9367, 2242:0.9367, 538:0.9241, 1820:0.9241, 1505:0.9114
+[DSG DEBUG] resid norm before clamp: mean=100.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.0000, max=812.0000, tokens_clamped=0/79
+[DSG DEBUG] activation rate: min=0.9905, max=0.9905, mean=0.9905, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9905, 538:0.9714, 765:0.9619, 3457:0.9524, 868:0.9524, 3943:0.9429, 2242:0.9333, 774:0.9238, 1820:0.9238, 2178:0.9238
+[DSG DEBUG] resid norm before clamp: mean=96.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.0000, max=812.0000, tokens_clamped=0/105
+[DSG DEBUG] activation rate: min=0.9917, max=0.9917, mean=0.9917, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 765:0.9752, 498:0.9752, 538:0.9669, 1820:0.9587, 2178:0.9587, 868:0.9504, 3943:0.9504, 2242:0.9421, 2258:0.9339, 3457:0.9256
+[DSG DEBUG] resid norm before clamp: mean=94.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=94.0000, max=812.0000, tokens_clamped=0/121
+[DSG DEBUG] activation rate: min=0.9884, max=0.9884, mean=0.9884, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9767, 1820:0.9767, 2258:0.9651, 538:0.9535, 2178:0.9535, 3457:0.9535, 2531:0.9302, 774:0.9302, 765:0.9302, 3943:0.9302
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/86
+[DSG DEBUG] activation rate: min=0.9902, max=0.9902, mean=0.9902, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 2178:0.9706, 765:0.9510, 3457:0.9510, 1820:0.9510, 3943:0.9412, 774:0.9412, 1915:0.9314, 498:0.9314, 868:0.9216, 538:0.9216
+[DSG DEBUG] resid norm before clamp: mean=97.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.0000, max=812.0000, tokens_clamped=0/102
+[DSG DEBUG] activation rate: min=0.9900, max=0.9900, mean=0.9900, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9800, 498:0.9800, 538:0.9600, 1820:0.9600, 2242:0.9500, 2178:0.9500, 765:0.9400, 2531:0.9300, 3943:0.9200, 774:0.9200
+[DSG DEBUG] resid norm before clamp: mean=97.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.5000, max=812.0000, tokens_clamped=0/100
+[DSG DEBUG] activation rate: min=0.9913, max=0.9913, mean=0.9913, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 765:0.9826, 3457:0.9739, 498:0.9739, 538:0.9652, 3943:0.9478, 868:0.9478, 2178:0.9391, 978:0.9391, 1820:0.9391, 1915:0.9304
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/115
+[DSG DEBUG] activation rate: min=0.9882, max=0.9882, mean=0.9882, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9882, 538:0.9647, 498:0.9647, 2258:0.9529, 3943:0.9529, 3457:0.9412, 765:0.9294, 2893:0.9176, 2242:0.9176, 1915:0.9176
+[DSG DEBUG] resid norm before clamp: mean=97.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.0000, max=812.0000, tokens_clamped=0/85
+[DSG DEBUG] activation rate: min=0.9851, max=0.9851, mean=0.9851, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9851, 498:0.9701, 538:0.9701, 1820:0.9701, 2531:0.9552, 2242:0.9552, 868:0.9403, 2258:0.9403, 2178:0.9254, 765:0.9254
+[DSG DEBUG] resid norm before clamp: mean=101.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=101.5000, max=812.0000, tokens_clamped=0/67
+[DSG DEBUG] activation rate: min=0.9875, max=0.9875, mean=0.9875, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9875, 3457:0.9750, 978:0.9500, 538:0.9500, 765:0.9500, 1820:0.9375, 2531:0.9375, 2178:0.9250, 3943:0.9250, 1915:0.9250
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/80
+[DSG DEBUG] activation rate: min=0.9917, max=0.9917, mean=0.9917, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 765:0.9917, 498:0.9833, 3457:0.9750, 1820:0.9583, 538:0.9583, 978:0.9417, 774:0.9417, 3943:0.9417, 2178:0.9333, 2242:0.9333
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/120
+[DSG DEBUG] activation rate: min=0.9859, max=0.9859, mean=0.9859, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9859, 3457:0.9859, 538:0.9577, 1820:0.9577, 765:0.9577, 2242:0.9577, 3943:0.9437, 2178:0.9296, 774:0.9155, 2258:0.9155
+[DSG DEBUG] resid norm before clamp: mean=100.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.5000, max=812.0000, tokens_clamped=0/71
+[DSG DEBUG] activation rate: min=0.9846, max=0.9846, mean=0.9846, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9846, 3457:0.9846, 498:0.9692, 774:0.9538, 3943:0.9538, 868:0.9385, 538:0.9385, 2258:0.9231, 2242:0.9231, 978:0.9077
+[DSG DEBUG] resid norm before clamp: mean=100.5000, max=808.0000
+[DSG DEBUG] resid norm after clamp: mean=100.5000, max=808.0000, tokens_clamped=0/65
+[DSG DEBUG] activation rate: min=0.9877, max=0.9877, mean=0.9877, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9877, 2242:0.9630, 538:0.9506, 2531:0.9506, 1820:0.9506, 3457:0.9506, 765:0.9383, 2258:0.9383, 2178:0.9383, 3943:0.9383
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/81
+[DSG DEBUG] activation rate: min=0.9888, max=0.9888, mean=0.9888, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9775, 978:0.9663, 2178:0.9551, 538:0.9551, 498:0.9551, 1820:0.9551, 3943:0.9438, 868:0.9438, 765:0.9326, 2258:0.9326
+[DSG DEBUG] resid norm before clamp: mean=100.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.5000, max=812.0000, tokens_clamped=0/89
+[DSG DEBUG] activation rate: min=0.9903, max=0.9903, mean=0.9903, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9903, 498:0.9806, 3457:0.9709, 3943:0.9709, 774:0.9612, 2178:0.9515, 2531:0.9515, 538:0.9417, 1915:0.9223, 2893:0.9223
+[DSG DEBUG] resid norm before clamp: mean=95.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.0000, max=812.0000, tokens_clamped=0/103
+[DSG DEBUG] activation rate: min=0.9899, max=0.9899, mean=0.9899, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9798, 2178:0.9697, 3943:0.9697, 1820:0.9697, 2242:0.9596, 538:0.9596, 774:0.9495, 3457:0.9394, 868:0.9394, 1505:0.9394
+[DSG DEBUG] resid norm before clamp: mean=97.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.0000, max=812.0000, tokens_clamped=0/99
+[DSG DEBUG] activation rate: min=0.9890, max=0.9890, mean=0.9890, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9780, 538:0.9780, 1820:0.9780, 498:0.9670, 3943:0.9560, 774:0.9451, 2178:0.9341, 2893:0.9341, 2531:0.9231, 2258:0.9231
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/91
+[DSG DEBUG] activation rate: min=0.9915, max=0.9915, mean=0.9915, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3943:0.9746, 498:0.9746, 3457:0.9661, 1820:0.9576, 765:0.9407, 774:0.9407, 2893:0.9407, 538:0.9407, 868:0.9322, 1915:0.9322
+[DSG DEBUG] resid norm before clamp: mean=94.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=94.0000, max=812.0000, tokens_clamped=0/118
+[DSG DEBUG] activation rate: min=0.9908, max=0.9908, mean=0.9908, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 538:0.9817, 765:0.9817, 498:0.9817, 3457:0.9817, 978:0.9725, 868:0.9633, 2178:0.9541, 3943:0.9541, 2242:0.9358, 2258:0.9266
+[DSG DEBUG] resid norm before clamp: mean=95.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.0000, max=812.0000, tokens_clamped=0/109
+[DSG DEBUG] activation rate: min=0.9896, max=0.9896, mean=0.9896, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9896, 1820:0.9792, 538:0.9688, 2178:0.9583, 3457:0.9479, 3943:0.9479, 765:0.9375, 2531:0.9271, 1915:0.9271, 1505:0.9167
+[DSG DEBUG] resid norm before clamp: mean=97.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.0000, max=812.0000, tokens_clamped=0/96
+[DSG DEBUG] activation rate: min=0.9910, max=0.9910, mean=0.9910, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9910, 498:0.9820, 538:0.9730, 765:0.9730, 2178:0.9640, 3943:0.9640, 1915:0.9550, 2531:0.9550, 978:0.9459, 868:0.9189
+[DSG DEBUG] resid norm before clamp: mean=95.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.0000, max=812.0000, tokens_clamped=0/111
+[DSG DEBUG] activation rate: min=0.9902, max=0.9902, mean=0.9902, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9902, 3457:0.9804, 498:0.9804, 538:0.9608, 2178:0.9608, 765:0.9412, 978:0.9412, 3943:0.9412, 3427:0.9118, 2531:0.9118
+[DSG DEBUG] resid norm before clamp: mean=95.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.5000, max=812.0000, tokens_clamped=0/102
+[DSG DEBUG] activation rate: min=0.9909, max=0.9909, mean=0.9909, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9909, 538:0.9818, 3457:0.9818, 2531:0.9545, 978:0.9455, 1820:0.9455, 3943:0.9455, 765:0.9273, 2178:0.9273, 1915:0.9273
+[DSG DEBUG] resid norm before clamp: mean=95.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.5000, max=812.0000, tokens_clamped=0/110
+[DSG DEBUG] activation rate: min=0.9881, max=0.9881, mean=0.9881, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9762, 3457:0.9762, 498:0.9762, 538:0.9643, 774:0.9524, 3943:0.9524, 2258:0.9524, 2531:0.9405, 765:0.9405, 2178:0.9405
+[DSG DEBUG] resid norm before clamp: mean=101.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=101.0000, max=812.0000, tokens_clamped=0/84
+[DSG DEBUG] activation rate: min=0.9894, max=0.9894, mean=0.9894, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9787, 3457:0.9681, 1820:0.9574, 538:0.9574, 2178:0.9574, 3943:0.9574, 774:0.9362, 978:0.9362, 765:0.9362, 1915:0.9362
+[DSG DEBUG] resid norm before clamp: mean=96.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.0000, max=812.0000, tokens_clamped=0/94
+[DSG DEBUG] activation rate: min=0.9885, max=0.9885, mean=0.9885, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9770, 538:0.9770, 1820:0.9770, 498:0.9655, 2178:0.9540, 3943:0.9540, 1915:0.9425, 2258:0.9310, 774:0.9310, 2531:0.9195
+[DSG DEBUG] resid norm before clamp: mean=99.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.0000, max=812.0000, tokens_clamped=0/87
+[DSG DEBUG] activation rate: min=0.9907, max=0.9907, mean=0.9907, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9907, 3457:0.9815, 765:0.9722, 2178:0.9630, 3943:0.9630, 538:0.9537, 1915:0.9352, 978:0.9259, 868:0.9259, 3427:0.9167
+[DSG DEBUG] resid norm before clamp: mean=95.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.5000, max=812.0000, tokens_clamped=0/108
+[DSG DEBUG] activation rate: min=0.9891, max=0.9891, mean=0.9891, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9891, 498:0.9783, 2178:0.9674, 978:0.9674, 3943:0.9565, 1820:0.9565, 2531:0.9565, 538:0.9457, 774:0.9457, 3427:0.9239
+[DSG DEBUG] resid norm before clamp: mean=97.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.5000, max=812.0000, tokens_clamped=0/92
+[DSG DEBUG] activation rate: min=0.9899, max=0.9899, mean=0.9899, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9899, 538:0.9798, 3457:0.9798, 978:0.9697, 1820:0.9697, 3943:0.9596, 2242:0.9495, 774:0.9495, 765:0.9394, 2531:0.9394
+[DSG DEBUG] resid norm before clamp: mean=97.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.0000, max=812.0000, tokens_clamped=0/99
+[DSG DEBUG] activation rate: min=0.9859, max=0.9859, mean=0.9859, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9718, 1820:0.9718, 538:0.9718, 498:0.9577, 2178:0.9437, 3943:0.9437, 2258:0.9437, 978:0.9296, 2531:0.9296, 2242:0.9155
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/71
+[DSG DEBUG] activation rate: min=0.9900, max=0.9900, mean=0.9900, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9900, 3457:0.9700, 538:0.9600, 1820:0.9500, 1915:0.9400, 978:0.9400, 2178:0.9300, 3943:0.9200, 2531:0.9200, 765:0.9100
+[DSG DEBUG] resid norm before clamp: mean=93.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=93.5000, max=812.0000, tokens_clamped=0/100
+[DSG DEBUG] activation rate: min=0.9907, max=0.9907, mean=0.9907, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9907, 1820:0.9907, 498:0.9907, 978:0.9815, 538:0.9722, 765:0.9630, 2178:0.9537, 2531:0.9537, 1915:0.9444, 3943:0.9444
+[DSG DEBUG] resid norm before clamp: mean=96.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.0000, max=812.0000, tokens_clamped=0/108
+[DSG DEBUG] activation rate: min=0.9915, max=0.9915, mean=0.9915, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 538:0.9658, 498:0.9573, 3943:0.9487, 2531:0.9487, 765:0.9402, 868:0.9402, 774:0.9402, 978:0.9402, 3457:0.9316, 2178:0.9231
+[DSG DEBUG] resid norm before clamp: mean=93.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=93.0000, max=812.0000, tokens_clamped=0/117
+[DSG DEBUG] activation rate: min=0.9872, max=0.9872, mean=0.9872, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9872, 3457:0.9744, 538:0.9744, 978:0.9744, 498:0.9615, 2531:0.9487, 2258:0.9487, 3943:0.9487, 868:0.9231, 2178:0.9231
+[DSG DEBUG] resid norm before clamp: mean=100.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.5000, max=812.0000, tokens_clamped=0/78
+[DSG DEBUG] activation rate: min=0.9907, max=0.9907, mean=0.9907, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9813, 3457:0.9626, 3943:0.9626, 2178:0.9626, 765:0.9533, 1915:0.9439, 538:0.9346, 1820:0.9252, 868:0.9159, 2893:0.9159
+[DSG DEBUG] resid norm before clamp: mean=92.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=92.5000, max=812.0000, tokens_clamped=0/107
+[DSG DEBUG] activation rate: min=0.9906, max=0.9906, mean=0.9906, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9906, 774:0.9717, 3943:0.9717, 3457:0.9623, 538:0.9528, 868:0.9340, 2178:0.9340, 2893:0.9340, 765:0.9340, 2531:0.9245
+[DSG DEBUG] resid norm before clamp: mean=95.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.5000, max=812.0000, tokens_clamped=0/106
+[DSG DEBUG] activation rate: min=0.9890, max=0.9890, mean=0.9890, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9890, 2178:0.9670, 3457:0.9670, 765:0.9560, 1820:0.9451, 2531:0.9451, 3943:0.9451, 3427:0.9341, 868:0.9231, 2893:0.9231
+[DSG DEBUG] resid norm before clamp: mean=99.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.0000, max=812.0000, tokens_clamped=0/91
+[DSG DEBUG] activation rate: min=0.9896, max=0.9896, mean=0.9896, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9688, 498:0.9583, 3457:0.9583, 538:0.9583, 2531:0.9479, 3943:0.9479, 2258:0.9479, 868:0.9271, 978:0.9271, 1915:0.9167
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/96
+[DSG DEBUG] activation rate: min=0.9911, max=0.9911, mean=0.9911, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9732, 1820:0.9732, 2178:0.9732, 538:0.9643, 3943:0.9643, 3457:0.9554, 765:0.9554, 774:0.9375, 2242:0.9375, 2893:0.9286
+[DSG DEBUG] resid norm before clamp: mean=97.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.5000, max=812.0000, tokens_clamped=0/112
+[DSG DEBUG] activation rate: min=0.9910, max=0.9910, mean=0.9910, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9640, 538:0.9640, 3943:0.9640, 774:0.9550, 2242:0.9550, 3457:0.9459, 1820:0.9459, 1915:0.9369, 1505:0.9279, 2178:0.9279
+[DSG DEBUG] resid norm before clamp: mean=94.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=94.5000, max=812.0000, tokens_clamped=0/111
+[DSG DEBUG] activation rate: min=0.9886, max=0.9886, mean=0.9886, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9886, 1820:0.9773, 538:0.9659, 3457:0.9545, 2178:0.9318, 868:0.9318, 2242:0.9318, 2531:0.9318, 1915:0.9205, 2258:0.9205
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/88
+[DSG DEBUG] activation rate: min=0.9870, max=0.9870, mean=0.9870, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9870, 3457:0.9740, 1820:0.9610, 2178:0.9610, 3943:0.9481, 538:0.9481, 765:0.9221, 774:0.9221, 868:0.9091, 1915:0.9091
+[DSG DEBUG] resid norm before clamp: mean=99.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.0000, max=812.0000, tokens_clamped=0/77
+[DSG DEBUG] activation rate: min=0.9894, max=0.9894, mean=0.9894, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9894, 498:0.9787, 2178:0.9681, 1820:0.9681, 538:0.9574, 3943:0.9468, 2531:0.9468, 1915:0.9468, 2258:0.9255, 868:0.9149
+[DSG DEBUG] resid norm before clamp: mean=96.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.0000, max=812.0000, tokens_clamped=0/94
+[DSG DEBUG] activation rate: min=0.9914, max=0.9914, mean=0.9914, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9828, 538:0.9828, 3457:0.9828, 774:0.9741, 1820:0.9741, 978:0.9569, 3943:0.9569, 1915:0.9483, 2178:0.9483, 765:0.9310
+[DSG DEBUG] resid norm before clamp: mean=95.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.5000, max=812.0000, tokens_clamped=0/116
+[DSG DEBUG] activation rate: min=0.9913, max=0.9913, mean=0.9913, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9826, 538:0.9652, 498:0.9652, 1820:0.9565, 765:0.9565, 3943:0.9478, 1915:0.9391, 774:0.9391, 2178:0.9304, 3427:0.9130
+[DSG DEBUG] resid norm before clamp: mean=94.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=94.5000, max=812.0000, tokens_clamped=0/115
+[DSG DEBUG] activation rate: min=0.9905, max=0.9905, mean=0.9905, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9905, 498:0.9810, 1820:0.9714, 765:0.9619, 2178:0.9619, 1915:0.9619, 3943:0.9524, 538:0.9524, 2531:0.9429, 774:0.9429
+[DSG DEBUG] resid norm before clamp: mean=95.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.5000, max=812.0000, tokens_clamped=0/105
+[DSG DEBUG] activation rate: min=0.9892, max=0.9892, mean=0.9892, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 538:0.9785, 498:0.9785, 765:0.9677, 1820:0.9570, 3457:0.9570, 3943:0.9570, 2531:0.9462, 978:0.9355, 774:0.9355, 2178:0.9355
+[DSG DEBUG] resid norm before clamp: mean=98.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.0000, max=812.0000, tokens_clamped=0/93
+[DSG DEBUG] activation rate: min=0.9912, max=0.9912, mean=0.9912, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9912, 538:0.9825, 498:0.9737, 765:0.9649, 3457:0.9649, 3943:0.9649, 774:0.9474, 2531:0.9474, 2178:0.9386, 978:0.9386
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/114
+[DSG DEBUG] activation rate: min=0.9910, max=0.9910, mean=0.9910, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9820, 3943:0.9640, 765:0.9640, 2178:0.9640, 3457:0.9550, 1820:0.9459, 538:0.9369, 1915:0.9279, 2531:0.9189, 1505:0.9099
+[DSG DEBUG] resid norm before clamp: mean=94.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=94.5000, max=812.0000, tokens_clamped=0/111
+[DSG DEBUG] activation rate: min=0.9902, max=0.9902, mean=0.9902, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 2178:0.9706, 3457:0.9706, 498:0.9608, 538:0.9510, 3943:0.9510, 765:0.9412, 978:0.9412, 1915:0.9412, 774:0.9314, 1820:0.9216
+[DSG DEBUG] resid norm before clamp: mean=97.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.5000, max=812.0000, tokens_clamped=0/102
+[DSG DEBUG] activation rate: min=0.9895, max=0.9895, mean=0.9895, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9895, 3457:0.9789, 538:0.9684, 1820:0.9579, 765:0.9474, 2178:0.9474, 3943:0.9474, 774:0.9368, 978:0.9263, 868:0.9158
+[DSG DEBUG] resid norm before clamp: mean=96.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.0000, max=812.0000, tokens_clamped=0/95
+[DSG DEBUG] activation rate: min=0.9899, max=0.9899, mean=0.9899, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9798, 978:0.9798, 3457:0.9798, 3943:0.9697, 1820:0.9697, 2531:0.9596, 538:0.9596, 2258:0.9394, 774:0.9394, 3427:0.9293
+[DSG DEBUG] resid norm before clamp: mean=98.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.0000, max=812.0000, tokens_clamped=0/99
+[DSG DEBUG] activation rate: min=0.9921, max=0.9921, mean=0.9921, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 765:0.9841, 1820:0.9762, 538:0.9762, 978:0.9524, 2178:0.9524, 3943:0.9524, 498:0.9524, 774:0.9444, 2267:0.9286, 868:0.9127
+[DSG DEBUG] resid norm before clamp: mean=94.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=94.0000, max=812.0000, tokens_clamped=0/126
+[DSG DEBUG] activation rate: min=0.9915, max=0.9915, mean=0.9915, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9915, 3457:0.9831, 538:0.9661, 3943:0.9576, 2178:0.9492, 1820:0.9492, 978:0.9492, 765:0.9407, 2531:0.9322, 1915:0.9237
+[DSG DEBUG] resid norm before clamp: mean=93.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=93.5000, max=812.0000, tokens_clamped=0/118
+[DSG DEBUG] activation rate: min=0.9907, max=0.9907, mean=0.9907, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9907, 1820:0.9626, 3457:0.9533, 538:0.9533, 3943:0.9439, 2178:0.9346, 2531:0.9346, 1915:0.9346, 978:0.9252, 868:0.9065
+[DSG DEBUG] resid norm before clamp: mean=93.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=93.5000, max=812.0000, tokens_clamped=0/107
+[DSG DEBUG] activation rate: min=0.9861, max=0.9861, mean=0.9861, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9722, 538:0.9722, 498:0.9722, 3457:0.9722, 2242:0.9583, 3943:0.9444, 2531:0.9444, 2258:0.9306, 978:0.9306, 2178:0.9167
+[DSG DEBUG] resid norm before clamp: mean=100.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.5000, max=812.0000, tokens_clamped=0/72
+[DSG DEBUG] activation rate: min=0.9865, max=0.9865, mean=0.9865, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9865, 1820:0.9730, 538:0.9595, 498:0.9595, 2178:0.9595, 978:0.9595, 2531:0.9595, 3943:0.9459, 2242:0.9459, 2258:0.9324
+[DSG DEBUG] resid norm before clamp: mean=99.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.5000, max=812.0000, tokens_clamped=0/74
+[DSG DEBUG] activation rate: min=0.9917, max=0.9917, mean=0.9917, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9833, 538:0.9750, 3457:0.9750, 765:0.9667, 1820:0.9583, 2178:0.9500, 978:0.9500, 3943:0.9500, 1915:0.9417, 868:0.9250
+[DSG DEBUG] resid norm before clamp: mean=93.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=93.5000, max=812.0000, tokens_clamped=0/120
+[DSG DEBUG] activation rate: min=0.9910, max=0.9910, mean=0.9910, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9910, 978:0.9820, 498:0.9820, 3457:0.9730, 3943:0.9640, 538:0.9640, 774:0.9550, 1505:0.9369, 2531:0.9369, 868:0.9279
+[DSG DEBUG] resid norm before clamp: mean=95.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.5000, max=812.0000, tokens_clamped=0/111
+[DSG DEBUG] activation rate: min=0.9907, max=0.9907, mean=0.9907, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9907, 3457:0.9813, 2178:0.9533, 538:0.9439, 765:0.9439, 3943:0.9346, 774:0.9346, 1915:0.9252, 2242:0.9159, 2531:0.9159
+[DSG DEBUG] resid norm before clamp: mean=93.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=93.5000, max=812.0000, tokens_clamped=0/107
+[DSG DEBUG] activation rate: min=0.9919, max=0.9919, mean=0.9919, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9837, 538:0.9675, 3457:0.9675, 2178:0.9593, 2531:0.9512, 1820:0.9512, 3943:0.9512, 978:0.9431, 1915:0.9350, 765:0.9187
+[DSG DEBUG] resid norm before clamp: mean=95.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.0000, max=812.0000, tokens_clamped=0/123
+[DSG DEBUG] activation rate: min=0.9908, max=0.9908, mean=0.9908, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9908, 538:0.9725, 3457:0.9633, 1820:0.9633, 3943:0.9633, 2178:0.9450, 2258:0.9450, 868:0.9450, 774:0.9450, 2242:0.9358
+[DSG DEBUG] resid norm before clamp: mean=98.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.5000, max=812.0000, tokens_clamped=0/109
+[DSG DEBUG] activation rate: min=0.9865, max=0.9865, mean=0.9865, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9865, 538:0.9730, 3457:0.9730, 978:0.9730, 2242:0.9595, 2258:0.9595, 2178:0.9459, 1820:0.9459, 3943:0.9459, 868:0.9459
+[DSG DEBUG] resid norm before clamp: mean=99.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.5000, max=812.0000, tokens_clamped=0/74
+[DSG DEBUG] activation rate: min=0.9915, max=0.9915, mean=0.9915, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9831, 538:0.9831, 1820:0.9831, 765:0.9576, 978:0.9407, 2178:0.9407, 3457:0.9322, 2242:0.9322, 1505:0.9237, 1915:0.9237
+[DSG DEBUG] resid norm before clamp: mean=96.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.0000, max=812.0000, tokens_clamped=0/118
+[DSG DEBUG] activation rate: min=0.9911, max=0.9911, mean=0.9911, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9821, 498:0.9732, 765:0.9464, 2178:0.9375, 3943:0.9375, 538:0.9375, 1915:0.9196, 868:0.9196, 978:0.9107, 2507:0.9107
+[DSG DEBUG] resid norm before clamp: mean=95.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.0000, max=812.0000, tokens_clamped=0/112
+[DSG DEBUG] activation rate: min=0.9908, max=0.9908, mean=0.9908, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9908, 3457:0.9725, 538:0.9633, 978:0.9633, 2178:0.9633, 765:0.9633, 3943:0.9541, 1915:0.9541, 1820:0.9541, 868:0.9266
+[DSG DEBUG] resid norm before clamp: mean=93.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=93.0000, max=812.0000, tokens_clamped=0/109
+[DSG DEBUG] activation rate: min=0.9904, max=0.9904, mean=0.9904, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9808, 1820:0.9712, 2178:0.9712, 538:0.9615, 765:0.9519, 3457:0.9423, 3943:0.9423, 868:0.9327, 1915:0.9135, 774:0.9135
+[DSG DEBUG] resid norm before clamp: mean=95.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.5000, max=812.0000, tokens_clamped=0/104
+[DSG DEBUG] activation rate: min=0.9836, max=0.9836, mean=0.9836, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9836, 978:0.9672, 1820:0.9672, 538:0.9508, 2178:0.9508, 3457:0.9508, 3943:0.9344, 2258:0.9344, 2531:0.9344, 1915:0.9180
+[DSG DEBUG] resid norm before clamp: mean=102.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=102.5000, max=812.0000, tokens_clamped=0/61
+[DSG DEBUG] activation rate: min=0.9891, max=0.9891, mean=0.9891, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 538:0.9783, 765:0.9457, 3943:0.9457, 498:0.9457, 3457:0.9457, 1820:0.9457, 978:0.9239, 2178:0.9130, 868:0.9022, 1915:0.9022
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/92
+[DSG DEBUG] activation rate: min=0.9891, max=0.9891, mean=0.9891, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9891, 1820:0.9783, 498:0.9783, 774:0.9674, 538:0.9674, 3943:0.9565, 765:0.9565, 868:0.9565, 2242:0.9348, 2531:0.9130
+[DSG DEBUG] resid norm before clamp: mean=99.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.0000, max=812.0000, tokens_clamped=0/92
+[DSG DEBUG] activation rate: min=0.9900, max=0.9900, mean=0.9900, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 765:0.9900, 498:0.9900, 3457:0.9700, 978:0.9700, 774:0.9600, 538:0.9500, 1915:0.9400, 3943:0.9300, 868:0.9200, 1820:0.9200
+[DSG DEBUG] resid norm before clamp: mean=96.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.0000, max=812.0000, tokens_clamped=0/100
+[DSG DEBUG] activation rate: min=0.9912, max=0.9912, mean=0.9912, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9912, 538:0.9825, 2242:0.9649, 498:0.9561, 3943:0.9561, 765:0.9474, 2178:0.9474, 774:0.9386, 3457:0.9386, 1915:0.9386
+[DSG DEBUG] resid norm before clamp: mean=95.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.0000, max=812.0000, tokens_clamped=0/114
+[DSG DEBUG] activation rate: min=0.9909, max=0.9909, mean=0.9909, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9818, 538:0.9818, 3457:0.9636, 2178:0.9636, 3943:0.9545, 498:0.9545, 774:0.9455, 2531:0.9182, 1915:0.9182, 3427:0.9182
+[DSG DEBUG] resid norm before clamp: mean=96.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.0000, max=812.0000, tokens_clamped=0/110
+[DSG DEBUG] activation rate: min=0.9881, max=0.9881, mean=0.9881, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9881, 1820:0.9762, 538:0.9643, 2258:0.9524, 2178:0.9524, 3943:0.9524, 978:0.9524, 774:0.9405, 3457:0.9286, 1505:0.9167
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/84
+[DSG DEBUG] activation rate: min=0.9872, max=0.9872, mean=0.9872, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9872, 498:0.9872, 538:0.9615, 774:0.9615, 2242:0.9615, 1820:0.9615, 978:0.9487, 2258:0.9487, 3943:0.9487, 868:0.9487
+[DSG DEBUG] resid norm before clamp: mean=100.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=100.0000, max=812.0000, tokens_clamped=0/78
+[DSG DEBUG] activation rate: min=0.9861, max=0.9861, mean=0.9861, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9861, 1820:0.9722, 2178:0.9583, 2258:0.9583, 538:0.9583, 3943:0.9444, 2242:0.9444, 498:0.9444, 2531:0.9444, 978:0.9306
+[DSG DEBUG] resid norm before clamp: mean=99.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.0000, max=812.0000, tokens_clamped=0/72
+[DSG DEBUG] activation rate: min=0.9912, max=0.9912, mean=0.9912, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9823, 538:0.9735, 765:0.9646, 774:0.9558, 3943:0.9558, 2258:0.9469, 978:0.9469, 3457:0.9469, 868:0.9292, 2178:0.9292
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/113
+[DSG DEBUG] activation rate: min=0.9888, max=0.9888, mean=0.9888, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9888, 498:0.9775, 2531:0.9663, 1820:0.9663, 538:0.9438, 765:0.9438, 3943:0.9438, 2258:0.9326, 774:0.9326, 2178:0.9326
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/89
+[DSG DEBUG] activation rate: min=0.9917, max=0.9917, mean=0.9917, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9667, 538:0.9667, 765:0.9667, 2178:0.9583, 1820:0.9500, 3943:0.9500, 3457:0.9250, 774:0.9250, 1505:0.9167, 2267:0.9167
+[DSG DEBUG] resid norm before clamp: mean=97.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.0000, max=812.0000, tokens_clamped=0/120
+[DSG DEBUG] activation rate: min=0.9917, max=0.9917, mean=0.9917, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9835, 538:0.9669, 3457:0.9669, 1820:0.9587, 765:0.9587, 2178:0.9587, 3943:0.9587, 2531:0.9339, 1915:0.9339, 2893:0.9256
+[DSG DEBUG] resid norm before clamp: mean=94.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=94.0000, max=812.0000, tokens_clamped=0/121
+[DSG DEBUG] activation rate: min=0.9925, max=0.9925, mean=0.9925, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9925, 538:0.9851, 3457:0.9701, 1820:0.9701, 3943:0.9701, 2242:0.9552, 2531:0.9478, 978:0.9328, 2893:0.9254, 1505:0.9179
+[DSG DEBUG] resid norm before clamp: mean=92.0000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=92.0000, max=804.0000, tokens_clamped=0/134
+[DSG DEBUG] activation rate: min=0.9903, max=0.9903, mean=0.9903, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9903, 3457:0.9709, 3943:0.9709, 1820:0.9709, 538:0.9612, 765:0.9515, 774:0.9515, 2178:0.9515, 2258:0.9417, 868:0.9320
+[DSG DEBUG] resid norm before clamp: mean=98.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=98.0000, max=812.0000, tokens_clamped=0/103
+[DSG DEBUG] activation rate: min=0.9912, max=0.9912, mean=0.9912, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 978:0.9646, 3943:0.9646, 765:0.9646, 1820:0.9646, 2178:0.9558, 538:0.9558, 774:0.9381, 2258:0.9381, 2531:0.9381, 868:0.9381
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/113
+[DSG DEBUG] activation rate: min=0.9911, max=0.9911, mean=0.9911, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9911, 498:0.9643, 538:0.9643, 3943:0.9643, 2178:0.9464, 765:0.9286, 1915:0.9286, 3457:0.9196, 2242:0.9196, 868:0.9107
+[DSG DEBUG] resid norm before clamp: mean=95.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.5000, max=812.0000, tokens_clamped=0/112
+[DSG DEBUG] activation rate: min=0.9912, max=0.9912, mean=0.9912, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9823, 1820:0.9735, 3457:0.9646, 765:0.9646, 3943:0.9469, 1915:0.9469, 774:0.9469, 538:0.9469, 978:0.9381, 2178:0.9292
+[DSG DEBUG] resid norm before clamp: mean=96.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.0000, max=812.0000, tokens_clamped=0/113
+[DSG DEBUG] activation rate: min=0.9903, max=0.9903, mean=0.9903, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9903, 2178:0.9709, 538:0.9612, 1915:0.9515, 1820:0.9515, 765:0.9417, 3943:0.9320, 3457:0.9223, 2893:0.9223, 868:0.9126
+[DSG DEBUG] resid norm before clamp: mean=97.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.5000, max=812.0000, tokens_clamped=0/103
+[DSG DEBUG] activation rate: min=0.9914, max=0.9914, mean=0.9914, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9828, 3457:0.9655, 765:0.9569, 2178:0.9569, 538:0.9569, 1820:0.9569, 3943:0.9569, 2531:0.9483, 774:0.9397, 1915:0.9310
+[DSG DEBUG] resid norm before clamp: mean=95.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.0000, max=812.0000, tokens_clamped=0/116
+[DSG DEBUG] activation rate: min=0.9891, max=0.9891, mean=0.9891, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9891, 498:0.9891, 538:0.9783, 978:0.9565, 2178:0.9565, 2242:0.9457, 1820:0.9457, 765:0.9348, 3943:0.9348, 1915:0.9348
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/92
+[DSG DEBUG] activation rate: min=0.9903, max=0.9903, mean=0.9903, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9903, 2178:0.9709, 765:0.9612, 2531:0.9612, 1820:0.9612, 3457:0.9515, 538:0.9515, 3943:0.9515, 868:0.9320, 1505:0.9223
+[DSG DEBUG] resid norm before clamp: mean=97.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.5000, max=812.0000, tokens_clamped=0/103
+[DSG DEBUG] activation rate: min=0.9878, max=0.9878, mean=0.9878, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9878, 3457:0.9756, 774:0.9512, 538:0.9512, 2178:0.9512, 868:0.9512, 2531:0.9390, 2258:0.9390, 978:0.9390, 3943:0.9268
+[DSG DEBUG] resid norm before clamp: mean=99.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.0000, max=812.0000, tokens_clamped=0/82
+[DSG DEBUG] activation rate: min=0.9901, max=0.9901, mean=0.9901, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9901, 3457:0.9703, 978:0.9703, 1820:0.9703, 538:0.9604, 2531:0.9505, 1915:0.9505, 3943:0.9307, 2178:0.9307, 1505:0.9208
+[DSG DEBUG] resid norm before clamp: mean=95.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.0000, max=812.0000, tokens_clamped=0/101
+[DSG DEBUG] activation rate: min=0.9904, max=0.9904, mean=0.9904, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9904, 498:0.9808, 538:0.9712, 3457:0.9615, 2531:0.9423, 3943:0.9423, 978:0.9423, 774:0.9327, 2258:0.9231, 1505:0.9135
+[DSG DEBUG] resid norm before clamp: mean=95.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.5000, max=812.0000, tokens_clamped=0/104
+[DSG DEBUG] activation rate: min=0.9935, max=0.9935, mean=0.9935, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9806, 765:0.9806, 1820:0.9742, 3943:0.9742, 538:0.9484, 1915:0.9484, 774:0.9484, 978:0.9419, 2531:0.9419, 868:0.9355
+[DSG DEBUG] resid norm before clamp: mean=92.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=92.5000, max=804.0000, tokens_clamped=0/155
+[DSG DEBUG] activation rate: min=0.9926, max=0.9926, mean=0.9926, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9926, 3943:0.9630, 868:0.9630, 978:0.9556, 765:0.9556, 2531:0.9556, 1915:0.9481, 1820:0.9481, 538:0.9407, 774:0.9407
+[DSG DEBUG] resid norm before clamp: mean=94.0000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=94.0000, max=804.0000, tokens_clamped=0/135
+[DSG DEBUG] activation rate: min=0.9918, max=0.9918, mean=0.9918, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9918, 3457:0.9754, 1820:0.9590, 538:0.9590, 2531:0.9508, 765:0.9508, 774:0.9426, 978:0.9426, 3943:0.9344, 2178:0.9180
+[DSG DEBUG] resid norm before clamp: mean=91.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=91.5000, max=812.0000, tokens_clamped=0/122
+[DSG DEBUG] activation rate: min=0.9922, max=0.9922, mean=0.9922, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9844, 498:0.9766, 538:0.9766, 1820:0.9766, 774:0.9531, 2242:0.9531, 3943:0.9531, 978:0.9453, 765:0.9453, 2178:0.9453
+[DSG DEBUG] resid norm before clamp: mean=92.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=92.5000, max=812.0000, tokens_clamped=0/128
+[DSG DEBUG] activation rate: min=0.9917, max=0.9917, mean=0.9917, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9750, 2242:0.9667, 3943:0.9583, 1820:0.9583, 765:0.9500, 538:0.9500, 1915:0.9417, 868:0.9417, 774:0.9333, 978:0.9333
+[DSG DEBUG] resid norm before clamp: mean=93.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=93.5000, max=812.0000, tokens_clamped=0/120
+[DSG DEBUG] activation rate: min=0.9932, max=0.9932, mean=0.9932, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9730, 498:0.9730, 538:0.9662, 3457:0.9595, 2531:0.9527, 3943:0.9459, 2178:0.9392, 2258:0.9392, 765:0.9392, 1915:0.9324
+[DSG DEBUG] resid norm before clamp: mean=91.0000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=91.0000, max=804.0000, tokens_clamped=0/148
+[DSG DEBUG] activation rate: min=0.9926, max=0.9926, mean=0.9926, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9632, 2178:0.9632, 3943:0.9559, 774:0.9559, 1820:0.9485, 538:0.9485, 2531:0.9485, 2242:0.9412, 765:0.9338, 2855:0.9265
+[DSG DEBUG] resid norm before clamp: mean=91.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=91.5000, max=804.0000, tokens_clamped=0/136
+[DSG DEBUG] activation rate: min=0.9944, max=0.9944, mean=0.9944, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9888, 2242:0.9721, 3943:0.9721, 498:0.9665, 538:0.9553, 774:0.9553, 1915:0.9497, 3457:0.9385, 2178:0.9330, 2893:0.9218
+[DSG DEBUG] resid norm before clamp: mean=90.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=90.5000, max=804.0000, tokens_clamped=0/179
+[DSG DEBUG] activation rate: min=0.9929, max=0.9929, mean=0.9929, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9929, 765:0.9643, 538:0.9500, 868:0.9500, 1820:0.9429, 978:0.9429, 2178:0.9357, 2242:0.9357, 2258:0.9286, 3943:0.9214
+[DSG DEBUG] resid norm before clamp: mean=93.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=93.5000, max=804.0000, tokens_clamped=0/140
+[DSG DEBUG] activation rate: min=0.9938, max=0.9938, mean=0.9938, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 774:0.9627, 1820:0.9565, 2242:0.9503, 978:0.9441, 3943:0.9441, 1915:0.9441, 765:0.9441, 868:0.9379, 2531:0.9379, 498:0.9255
+[DSG DEBUG] resid norm before clamp: mean=90.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=90.5000, max=804.0000, tokens_clamped=0/161
+[DSG DEBUG] activation rate: min=0.9914, max=0.9914, mean=0.9914, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 765:0.9828, 538:0.9655, 3457:0.9569, 3943:0.9397, 1820:0.9310, 774:0.9224, 1915:0.9224, 498:0.9138, 2242:0.9138, 2178:0.9052
+[DSG DEBUG] resid norm before clamp: mean=96.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.0000, max=812.0000, tokens_clamped=0/116
+[DSG DEBUG] activation rate: min=0.9938, max=0.9938, mean=0.9938, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 765:0.9689, 498:0.9689, 774:0.9627, 1820:0.9503, 1915:0.9503, 868:0.9503, 3943:0.9379, 978:0.9255, 3427:0.9193, 2531:0.9130
+[DSG DEBUG] resid norm before clamp: mean=91.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=91.5000, max=804.0000, tokens_clamped=0/161
+[DSG DEBUG] activation rate: min=0.9931, max=0.9931, mean=0.9931, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9724, 1820:0.9724, 3943:0.9724, 868:0.9586, 774:0.9517, 765:0.9379, 1915:0.9310, 2258:0.9172, 978:0.9172, 2178:0.9172
+[DSG DEBUG] resid norm before clamp: mean=93.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=93.5000, max=804.0000, tokens_clamped=0/145
+[DSG DEBUG] activation rate: min=0.9922, max=0.9922, mean=0.9922, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9690, 765:0.9690, 1820:0.9690, 538:0.9612, 774:0.9535, 2178:0.9535, 3943:0.9535, 978:0.9457, 868:0.9380, 3457:0.9225
+[DSG DEBUG] resid norm before clamp: mean=92.0000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=92.0000, max=804.0000, tokens_clamped=0/129
+[DSG DEBUG] activation rate: min=0.9935, max=0.9935, mean=0.9935, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9805, 765:0.9740, 1915:0.9675, 978:0.9481, 538:0.9351, 2242:0.9286, 1820:0.9286, 774:0.9286, 2531:0.9286, 3943:0.9221
+[DSG DEBUG] resid norm before clamp: mean=92.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=92.5000, max=804.0000, tokens_clamped=0/154
+[DSG DEBUG] activation rate: min=0.9938, max=0.9938, mean=0.9938, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1915:0.9689, 498:0.9689, 3943:0.9627, 765:0.9627, 774:0.9565, 1820:0.9503, 2242:0.9441, 538:0.9441, 868:0.9379, 2531:0.9379
+[DSG DEBUG] resid norm before clamp: mean=92.0000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=92.0000, max=804.0000, tokens_clamped=0/161
+[DSG DEBUG] activation rate: min=0.9930, max=0.9930, mean=0.9930, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9930, 3943:0.9718, 765:0.9577, 538:0.9507, 868:0.9507, 2531:0.9296, 978:0.9225, 2178:0.9155, 2242:0.9155, 2267:0.9085
+[DSG DEBUG] resid norm before clamp: mean=93.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=93.5000, max=804.0000, tokens_clamped=0/142
+[DSG DEBUG] activation rate: min=0.9929, max=0.9929, mean=0.9929, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9858, 774:0.9716, 538:0.9574, 765:0.9574, 2531:0.9362, 978:0.9362, 3943:0.9291, 1820:0.9149, 2242:0.9149, 2178:0.9149
+[DSG DEBUG] resid norm before clamp: mean=93.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=93.5000, max=804.0000, tokens_clamped=0/141
+[DSG DEBUG] activation rate: min=0.9907, max=0.9907, mean=0.9907, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 2178:0.9722, 1820:0.9537, 3943:0.9537, 2531:0.9444, 765:0.9444, 978:0.9444, 774:0.9352, 2258:0.9352, 868:0.9352, 498:0.9352
+[DSG DEBUG] resid norm before clamp: mean=95.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=95.0000, max=812.0000, tokens_clamped=0/108
+[DSG DEBUG] activation rate: min=0.9907, max=0.9907, mean=0.9907, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9813, 538:0.9720, 498:0.9720, 765:0.9533, 2531:0.9533, 3943:0.9346, 3457:0.9252, 774:0.9252, 2178:0.9252, 868:0.9065
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/107
+[DSG DEBUG] activation rate: min=0.9941, max=0.9941, mean=0.9941, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9824, 498:0.9824, 774:0.9765, 3943:0.9647, 765:0.9529, 1915:0.9471, 2531:0.9471, 868:0.9471, 538:0.9412, 2242:0.9235
+[DSG DEBUG] resid norm before clamp: mean=92.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=92.5000, max=804.0000, tokens_clamped=0/170
+[DSG DEBUG] activation rate: min=0.9912, max=0.9912, mean=0.9912, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9912, 1820:0.9737, 3457:0.9649, 538:0.9561, 2178:0.9561, 1915:0.9474, 2531:0.9474, 2242:0.9386, 765:0.9386, 3943:0.9386
+[DSG DEBUG] resid norm before clamp: mean=92.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=92.5000, max=812.0000, tokens_clamped=0/114
+[DSG DEBUG] activation rate: min=0.9912, max=0.9912, mean=0.9912, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9825, 498:0.9737, 3457:0.9649, 774:0.9474, 765:0.9474, 3943:0.9386, 538:0.9386, 978:0.9298, 868:0.9211, 2531:0.9211
+[DSG DEBUG] resid norm before clamp: mean=94.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=94.0000, max=812.0000, tokens_clamped=0/114
+[DSG DEBUG] activation rate: min=0.9912, max=0.9912, mean=0.9912, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9912, 2178:0.9474, 978:0.9474, 774:0.9474, 868:0.9474, 3943:0.9386, 1820:0.9386, 2531:0.9386, 538:0.9386, 3457:0.9298
+[DSG DEBUG] resid norm before clamp: mean=96.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.0000, max=812.0000, tokens_clamped=0/114
+[DSG DEBUG] activation rate: min=0.9926, max=0.9926, mean=0.9926, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 765:0.9926, 498:0.9852, 1820:0.9630, 2531:0.9630, 868:0.9630, 3943:0.9481, 3457:0.9407, 978:0.9333, 2242:0.9259, 2893:0.9259
+[DSG DEBUG] resid norm before clamp: mean=92.0000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=92.0000, max=804.0000, tokens_clamped=0/135
+[DSG DEBUG] activation rate: min=0.9899, max=0.9899, mean=0.9899, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 765:0.9798, 3457:0.9798, 1820:0.9697, 2242:0.9596, 2178:0.9596, 498:0.9596, 3943:0.9495, 774:0.9495, 538:0.9495, 2531:0.9293
+[DSG DEBUG] resid norm before clamp: mean=99.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.5000, max=812.0000, tokens_clamped=0/99
+[DSG DEBUG] activation rate: min=0.9919, max=0.9919, mean=0.9919, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 3457:0.9839, 1820:0.9677, 538:0.9677, 774:0.9677, 3943:0.9677, 498:0.9597, 2242:0.9597, 978:0.9516, 868:0.9435, 2531:0.9355
+[DSG DEBUG] resid norm before clamp: mean=97.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.5000, max=812.0000, tokens_clamped=0/124
+[DSG DEBUG] activation rate: min=0.9903, max=0.9903, mean=0.9903, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9709, 3457:0.9612, 2242:0.9612, 538:0.9612, 3943:0.9515, 1820:0.9417, 978:0.9417, 2178:0.9417, 765:0.9320, 2258:0.9320
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/103
+[DSG DEBUG] activation rate: min=0.9881, max=0.9881, mean=0.9881, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9762, 538:0.9762, 3457:0.9762, 765:0.9524, 2531:0.9524, 3943:0.9524, 1820:0.9524, 774:0.9524, 2178:0.9405, 2242:0.9405
+[DSG DEBUG] resid norm before clamp: mean=99.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=99.5000, max=812.0000, tokens_clamped=0/84
+[DSG DEBUG] activation rate: min=0.9907, max=0.9907, mean=0.9907, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9907, 538:0.9720, 2178:0.9626, 1820:0.9533, 765:0.9439, 978:0.9439, 774:0.9346, 3457:0.9346, 1915:0.9252, 3943:0.9159
+[DSG DEBUG] resid norm before clamp: mean=96.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.0000, max=812.0000, tokens_clamped=0/107
+[DSG DEBUG] activation rate: min=0.9903, max=0.9903, mean=0.9903, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9903, 538:0.9709, 3457:0.9709, 765:0.9612, 1820:0.9417, 2531:0.9320, 1915:0.9223, 774:0.9223, 2242:0.9223, 1505:0.9126
+[DSG DEBUG] resid norm before clamp: mean=96.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.0000, max=812.0000, tokens_clamped=0/103
+[DSG DEBUG] activation rate: min=0.9928, max=0.9928, mean=0.9928, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9784, 3943:0.9496, 1820:0.9353, 765:0.9353, 2178:0.9353, 538:0.9353, 2242:0.9353, 3457:0.9281, 1915:0.9281, 868:0.9209
+[DSG DEBUG] resid norm before clamp: mean=91.5000, max=804.0000
+[DSG DEBUG] resid norm after clamp: mean=91.5000, max=804.0000, tokens_clamped=0/139
+[DSG DEBUG] activation rate: min=0.9898, max=0.9898, mean=0.9898, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 538:0.9796, 498:0.9694, 3457:0.9694, 774:0.9694, 765:0.9592, 3943:0.9490, 1820:0.9388, 2258:0.9388, 978:0.9286, 1915:0.9184
+[DSG DEBUG] resid norm before clamp: mean=96.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.5000, max=812.0000, tokens_clamped=0/98
+[DSG DEBUG] activation rate: min=0.9906, max=0.9906, mean=0.9906, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9717, 3943:0.9717, 538:0.9623, 868:0.9623, 3457:0.9528, 2242:0.9528, 2178:0.9528, 2531:0.9528, 765:0.9528, 1820:0.9434
+[DSG DEBUG] resid norm before clamp: mean=97.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.0000, max=812.0000, tokens_clamped=0/106
+[DSG DEBUG] activation rate: min=0.9895, max=0.9895, mean=0.9895, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 1820:0.9789, 498:0.9684, 765:0.9684, 538:0.9684, 3457:0.9579, 3943:0.9579, 774:0.9474, 2531:0.9368, 2178:0.9158, 978:0.9158
+[DSG DEBUG] resid norm before clamp: mean=97.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.0000, max=812.0000, tokens_clamped=0/95
+[DSG DEBUG] activation rate: min=0.9919, max=0.9919, mean=0.9919, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9756, 538:0.9675, 3457:0.9593, 1820:0.9593, 2531:0.9512, 765:0.9512, 3943:0.9512, 1915:0.9431, 3427:0.9350, 2178:0.9350
+[DSG DEBUG] resid norm before clamp: mean=96.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=96.0000, max=812.0000, tokens_clamped=0/123
+[DSG DEBUG] activation rate: min=0.9891, max=0.9891, mean=0.9891, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9891, 1820:0.9783, 538:0.9565, 774:0.9565, 3457:0.9457, 3943:0.9457, 868:0.9457, 765:0.9348, 2178:0.9239, 978:0.9239
+[DSG DEBUG] resid norm before clamp: mean=97.0000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=97.0000, max=812.0000, tokens_clamped=0/92
+[DSG DEBUG] activation rate: min=0.9912, max=0.9912, mean=0.9912, active=0/1
+[DSG DEBUG] top firing features (feature_id: rate): 498:0.9735, 3457:0.9735, 538:0.9646, 774:0.9646, 2178:0.9558, 3943:0.9558, 765:0.9558, 1915:0.9469, 1820:0.9381, 2531:0.9292
+[DSG DEBUG] resid norm before clamp: mean=93.5000, max=812.0000
+[DSG DEBUG] resid norm after clamp: mean=93.5000, max=812.0000, tokens_clamped=0/113

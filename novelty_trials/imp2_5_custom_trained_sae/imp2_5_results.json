@@ -1,0 +1,37 @@
+{
+  "d_sae": 4096,
+  "n_train_steps": 3000,
+  "n_training_tokens": 306900,
+  "final_loss": 0.532461404800415,
+  "features": [
+    2235,
+    1954,
+    1454,
+    1828,
+    541,
+    771,
+    3663,
+    767,
+    1350,
+    2427,
+    697,
+    3563,
+    1721,
+    370,
+    2276,
+    3893,
+    1762,
+    3845,
+    2519,
+    2933
+  ],
+  "gate_threshold": 0.280859375,
+  "custom_sae_results": {
+    "wmdp-bio": 0.4684014916419983,
+    "high_school_us_history": 1.0,
+    "college_computer_science": 1.0,
+    "high_school_geography": 0.9805825352668762,
+    "human_aging": 0.7647058963775635
+  },
+  "mmlu_custom": 0.9363221079111099
+}
