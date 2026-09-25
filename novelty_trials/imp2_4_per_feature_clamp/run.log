@@ -1,0 +1,47 @@
+/home/amaloch/projects/mechunlearn-project/baselines_DSG/novelty_trials/imp2_4_per_feature_clamp/imp2_4_per_feature_clamp.py:116: DeprecationWarning: HookedTransformer.from_pretrained is deprecated and will be removed in a future major release. Use TransformerBridge.boot_transformers(...) instead, then call enable_compatibility_mode() for HookedTransformer-equivalent numerics. See docs/source/content/migrating_to_v3.md.
+  model = HookedTransformer.from_pretrained(MODEL_NAME, device=device, dtype=torch.bfloat16)
+WARNING:root:You tried to specify center_unembed=True for a model using logit softcap, but this can't be done! Softcapping is not invariant upon adding a constant Setting center_unembed=False instead.
+[1] Deriving DSG's original top-20 feature set (same features, only clamp magnitude changes)...
+Top 20 forget scores: [-12.04081672  -2.7022494   -1.16662033  -1.02392137  -0.69394065
+  -0.48968225  -0.39810674  -0.33778879  -0.2769538   -0.21305517
+  -0.16441971  -0.14011621  -0.10362347  -0.09388219  -0.0916279
+  -0.08811933  -0.08326399  -0.08032179  -0.07948171  -0.07557276]
+Bootstrap estimation: 0.5686579101562506
+N=20, 95th percentile: 0.5458007812500021, 99th percentile: 0.8699609374999997
+  features: [8459, 10229, 9953, 12260, 794, 6481, 8908, 9398, 11392, 9292, 6020, 8786, 9986, 6687, 14821, 1676, 8802, 4235, 12407, 6673]
+  gate threshold (same as baseline): 0.5458
+
+[2] Computing each feature's max forget-corpus activation from cached act_fgt.pkl...
+  per-feature max activation: [24.0, 11.6875, 19.125, 17.5, 18.375, 38.25, 21.75, 15.5, 31.25, 41.0, 33.5, 10.375, 38.5, 29.875, 25.75, 48.0, 19.75, 21.5, 14.625, 20.75]
+  mean of per-feature max activations: 25.053
+  per-feature clamp multipliers (mean should be 500): [478.9821472167969, 233.25433349609375, 381.68890380859375, 349.2578125, 366.720703125, 763.3778076171875, 434.07757568359375, 309.3426513671875, 623.6746826171875, 818.26123046875, 668.5792846679688, 207.05999755859375, 768.3672485351562, 596.2330322265625, 513.9078979492188, 957.9642944335938, 394.1623840332031, 429.0881652832031, 291.8797302246094, 414.1199951171875]
+  mean of assigned multipliers: 500.000, min=207.1, max=958.0
+
+[3] Loading model + SAE for evaluation...
+Loading weights:   0%|          | 0/288 [00:00<?, ?it/s]Loading weights: 100%|██████████| 288/288 [00:00<00:00, 12785.62it/s]
+WARNING:root:With reduced precision, it is advised to use `from_pretrained_no_processing` instead of `from_pretrained`.
+/home/amaloch/projects/mechunlearn-project/baselines_DSG/novelty_trials/imp2_4_per_feature_clamp/imp2_4_per_feature_clamp.py:117: DeprecationWarning: Unpacking SAE objects is deprecated. SAE.from_pretrained() now returns only the SAE object. Use SAE.from_pretrained_with_cfg_and_sparsity() to get the config dict and sparsity as well.
+  sae, _, _ = SAE.from_pretrained(release=SAE_NAME, sae_id=SAE_BLOCK, device=device)
+Loaded pretrained model gemma-2-2b-it into HookedTransformer
+
+[4] Evaluating per-feature variable clamp intervention...
+len(questions): 1273  permutations number: 1
+  wmdp-bio: 29.182%
+len(questions): 204  permutations number: 1
+  high_school_us_history: 100.000%
+len(questions): 100  permutations number: 1
+  college_computer_science: 100.000%
+len(questions): 198  permutations number: 1
+  high_school_geography: 100.000%
+len(questions): 223  permutations number: 1
+  human_aging: 96.471%
+
+======================================================================
+FINAL SUMMARY: per-feature variable clamp vs DSG's flat -500 clamp
+======================================================================
+                          config     WMDP-bio     MMLU_avg
+    DSG flat -500 clamp (cached)      29.368%      99.412%
+      per-feature variable clamp      29.182%      99.118%
+
+Saved: novelty_trials/imp2_4_per_feature_clamp/imp2_4_results.json
+DONE
