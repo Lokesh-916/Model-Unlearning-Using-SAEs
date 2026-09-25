@@ -1,0 +1,39 @@
+{
+  "features_new": [
+    6481,
+    11523
+  ],
+  "threshold_new": 0.003222656250000011,
+  "features_dsg_original": [
+    8459,
+    10229,
+    9953,
+    12260,
+    794,
+    6481,
+    8908,
+    9398,
+    11392,
+    9292,
+    6020,
+    8786,
+    9986,
+    6687,
+    14821,
+    1676,
+    8802,
+    4235,
+    12407,
+    6673
+  ],
+  "threshold_dsg_original": 0.5458007812500021,
+  "overlap_count": 1,
+  "new_results": {
+    "wmdp-bio": 1.0,
+    "high_school_us_history": 1.0,
+    "college_computer_science": 1.0,
+    "high_school_geography": 1.0,
+    "human_aging": 1.0
+  },
+  "mmlu_new": 1.0
+}
