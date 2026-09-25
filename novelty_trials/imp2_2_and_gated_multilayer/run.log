@@ -1,0 +1,54 @@
+/home/amaloch/projects/mechunlearn-project/baselines_DSG/novelty_trials/imp2_2_and_gated_multilayer/imp2_2_and_gated_multilayer.py:67: DeprecationWarning: HookedTransformer.from_pretrained is deprecated and will be removed in a future major release. Use TransformerBridge.boot_transformers(...) instead, then call enable_compatibility_mode() for HookedTransformer-equivalent numerics. See docs/source/content/migrating_to_v3.md.
+  model = HookedTransformer.from_pretrained(MODEL_NAME, device=device, dtype=torch.bfloat16)
+WARNING:root:You tried to specify center_unembed=True for a model using logit softcap, but this can't be done! Softcapping is not invariant upon adding a constant Setting center_unembed=False instead.
+[1] Loading model + both SAEs...
+Loading weights:   0%|          | 0/288 [00:00<?, ?it/s]Loading weights: 100%|██████████| 288/288 [00:00<00:00, 10765.94it/s]
+WARNING:root:With reduced precision, it is advised to use `from_pretrained_no_processing` instead of `from_pretrained`.
+/home/amaloch/projects/mechunlearn-project/baselines_DSG/novelty_trials/imp2_2_and_gated_multilayer/imp2_2_and_gated_multilayer.py:68: DeprecationWarning: Unpacking SAE objects is deprecated. SAE.from_pretrained() now returns only the SAE object. Use SAE.from_pretrained_with_cfg_and_sparsity() to get the config dict and sparsity as well.
+  sae_l3, _, _ = SAE.from_pretrained(release=SAE_NAME, sae_id=L3_BLOCK, device=device)
+/home/amaloch/projects/mechunlearn-project/baselines_DSG/novelty_trials/imp2_2_and_gated_multilayer/imp2_2_and_gated_multilayer.py:69: DeprecationWarning: Unpacking SAE objects is deprecated. SAE.from_pretrained() now returns only the SAE object. Use SAE.from_pretrained_with_cfg_and_sparsity() to get the config dict and sparsity as well.
+  sae_l8, _, _ = SAE.from_pretrained(release=SAE_NAME, sae_id=L8_BLOCK, device=device)
+Loaded pretrained model gemma-2-2b-it into HookedTransformer
+
+[2] Deriving feature sets + thresholds independently for each layer (cached sparsities)...
+Top 20 forget scores: [-12.04081672  -2.7022494   -1.16662033  -1.02392137  -0.69394065
+  -0.48968225  -0.39810674  -0.33778879  -0.2769538   -0.21305517
+  -0.16441971  -0.14011621  -0.10362347  -0.09388219  -0.0916279
+  -0.08811933  -0.08326399  -0.08032179  -0.07948171  -0.07557276]
+Bootstrap estimation: 0.5773516601562505
+N=20, 95th percentile: 0.5458007812500021, 99th percentile: 0.8699609374999997
+Layer 3: threshold=0.5458
+Top 20 forget scores: [-2.80981742 -2.14957236 -1.93426623 -1.7348209  -1.48368478 -1.42789833
+ -1.24678439 -1.13954558 -1.13394812 -1.0016767  -0.94713186 -0.89488194
+ -0.86275489 -0.82981168 -0.81060131 -0.73861821 -0.64840824 -0.60428701
+ -0.60075831 -0.58845008]
+Bootstrap estimation: 0.4642205078124997
+N=20, 95th percentile: 0.42890624999999993, 99th percentile: 0.6461328125
+Layer 8: threshold=0.4289
+
+[3] Evaluating AND-gated multi-layer (layer 3 AND layer 8) intervention...
+len(questions): 1273  permutations number: 1
+len(questions): 1273  permutations number: 1
+  wmdp-bio: 31.227%  (joint-gate fired on 476/538 questions)
+len(questions): 204  permutations number: 1
+len(questions): 204  permutations number: 1
+  high_school_us_history: 100.000%  (joint-gate fired on 0/108 questions)
+len(questions): 100  permutations number: 1
+len(questions): 100  permutations number: 1
+  college_computer_science: 100.000%  (joint-gate fired on 0/9 questions)
+len(questions): 198  permutations number: 1
+len(questions): 198  permutations number: 1
+  high_school_geography: 100.000%  (joint-gate fired on 0/103 questions)
+len(questions): 223  permutations number: 1
+len(questions): 223  permutations number: 1
+  human_aging: 98.824%  (joint-gate fired on 4/85 questions)
+
+======================================================================
+FINAL SUMMARY: AND-gated multi-layer vs OR-gated multi-layer (imp-c2) vs single-layer-3 baseline
+======================================================================
+                          config     WMDP-bio     MMLU_avg
+single-layer-3 (cached baseline)      29.368%      99.412%
+         OR-gated L3+L8 (imp-c2)      27.695%      97.941%
+   AND-gated L3+L8 (this script)      31.227%      99.706%
+DONE
+Saved: novelty_trials/imp2_2_and_gated_multilayer/imp2_2_results.json
