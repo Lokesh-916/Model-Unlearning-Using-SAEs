@@ -1,0 +1,43 @@
+/home/amaloch/projects/mechunlearn-project/baselines_DSG/novelty_trials/imp2_6_weight_orthogonalization/imp2_6_weight_orthogonalization.py:80: DeprecationWarning: Unpacking SAE objects is deprecated. SAE.from_pretrained() now returns only the SAE object. Use SAE.from_pretrained_with_cfg_and_sparsity() to get the config dict and sparsity as well.
+  sae, _, _ = SAE.from_pretrained(release=SAE_NAME, sae_id=SAE_BLOCK, device=device)
+/home/amaloch/projects/mechunlearn-project/baselines_DSG/novelty_trials/imp2_6_weight_orthogonalization/imp2_6_weight_orthogonalization.py:95: DeprecationWarning: HookedTransformer.from_pretrained is deprecated and will be removed in a future major release. Use TransformerBridge.boot_transformers(...) instead, then call enable_compatibility_mode() for HookedTransformer-equivalent numerics. See docs/source/content/migrating_to_v3.md.
+  model = HookedTransformer.from_pretrained(MODEL_NAME, device=device, dtype=torch.bfloat16)
+WARNING:root:You tried to specify center_unembed=True for a model using logit softcap, but this can't be done! Softcapping is not invariant upon adding a constant Setting center_unembed=False instead.
+[1] Deriving DSG's original top-20 feature set + their decoder directions...
+Top 20 forget scores: [-12.04081672  -2.7022494   -1.16662033  -1.02392137  -0.69394065
+  -0.48968225  -0.39810674  -0.33778879  -0.2769538   -0.21305517
+  -0.16441971  -0.14011621  -0.10362347  -0.09388219  -0.0916279
+  -0.08811933  -0.08326399  -0.08032179  -0.07948171  -0.07557276]
+Bootstrap estimation: 0.5755113281250004
+N=20, 95th percentile: 0.5458007812500021, 99th percentile: 0.8699609374999997
+  features: [8459, 10229, 9953, 12260, 794, 6481, 8908, 9398, 11392, 9292, 6020, 8786, 9986, 6687, 14821, 1676, 8802, 4235, 12407, 6673]
+
+[2] Building the orthogonal-complement projection for the 20-feature subspace...
+  subspace rank after QR: 20 (20 requested; lower means some near-duplicate directions)
+
+[3] Loading model (bf16, to keep memory reasonable) and applying the permanent weight edit (embeddings + attn.W_O/mlp.W_out for blocks 0..3)...
+Loading weights:   0%|          | 0/288 [00:00<?, ?it/s]Loading weights: 100%|██████████| 288/288 [00:00<00:00, 10388.55it/s]
+WARNING:root:With reduced precision, it is advised to use `from_pretrained_no_processing` instead of `from_pretrained`.
+Loaded pretrained model gemma-2-2b-it into HookedTransformer
+
+[4] Evaluating the permanently weight-edited model (NO runtime hook, NO gate, NO SAE at eval time)...
+len(questions): 1273  permutations number: 1
+  wmdp-bio: 90.706%
+len(questions): 204  permutations number: 1
+  high_school_us_history: 100.000%
+len(questions): 100  permutations number: 1
+  college_computer_science: 100.000%
+len(questions): 198  permutations number: 1
+  high_school_geography: 99.029%
+len(questions): 223  permutations number: 1
+  human_aging: 98.824%
+
+======================================================================
+FINAL SUMMARY: static weight orthogonalization vs DSG's runtime clamp vs unedited base model
+======================================================================
+                              config     WMDP-bio     MMLU_avg
+          DSG runtime clamp (cached)      29.368%      99.412%
+ weight-orthogonalized (this script)      90.706%      99.463%
+
+Saved: novelty_trials/imp2_6_weight_orthogonalization/imp2_6_results.json
+DONE

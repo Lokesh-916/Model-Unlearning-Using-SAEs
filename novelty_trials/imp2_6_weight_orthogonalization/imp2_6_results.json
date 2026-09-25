@@ -1,0 +1,34 @@
+{
+  "features": [
+    8459,
+    10229,
+    9953,
+    12260,
+    794,
+    6481,
+    8908,
+    9398,
+    11392,
+    9292,
+    6020,
+    8786,
+    9986,
+    6687,
+    14821,
+    1676,
+    8802,
+    4235,
+    12407,
+    6673
+  ],
+  "subspace_rank": 20,
+  "target_layer": 3,
+  "edited_results": {
+    "wmdp-bio": 0.9070631861686707,
+    "high_school_us_history": 1.0,
+    "college_computer_science": 1.0,
+    "high_school_geography": 0.9902912974357605,
+    "human_aging": 0.9882352948188782
+  },
+  "mmlu_edited": 0.9946316480636597
+}
