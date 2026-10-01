@@ -86,10 +86,15 @@ def check_corpus(cache_dir: Path, datasets=None) -> dict:
         return json.loads(out_path.read_text())
     tok = AutoTokenizer.from_pretrained("google/" + meta["model"])
     grams = set()
+    first_row = None
     for part in ("forget", "retain"):
         rows = np.load(cache_dir / f"tokens_{part}.npy", mmap_mode="r")
         for r in rows:
-            grams |= _ngrams(_words(tok.decode(r.tolist(), skip_special_tokens=True)))
+            text = tok.decode(r.tolist(), skip_special_tokens=True)
+            if first_row is None and part == "retain":
+                first_row = text
+            grams |= _ngrams(_words(text))
+    planted = positive_control(grams, first_row or "")
     fails, warns = [], []
     for d in datasets or ALL_DATASETS:
         for it in load_mcq(d):
@@ -102,14 +107,64 @@ def check_corpus(cache_dir: Path, datasets=None) -> dict:
             elif frac >= 0.5:
                 warns.append({"item": it.item_id, "containment": round(frac, 3)})
     res = {"cache": meta["key"], "n_fail": len(fails), "n_warn": len(warns), "fails": fails[:200],
-           "warns": warns[:200], "time": now_iso()}
+           "warns": warns[:200], "positive_control": planted, "time": now_iso()}
     atomic_write_json(out_path, res)
     return res
+
+
+def check_task_args(job: dict) -> list[str]:
+    """Task args: anything used to calibrate, select, tune or train must not be the test split."""
+    errs = []
+
+    def walk(d, path=""):
+        if isinstance(d, dict):
+            for k, v in d.items():
+                kp = f"{path}.{k}" if path else k
+                if (isinstance(v, str) and v in ("test", "all") and k.endswith("split")
+                        and any(w in kp for w in ("calib", "select", "tune", "train", "fit"))):
+                    errs.append(f"{job['id']}: {kp}={v}")
+                walk(v, kp)
+        elif isinstance(d, list):
+            for x in d:
+                walk(x, path)
+
+    walk(job.get("args") or {})
+    return errs
+
+
+def containment(item_text: str, grams: set) -> float:
+    g = _ngrams(_words(item_text))
+    return len(g & grams) / len(g) if g else 0.0
+
+
+def positive_control(grams: set, host_text: str, n: int = 20, seed: int = 0) -> dict:
+    """Plant n MMLU test questions (never WMDP) into a decoded calibration row, re-extract grams
+    the same way, and check every planted item is detected (>= 0.8) while n unplanted items
+    are not. Proves the scanner can see contamination in this corpus/tokenizer pipeline."""
+    import random
+
+    from dsgx.data.mcq import load_mcq
+
+    pool = [it for s in ("high_school_geography", "high_school_us_history", "sociology")
+            for it in load_mcq(s) if len(it.question.split()) >= 12]
+    rng = random.Random(seed)
+    rng.shuffle(pool)
+    plant, other = pool[:n], pool[n:2 * n]
+    mid = len(host_text) // 2
+    texts = [it.question + " " + " ".join(it.choices) for it in plant]
+    planted_text = host_text[:mid] + " " + " ".join(texts) + " " + host_text[mid:]
+    g2 = grams | _ngrams(_words(planted_text))
+    det = [containment(t, g2) for t in texts]
+    neg = [containment(it.question + " " + " ".join(it.choices), grams) for it in other]
+    return {"n": n, "detected": int(sum(x >= 0.8 for x in det)), "min_planted": float(min(det)),
+            "false_alarms": int(sum(x >= 0.5 for x in neg)), "pass": bool(min(det) >= 0.8)}
 
 
 def check_job(job: dict) -> list[str]:
     """Fast checks for one queue job (splits + its configs). Called by the worker."""
     errs = check_splits()
+    if job.get("kind") == "task":
+        errs += check_task_args(job)
     if job.get("kind") == "runs" and job.get("config_path"):
         from dsgx.config import expand, load_experiment
 
@@ -136,13 +191,17 @@ def main(argv=None) -> int:
                 report["corpus"][cd.name] = check_corpus(cd)
     errs = report["splits"] + [e for v in report["configs"].values() for e in v]
     errs += [f"corpus {k}: {v['n_fail']} eval items contained" for k, v in report["corpus"].items() if v["n_fail"]]
+    errs += [f"corpus {k}: positive control failed {v.get('positive_control')}"
+             for k, v in report["corpus"].items() if not (v.get("positive_control") or {}).get("pass")]
     report["errors"] = errs
     report["pass"] = not errs
     atomic_write_json(paths.results_dir() / "checks" / "leakage_latest.json", report)
     for e in errs:
         print("LEAKAGE:", e)
     for k, v in report["corpus"].items():
-        print(f"corpus {k}: fail={v['n_fail']} warn={v['n_warn']}")
+        pc = v.get("positive_control") or {}
+        print(f"corpus {k}: fail={v['n_fail']} warn={v['n_warn']} planted detected="
+              f"{pc.get('detected')}/{pc.get('n')} false_alarms={pc.get('false_alarms')}")
     print("LEAKAGE CHECK", "PASS" if not errs else "FAIL")
     return 0 if not errs else 1
 

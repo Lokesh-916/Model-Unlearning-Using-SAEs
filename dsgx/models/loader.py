@@ -35,14 +35,28 @@ def _dtype(s: str):
     return {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}[s]
 
 
-def get_model(model_name: str = "gemma-2-2b-it", dtype: str = "bfloat16", device: str = "cuda"):
-    key = (model_name, dtype, device)
+def get_model(model_name: str = "gemma-2-2b-it", dtype: str = "bfloat16", device: str = "cuda",
+              weights: str | None = None):
+    """weights: optional HF checkpoint dir or hub id with the same architecture (trained / edited
+    models: D1, D2, A6 relearned, RMU). Only one alternate-weights model is kept in memory."""
+    key = (model_name, dtype, device, weights)
     if key not in _MODELS:
         from transformer_lens import HookedTransformer
 
-        # Same call as DSG's main.py (no weight processing).
-        _MODELS[key] = HookedTransformer.from_pretrained_no_processing(
-            model_name, device=device, dtype=dtype)
+        if weights:
+            for k in [k for k in _MODELS if k[3]]:
+                del _MODELS[k]
+            import torch as _t
+            from transformers import AutoModelForCausalLM
+
+            hf = AutoModelForCausalLM.from_pretrained(weights, torch_dtype=_t.float32)
+            _MODELS[key] = HookedTransformer.from_pretrained_no_processing(
+                model_name, hf_model=hf, device=device, dtype=dtype)
+            del hf
+        else:
+            # Same call as DSG's main.py (no weight processing).
+            _MODELS[key] = HookedTransformer.from_pretrained_no_processing(
+                model_name, device=device, dtype=dtype)
         LOAD_COUNTS["model"] += 1
     m = _MODELS[key]
     m.reset_hooks()
@@ -68,13 +82,14 @@ def get_sae(release: str = "gemma-scope-2b-pt-res", sae_id: str = "layer_3/width
 
 def get_bundle(model_name: str = "gemma-2-2b-it", sae_release: str = "gemma-scope-2b-pt-res",
                sae_id: str = "layer_3/width_16k/average_l0_142", dtype: str = "bfloat16",
-               device: str = "cuda") -> Bundle:
+               device: str = "cuda", weights: str | None = None) -> Bundle:
     torch.set_grad_enabled(False)
-    model = get_model(model_name, dtype, device)
+    model = get_model(model_name, dtype, device, weights)
     sae = get_sae(sae_release, sae_id, dtype, device)
     hook_name = sae.cfg.metadata.hook_name
     layer = int(hook_name.split(".")[1])
-    return Bundle(model, sae, model_name, sae_release, sae_id, hook_name, layer, device, dtype)
+    return Bundle(model, sae, model_name, sae_release, sae_id, hook_name, layer, device, dtype,
+                  meta={"weights": weights})
 
 
 def clear():

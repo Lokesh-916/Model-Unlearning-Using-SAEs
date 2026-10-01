@@ -47,6 +47,11 @@ def _run_job(job: dict, progress):
         progress.update(phase="hang-test", force=True)
         progress.close(phase="hang-test (heartbeat stopped)")
         time.sleep(10 ** 6)
+    if kind == "task":
+        from dsgx.tasks import run_task
+
+        run_task(job, progress)
+        return
     if kind == "sleep-test":
         for i in range(int(job.get("seconds", 30))):
             time.sleep(1)

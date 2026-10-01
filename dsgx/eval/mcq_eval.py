@@ -51,6 +51,8 @@ def score_prompts(model, prompts: list[str], batch_size: int = 1, method=None, o
         lens = [len(model.to_tokens(x, prepend_bos=False)[0]) for x in batch]
         if method is not None:
             method.set_lengths(lens)
+            if hasattr(method, "before_forward"):
+                method.before_forward(tb, lens)
         nti = torch.tensor([n - 1 for n in lens], device=tb.device)
         probs.append(answer_probs(model, tb, nti, answer_tokens).float().cpu())
         if method is not None:

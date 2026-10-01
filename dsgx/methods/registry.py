@@ -17,6 +17,12 @@ def register(name):
 
 
 def make_method(cfg: dict, bundle, seed: int = 0):
+    import importlib
+
+    import dsgx.methods.gates  # noqa: F401  (registers gated / composite)
+
+    if cfg.get("module"):  # experiment branches register their own methods
+        importlib.import_module(cfg["module"])
     name = cfg["name"]
     if name not in METHODS:
         raise KeyError(f"unknown method {name!r}; known: {sorted(METHODS)}")
