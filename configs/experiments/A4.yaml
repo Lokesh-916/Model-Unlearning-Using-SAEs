@@ -1,0 +1,27 @@
+# A4 - knowledge depth: residual capture at all layers + linear answer probes + logit lens.
+exp_id: A4
+priority: must
+wave: 2
+tasks:
+  - id: capture
+    entry: dsgx.analysis.probes:capture_task
+    args:
+      case: bio
+      datasets: [wmdp-bio]
+      methods:
+        - {tag: base, method: {name: base}}
+        - {tag: dsg, method: {name: dsg-faithful, n_features: 20, retain_pct: 95, multiplier: 500}}
+    smoke_args: {limit: 20}
+    kind_slot: gpu
+    est_minutes: 60
+    smoke_est_minutes: 4
+    est_vram_gb: 9
+  - id: probe
+    entry: dsgx.analysis.probes:probe_task
+    args: {tags: [base, dsg], seeds: [0, 1, 2, 3, 4]}
+    smoke_args: {seeds: [0, 1]}
+    kind_slot: cpu
+    est_minutes: 20
+    smoke_est_minutes: 2
+    est_ram_gb: 8
+    deps: [capture]
