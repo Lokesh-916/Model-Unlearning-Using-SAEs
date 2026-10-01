@@ -64,7 +64,8 @@ for c in CLAMP_STRENGTHS:
     results[str(c)] = {"wmdp-bio": row["wmdp-bio"], "mmlu_avg": mmlu_avg}
     print(f"\n>>> c={c}: WMDP-bio={row['wmdp-bio']*100:.3f}%  MMLU_avg={mmlu_avg*100:.3f}%")
 
-out_path = "/tmp/claude-1001/-home-amaloch-projects-mechunlearn-project/de45dc44-5b39-4006-bcf0-de6680f6be3e/scratchpad/dsg_clamp_ablation_results.json"
+out_path = os.path.join(os.path.join(os.environ.get("DSG_RESULTS", "/home/amaloch/projects/mechunlearn-project/dsg_results"), "legacy"), f"dsg_clamp_ablation_results.json")
+os.makedirs(os.path.dirname(out_path), exist_ok=True)
 with open(out_path, "w") as f:
     json.dump({"features": top20.tolist(), "threshold": threshold, "results": results}, f, indent=2)
 

@@ -46,10 +46,11 @@ def check_runs(runs: list[dict]) -> list[str]:
 
     errs = []
     for r in runs:
+        tag = f"{r.get('exp_id')}:{r.get('method', {}).get('name')}"
+        if r.get("purpose") in ("select", "tune") and r.get("split", "test") != "dev":
+            errs.append(f"{tag}: purpose={r['purpose']} on split {r.get('split', 'test')}")
+            continue
         c = resolve(r)
-        tag = f"{c['exp_id']}:{c['method']['name']}"
-        if c.get("purpose") in ("select", "tune") and c["split"] != "dev":
-            errs.append(f"{tag}: purpose={c['purpose']} on split {c['split']}")
         sel = c.get("select_from") or {}
         if sel and sel.get("split", "dev") != "dev":
             errs.append(f"{tag}: selects on split {sel.get('split')}")

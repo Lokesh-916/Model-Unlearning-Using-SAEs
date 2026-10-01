@@ -4,11 +4,16 @@ This module implements the dynamic intervention method for clamping SAE features
 during evaluation, with activation threshold-based filtering.
 """
 
+import os
+
 import torch
 from jaxtyping import Float
 from sae_lens import SAE
 from torch import Tensor
 from transformer_lens.hook_points import HookPoint
+
+# [DSG DEBUG] prints force several GPU syncs per forward pass; off unless DSG_DEBUG=1.
+DSG_DEBUG = os.environ.get("DSG_DEBUG", "0") == "1"
 
 
 def anthropic_clamp_resid_SAE_features(
@@ -56,30 +61,32 @@ def anthropic_clamp_resid_SAE_features(
         batch_activation_rates = activation_mask.sum(dim=1) / activation_mask.shape[1]
         active_batches = batch_activation_rates > activation_threshold
 
-        print(
-            f"[DSG DEBUG] activation rate: "
-            f"min={batch_activation_rates.min().item():.4f}, "
-            f"max={batch_activation_rates.max().item():.4f}, "
-            f"mean={batch_activation_rates.mean().item():.4f}, "
-            f"active={active_batches.sum().item()}/{active_batches.numel()}"
-        )
-
-        # [DSG DEBUG] per-feature firing rate: for each of the target
-        # features, what fraction of (batch, token) positions is it >0 at.
-        per_feature_active = (target_features > 0).float().mean(dim=(0, 1))
-        top_vals, top_idx = per_feature_active.topk(min(10, len(features_to_ablate)))
-        print(
-            "[DSG DEBUG] top firing features (feature_id: rate): "
-            + ", ".join(
-                f"{features_to_ablate[i.item()]}:{v.item():.4f}"
-                for v, i in zip(top_vals, top_idx)
+        if DSG_DEBUG:
+            print(
+                f"[DSG DEBUG] activation rate: "
+                f"min={batch_activation_rates.min().item():.4f}, "
+                f"max={batch_activation_rates.max().item():.4f}, "
+                f"mean={batch_activation_rates.mean().item():.4f}, "
+                f"active={active_batches.sum().item()}/{active_batches.numel()}"
             )
-        )
-        print(
-            f"[DSG DEBUG] resid norm before clamp: "
-            f"mean={resid.norm(dim=-1).mean().item():.4f}, "
-            f"max={resid.norm(dim=-1).max().item():.4f}"
-        )
+
+        if DSG_DEBUG:
+            # [DSG DEBUG] per-feature firing rate: for each of the target
+            # features, what fraction of (batch, token) positions is it >0 at.
+            per_feature_active = (target_features > 0).float().mean(dim=(0, 1))
+            top_vals, top_idx = per_feature_active.topk(min(10, len(features_to_ablate)))
+            print(
+                "[DSG DEBUG] top firing features (feature_id: rate): "
+                + ", ".join(
+                    f"{features_to_ablate[i.item()]}:{v.item():.4f}"
+                    for v, i in zip(top_vals, top_idx)
+                )
+            )
+            print(
+                f"[DSG DEBUG] resid norm before clamp: "
+                f"mean={resid.norm(dim=-1).mean().item():.4f}, "
+                f"max={resid.norm(dim=-1).max().item():.4f}"
+            )
 
         # Create final mask combining feature activation and batch threshold
         final_mask = activation_mask.unsqueeze(2) & active_batches.unsqueeze(1).unsqueeze(2)
@@ -95,11 +102,12 @@ def anthropic_clamp_resid_SAE_features(
         modified_reconstruction = sae.decode(feature_activations)
         resid = modified_reconstruction + error
 
-        print(
-            f"[DSG DEBUG] resid norm after clamp: "
-            f"mean={resid.norm(dim=-1).mean().item():.4f}, "
-            f"max={resid.norm(dim=-1).max().item():.4f}, "
-            f"tokens_clamped={final_mask.any(dim=2).sum().item()}/{final_mask.shape[0] * final_mask.shape[1]}"
-        )
+        if DSG_DEBUG:
+            print(
+                f"[DSG DEBUG] resid norm after clamp: "
+                f"mean={resid.norm(dim=-1).mean().item():.4f}, "
+                f"max={resid.norm(dim=-1).max().item():.4f}, "
+                f"tokens_clamped={final_mask.any(dim=2).sum().item()}/{final_mask.shape[0] * final_mask.shape[1]}"
+            )
 
     return resid

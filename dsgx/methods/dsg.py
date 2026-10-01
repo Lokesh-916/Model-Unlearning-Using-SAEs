@@ -126,7 +126,10 @@ class DSGHook:
             feature_activations[:, :, feats])
         return sae.decode(feature_activations) + error
 
+    @torch.no_grad()
     def _record(self, resid, acts, recon, target, any_fire, rates, active):
+        # Recording is detached so the hook stays differentiable for white-box attacks.
+        resid, acts, recon, target = resid.detach(), acts.detach(), recon.detach(), target.detach()
         lengths = self.lengths if self.lengths is not None else [resid.shape[1]] * resid.shape[0]
         other = acts.clone()
         other[:, :, self.feat_t] = 0

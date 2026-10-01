@@ -31,7 +31,8 @@ DATASET_NAMES = ["wmdp-bio", "high_school_us_history", "college_computer_science
                   "high_school_geography", "human_aging"]
 
 FRACTIONS = [80, 60, 40, 20, 10, 5]
-SCRATCH = "/tmp/claude-1001/-home-amaloch-projects-mechunlearn-project/de45dc44-5b39-4006-bcf0-de6680f6be3e/scratchpad"
+SCRATCH = os.path.join(os.environ.get("DSG_RESULTS", "/home/amaloch/projects/mechunlearn-project/dsg_results"), "legacy")
+os.makedirs(SCRATCH, exist_ok=True)
 
 device = "cuda"
 

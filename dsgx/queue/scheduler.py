@@ -243,25 +243,35 @@ class Scheduler:
         gpu_running = [j for j in running if jobs[j].get("kind_slot", "gpu") == "gpu"]
         cpu_running = [j for j in running if jobs[j].get("kind_slot", "gpu") == "cpu"]
         free_vram = res["gpu"].get("free_gb", 0) if res["gpu"].get("ok") else 0
-        # Jobs started in the last 3 minutes may not have allocated yet: reserve their estimate.
-        for j in gpu_running:
+        free_ram = res["ram"]["total_gb"] - res["ram"]["used_gb"]
+        # Jobs started in the last 3 minutes may not have allocated yet: reserve their estimates.
+        for j in running:
             if time.time() - states[j].get("start", 0) < 180:
-                free_vram -= jobs[j].get("est_vram_gb", 0)
+                free_ram -= jobs[j].get("est_ram_gb", 0)
+                if j in gpu_running:
+                    free_vram -= jobs[j].get("est_vram_gb", 0)
         ready = []
+        hold = ctl.get("pause_after_wave")
+        hold = None if hold is None or hold in ctl.get("resumed_waves", []) else hold
         for jid, st in states.items():
             if st["status"] != q.WAITING:
                 continue
+            if hold is not None and jobs[jid].get("wave", 0) > hold and jobs[jid].get("kind") != "sanity":
+                continue  # later waves wait for the wave pause point to be resumed
             if all(states.get(d, {}).get("status") == q.DONE for d in jobs[jid].get("deps", [])):
                 ready.append(jid)
         ready.sort(key=lambda j: (q.PRIORITY_RANK.get(jobs[j].get("priority", "must"), 9), jobs[j].get("wave", 0),
                                   jobs[j].get("group_key", ""), jobs[j].get("created", 0), j))
         for jid in ready:
             job = jobs[jid]
+            if free_ram < job.get("est_ram_gb", 0):
+                continue
             if job.get("kind_slot", "gpu") == "cpu":
                 if len(cpu_running) >= ctl["cpu_slots"]:
                     continue
                 self.start(job, states[jid], "cpu")
                 cpu_running.append(jid)
+                free_ram -= job.get("est_ram_gb", 0)
                 continue
             if any(jobs[j].get("gpu_exclusive") for j in gpu_running):
                 break
@@ -279,6 +289,7 @@ class Scheduler:
             self.start(job, states[jid], slot)
             gpu_running.append(jid)
             free_vram -= job.get("est_vram_gb", 0)
+            free_ram -= job.get("est_ram_gb", 0)
 
     def start(self, job, st, slot):
         jd = q.job_dir(job)
@@ -322,6 +333,10 @@ class Scheduler:
         from dsgx.queue import status
 
         atomic_write_json(q.qdir() / "alerts.json", [{"key": k, **v} for k, v in self.alerts.items()])
+        for f in paths.logs_dir().glob("slot_*.log"):  # cap tee'd slot logs at 50 MB
+            if f.stat().st_size > 50 * 1024 * 1024:
+                f.replace(f.with_suffix(".log.1"))
+                f.touch()
         full = status.render(chat=False)
         atomic_write_text(paths.results_dir() / "STATUS.md", full)
         atomic_write_text(paths.results_dir() / "STATUS_FOR_CHAT.md", status.render(chat=True))

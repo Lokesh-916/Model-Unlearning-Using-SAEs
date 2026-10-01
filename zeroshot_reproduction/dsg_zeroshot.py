@@ -84,7 +84,8 @@ for tau in TAU_SWEEP:
     results[str(tau)] = row
     print(f"  WMDP={row[case['wmdp_key']]*100:.2f}%  MMLU_avg={mmlu_avg*100:.2f}%")
 
-out_path = f"/tmp/claude-1001/-home-amaloch-projects-mechunlearn-project/de45dc44-5b39-4006-bcf0-de6680f6be3e/scratchpad/dsg_zeroshot_{args.case}_results.json"
+out_path = os.path.join(os.path.join(os.environ.get("DSG_RESULTS", "/home/amaloch/projects/mechunlearn-project/dsg_results"), "legacy"), f"dsg_zeroshot_{args.case}_results.json")
+os.makedirs(os.path.dirname(out_path), exist_ok=True)
 with open(out_path, "w") as f:
     json.dump(results, f, indent=2)
 
