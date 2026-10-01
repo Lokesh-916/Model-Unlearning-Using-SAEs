@@ -53,7 +53,7 @@ def _encode_row(bundle, row: torch.Tensor) -> torch.Tensor:
 
 
 @torch.no_grad()
-def _pass_stats(bundle, tokens: torch.Tensor, progress=None) -> dict:
+def _pass_stats(bundle, tokens: torch.Tensor, progress=None, lengths=None) -> dict:
     tok = bundle.model.tokenizer
     F = bundle.sae.W_dec.shape[0]
     dev = bundle.device
@@ -66,8 +66,9 @@ def _pass_stats(bundle, tokens: torch.Tensor, progress=None) -> dict:
     edges = torch.tensor(HIST_EDGES, device=dev)
     n_tok = 0
     for i in range(tokens.shape[0]):
-        acts = _encode_row(bundle, tokens[i])  # [L, F] bf16
-        keep = ~_special_mask(tokens[i], tok).to(dev)
+        row = tokens[i] if lengths is None else tokens[i, : int(lengths[i])]
+        acts = _encode_row(bundle, row)  # [L, F] bf16
+        keep = ~_special_mask(row, tok).to(dev)
         # Legacy: sum in the activation dtype per batch (bs=1), then add to a float32 buffer.
         legacy_sum += (acts[None] * keep[None, :, None]).sum(dim=(0, 1)).float()
         a = acts.float()[keep]
@@ -117,7 +118,7 @@ def choose_candidates(forget_mean, retain_mean, k: int = 2048, min_ratio_pct: fl
 
 
 @torch.no_grad()
-def _pass_bits(bundle, tokens, cand, n_tok_sub, progress=None):
+def _pass_bits(bundle, tokens, cand, n_tok_sub, progress=None, lengths=None):
     N, L = tokens.shape
     K = len(cand)
     cand_t = torch.tensor(cand, device=bundle.device)
@@ -125,13 +126,14 @@ def _pass_bits(bundle, tokens, cand, n_tok_sub, progress=None):
     seqfire = np.zeros((N, K), dtype=np.float16)
     tokacts = np.zeros((min(n_tok_sub, N), L, K), dtype=np.float16)
     for i in range(N):
-        acts = _encode_row(bundle, tokens[i])[:, cand_t].float()
+        n = L if lengths is None else int(lengths[i])
+        acts = _encode_row(bundle, tokens[i, :n])[:, cand_t].float()
         acts[0] = 0.0  # legacy pickles zero position 0 only
         fire = (acts > 0).cpu().numpy()
-        bits[i] = np.packbits(fire, axis=1)
-        seqfire[i] = fire.sum(0) / L
+        bits[i, :n] = np.packbits(fire, axis=1)
+        seqfire[i] = fire.sum(0) / n
         if i < tokacts.shape[0]:
-            tokacts[i] = acts.cpu().numpy().astype(np.float16)
+            tokacts[i, :n] = acts.cpu().numpy().astype(np.float16)
         if progress:
             progress(i + 1)
     return bits, seqfire, tokacts
@@ -154,18 +156,22 @@ def build_cache(bundle, forget: str = "bio-forget-corpus", retain: str = "wikite
             meta = json.loads((out / "meta.json").read_text())
             if meta.get("status") == "COMPLETE":
                 return out
-        f_tok, r_tok, info = legacy_calibration_tokens(bundle.model.tokenizer, forget, retain, seed,
-                                                       dataset_size, seq_len)
-        return build_from_tokens(bundle, f_tok, r_tok, info, out, key, k, n_tok_sub, progress)
+        res = legacy_calibration_tokens(bundle.model.tokenizer, forget, retain, seed, dataset_size, seq_len)
+        lengths = {"retain": res[3]} if len(res) == 4 else None
+        return build_from_tokens(bundle, res[0], res[1], res[2], out, key, k, n_tok_sub, progress,
+                                 lengths=lengths)
 
 
 def build_from_tokens(bundle, f_tok, r_tok, info: dict, out: Path, key: str, k: int = 2048,
-                      n_tok_sub: int = 32, progress=None) -> Path:
+                      n_tok_sub: int = 32, progress=None, lengths: dict | None = None) -> Path:
+    """lengths: optional {part: LongTensor[N]} for right-padded prompt rows (each row is encoded
+    on its own length, i.e. batch-size-1 semantics)."""
     out = Path(out)
+    lengths = {p: (lengths or {}).get(p) for p in PARTS}
     out.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
     toks = {"forget": f_tok, "retain": r_tok}
-    N = f_tok.shape[0]
+    N = max(f_tok.shape[0], r_tok.shape[0])
     total = 4 * N
 
     def _p(base):
@@ -176,12 +182,15 @@ def build_from_tokens(bundle, f_tok, r_tok, info: dict, out: Path, key: str, k: 
         np.save(out / f"tokens_{part}.npy", toks[part].numpy().astype(np.int32))
         np.save(out / f"special_{part}.npy",
                 _special_mask(toks[part], bundle.model.tokenizer).numpy())
-        stats[part] = _pass_stats(bundle, toks[part], _p(j * N))
+        if lengths[part] is not None:
+            np.save(out / f"lengths_{part}.npy", lengths[part].numpy().astype(np.int32))
+        stats[part] = _pass_stats(bundle, toks[part], _p(j * N), lengths[part])
         np.savez(out / f"stats_{part}.npz", **stats[part])
     cand = choose_candidates(stats["forget"]["legacy_mean"], stats["retain"]["legacy_mean"], k)
     np.save(out / "candidates.npy", cand)
     for j, part in enumerate(PARTS):
-        bits, seqfire, tokacts = _pass_bits(bundle, toks[part], cand, n_tok_sub, _p((2 + j) * N))
+        bits, seqfire, tokacts = _pass_bits(bundle, toks[part], cand, n_tok_sub, _p((2 + j) * N),
+                                            lengths[part])
         np.save(out / f"firebits_{part}.npy", bits)
         np.save(out / f"seqfire_{part}.npy", seqfire)
         np.save(out / f"tokacts_{part}.npy", tokacts)
@@ -251,7 +260,8 @@ class ActivationCache:
         """
         fa = self.fire_any(part, features)
         if not exclude_special:
-            return fa.sum(1) / fa.shape[1]
+            lp = self.path / f"lengths_{part}.npy"
+            return fa.sum(1) / (np.load(lp) if lp.exists() else fa.shape[1])
         keep = ~np.asarray(self.special(part))
         return (fa & keep).sum(1) / keep.sum(1)
 

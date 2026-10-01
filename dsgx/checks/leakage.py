@@ -107,9 +107,31 @@ def check_corpus(cache_dir: Path, datasets=None) -> dict:
     return res
 
 
+def check_task_args(job: dict) -> list[str]:
+    """Task args: anything used to calibrate, select, tune or train must not be the test split."""
+    errs = []
+
+    def walk(d, path=""):
+        if isinstance(d, dict):
+            for k, v in d.items():
+                kp = f"{path}.{k}" if path else k
+                if (isinstance(v, str) and v in ("test", "all") and k.endswith("split")
+                        and any(w in kp for w in ("calib", "select", "tune", "train", "fit"))):
+                    errs.append(f"{job['id']}: {kp}={v}")
+                walk(v, kp)
+        elif isinstance(d, list):
+            for x in d:
+                walk(x, path)
+
+    walk(job.get("args") or {})
+    return errs
+
+
 def check_job(job: dict) -> list[str]:
     """Fast checks for one queue job (splits + its configs). Called by the worker."""
     errs = check_splits()
+    if job.get("kind") == "task":
+        errs += check_task_args(job)
     if job.get("kind") == "runs" and job.get("config_path"):
         from dsgx.config import expand, load_experiment
 

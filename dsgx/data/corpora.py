@@ -66,9 +66,13 @@ def tokenize_and_concat(tokenizer, docs: list[str], seq_len: int = 1024, add_bos
 
 def legacy_calibration_tokens(tokenizer, forget: str = "bio-forget-corpus", retain: str = "wikitext",
                               seed: int = 0, dataset_size: int = 1024, seq_len: int = 1024):
-    """Return (forget_tokens [N, L], retain_tokens [N, L], info) exactly as the DSG code builds them."""
+    """Return (forget_tokens [N, L], retain_tokens [N, L], info) exactly as the DSG code builds them.
+
+    For the chat retain corpus, also returns per-row retain lengths (prompt rows are padded).
+    """
+    retain_mode = "prompts" if retain == CHAT_RETAIN else "rows"
     forget_docs = load_forget_docs(forget)
-    retain_docs = load_retain_docs(retain)
+    retain_docs = load_retain_docs("wikitext" if retain_mode == "prompts" else retain)
     random.seed(seed)
     torch.manual_seed(seed)
     sampled = random.sample(forget_docs, min(dataset_size, len(forget_docs)))
@@ -80,4 +84,80 @@ def legacy_calibration_tokens(tokenizer, forget: str = "bio-forget-corpus", reta
     info = {"forget": forget, "retain": retain, "seed": seed, "n_forget_docs": len(forget_docs),
             "n_retain_docs": len(retain_docs), "forget_rows_total": int(f_tok.shape[0]),
             "retain_rows_total": int(r_tok.shape[0]), "rows_used": int(n), "seq_len": seq_len}
+    if retain_mode == "prompts":
+        # Forget rows are exactly those of the WikiText-retain run (same RNG replay); the retain
+        # side is swapped for the chat corpus, as in the legacy Cyber swap.
+        rec = build_chat_retain(seed=0, n=400)
+        r_rows, lengths = prompt_rows(tokenizer, [x["prompt"] for x in rec["items"]])
+        info.update({"retain": retain, "retain_rows_total": int(r_rows.shape[0]),
+                     "retain_dropped_for_overlap": rec["dropped_for_overlap"]})
+        return f_tok[:n].clone(), r_rows, info, lengths
     return f_tok[:n].clone(), r_tok[:n].clone(), info
+
+
+# ---------------------------------------------------------------------------------------------
+# Chat-formatted MCQ retain corpus for Cyber-chatretain (decision 3, user decision 2):
+# MMLU auxiliary_train (ARC / RACE / OBQA / MCTest), no MMLU-test subjects or items, seeded,
+# filtered against every evaluation question (WMDP + all 57 MMLU test subjects).
+# ---------------------------------------------------------------------------------------------
+CHAT_PRE = "The following are multiple choice questions (with answers).\n"
+CHAT_RETAIN = "mmlu-aux-chat"
+
+
+def _ngram_set(text, n=8):
+    import re
+
+    w = re.findall(r"[a-z0-9]+", text.lower())
+    return {" ".join(w[i:i + n]) for i in range(len(w) - n + 1)}
+
+
+def build_chat_retain(seed: int = 0, n: int = 400, max_chars: int = 3000) -> dict:
+    """Sample n auxiliary_train items as chat MCQ prompts; drop any that overlap an eval question."""
+    from datasets import load_dataset
+
+    from dsgx import paths
+    from dsgx.data.mcq import GEMMA_INST_FORMAT, load_mcq
+    from dsgx.data.splits import ALL_DATASETS
+    from dsgx.util import atomic_write_json
+
+    out = paths.cache_dir() / "corpora" / f"{CHAT_RETAIN}_s{seed}_n{n}.json"
+    if out.exists():
+        return json.loads(out.read_text())
+    aux = load_dataset("cais/mmlu", "auxiliary_train", split="train")
+    eval_grams, eval_q = set(), set()
+    for d in ALL_DATASETS:
+        for it in load_mcq(d):
+            eval_grams |= _ngram_set(it.question)
+            eval_q.add(" ".join(it.question.lower().split()))
+    rng = random.Random(seed)
+    order = list(range(len(aux)))
+    rng.shuffle(order)
+    keep, dropped = [], 0
+    for i in order:
+        x = aux[i]
+        x = x.get("train", x)  # some versions nest the record under "train"
+        q, ch = x["question"], list(x["choices"])
+        if len(ch) != 4 or len(q) > max_chars:
+            continue
+        g = _ngram_set(q + " " + " ".join(ch))
+        if " ".join(q.lower().split()) in eval_q or (g and len(g & eval_grams) / len(g) >= 0.5):
+            dropped += 1
+            continue
+        body = CHAT_PRE + q + "".join(f"\n{l}. {c}" for l, c in zip("ABCD", ch))
+        keep.append({"aux_index": i, "prompt": GEMMA_INST_FORMAT.format(prompt=body) + "Answer: ("})
+        if len(keep) == n:
+            break
+    rec = {"name": CHAT_RETAIN, "seed": seed, "n": len(keep), "dropped_for_overlap": dropped,
+           "source": "cais/mmlu auxiliary_train", "items": keep}
+    atomic_write_json(out, rec)
+    return rec
+
+
+def prompt_rows(tokenizer, prompts: list[str]):
+    """Tokenise prompts separately (they already start with <bos>); right-pad. Returns (tokens, lengths)."""
+    toks = [tokenizer(p, add_special_tokens=False, return_tensors="pt")["input_ids"][0] for p in prompts]
+    L = max(len(t) for t in toks)
+    out = torch.full((len(toks), L), tokenizer.pad_token_id, dtype=torch.long)
+    for i, t in enumerate(toks):
+        out[i, : len(t)] = t
+    return out, torch.tensor([len(t) for t in toks])

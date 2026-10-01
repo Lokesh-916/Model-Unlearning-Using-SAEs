@@ -45,35 +45,70 @@ def _git(wt, *args):
     return subprocess.run(["git", *args], cwd=wt, capture_output=True, text=True).stdout.strip()
 
 
+def _resolve_deps(deps, exp_id, smoke, own_ids):
+    """'taskid' -> job of this experiment; 'exp:X' -> every queued job of experiment X."""
+    out = []
+    jobs = q.load_jobs()
+    for d in deps or []:
+        if d.startswith("exp:"):
+            x = d[4:] + ("-smoke" if smoke and not d.endswith("-smoke") else "")
+            found = [j for j, job in jobs.items() if job["exp_id"] == x] + [j for j in own_ids if j.startswith(x + "-")]
+            out.extend(found or [f"{x}-*"])  # unresolved: stays WAITING and is reported
+        elif f"{exp_id}-{d}" in own_ids or q.job_path(f"{exp_id}-{d}").exists():
+            out.append(f"{exp_id}-{d}")
+        else:
+            out.append(d)
+    return sorted(set(out))
+
+
 def jobs_from_experiment(cfg_path, smoke=False, worktree=None, deps=None):
-    from dsgx.config import expand, load_experiment
+    from dsgx.config import deep_merge, expand, load_experiment
     from dsgx.run import count_items, resolve
 
     wt = Path(worktree or paths.REPO_ROOT).resolve()
     exp = load_experiment(wt / cfg_path)
-    runs = expand(exp, smoke=smoke)
-    jc = {"group_size": 8, "est_seconds_per_item": 0.35, "est_vram_gb": 7.5, "est_ram_gb": 6,
-          "gpu_exclusive": False, "kind_slot": "gpu", "overhead_minutes": 2.0, **(exp.get("jobs") or {})}
+    branch, commit = _git(wt, "rev-parse", "--abbrev-ref", "HEAD"), _git(wt, "rev-parse", "HEAD")
+    exp_id = exp["exp_id"] + ("-smoke" if smoke else "")
+    jc = {"group_size": 8, "est_seconds_per_item": 0.35, "est_vram_gb": 7.5, "est_ram_gb": 20,
+          "gpu_exclusive": False, "kind_slot": "gpu", "overhead_minutes": 2.0, "deps": [],
+          **(exp.get("jobs") or {})}
+    common = {"exp_id": exp_id, "branch": branch, "worktree": str(wt), "commit": commit,
+              "config_path": str(cfg_path), "smoke": smoke, "priority": exp.get("priority", "must"),
+              "wave": exp.get("wave", 1)}
+    jobs = []
+    # 1. tasks
+    task_ids = [f"{exp_id}-{t['id']}" for t in exp.get("tasks") or []]
+    for t in exp.get("tasks") or []:
+        if smoke and t.get("skip_smoke"):
+            continue
+        args = deep_merge(t.get("args") or {}, (t.get("smoke_args") or {}) if smoke else {})
+        est = t.get("smoke_est_minutes", 5) if smoke else t.get("est_minutes", 60)
+        jobs.append({**common, "id": f"{exp_id}-{t['id']}", "kind": "task", "task_id": t["id"],
+                     "entry": t["entry"], "args": args,
+                     "priority": t.get("priority", common["priority"]), "wave": t.get("wave", common["wave"]),
+                     "deps": _resolve_deps(t.get("deps"), exp_id, smoke, task_ids) + list(deps or []),
+                     "est_vram_gb": t.get("est_vram_gb", 7.5 if t.get("kind_slot", "gpu") == "gpu" else 0),
+                     "est_ram_gb": t.get("est_ram_gb", 20 if t.get("kind_slot", "gpu") == "gpu" else 4),
+                     "est_minutes": est, "gpu_exclusive": t.get("gpu_exclusive", False),
+                     "kind_slot": t.get("kind_slot", "gpu"), "items_total": t.get("items_total", 0),
+                     "group_key": t.get("group_key", t["id"])})
+    # 2. MCQ run grid
+    runs = expand(exp, smoke=smoke) if (exp.get("base") or exp.get("grid") or exp.get("extra")) else []
     groups = {}
     for i, r in enumerate(runs):
         m = resolve(r)["model"]
         groups.setdefault(f"{m['name']}|{m['sae_release']}|{m['sae_id']}", []).append(i)
-    branch, commit = _git(wt, "rev-parse", "--abbrev-ref", "HEAD"), _git(wt, "rev-parse", "HEAD")
-    exp_id = exp["exp_id"] + ("-smoke" if smoke else "")
-    jobs = []
+    grid_deps = _resolve_deps(jc["deps"], exp_id, smoke, task_ids) + list(deps or [])
     k = 0
     for gk, idxs in groups.items():
         for s in range(0, len(idxs), jc["group_size"]):
             chunk = idxs[s:s + jc["group_size"]]
             items = sum(count_items(runs[i]) for i in chunk)
-            jobs.append({
-                "id": f"{exp_id}-{k:03d}", "exp_id": exp_id, "kind": "runs", "branch": branch,
-                "worktree": str(wt), "commit": commit, "config_path": str(cfg_path), "smoke": smoke,
-                "run_indices": chunk, "group_key": gk, "priority": exp.get("priority", "must"),
-                "wave": exp.get("wave", 1), "deps": list(deps or []),
-                "est_vram_gb": jc["est_vram_gb"], "est_ram_gb": jc["est_ram_gb"],
-                "est_minutes": round(jc["overhead_minutes"] + items * jc["est_seconds_per_item"] / 60, 2),
-                "gpu_exclusive": jc["gpu_exclusive"], "kind_slot": jc["kind_slot"], "items_total": items})
+            jobs.append({**common, "id": f"{exp_id}-{k:03d}", "kind": "runs", "run_indices": chunk,
+                         "group_key": gk, "deps": grid_deps,
+                         "est_vram_gb": jc["est_vram_gb"], "est_ram_gb": jc["est_ram_gb"],
+                         "est_minutes": round(jc["overhead_minutes"] + items * jc["est_seconds_per_item"] / 60, 2),
+                         "gpu_exclusive": jc["gpu_exclusive"], "kind_slot": jc["kind_slot"], "items_total": items})
             k += 1
     return jobs
 

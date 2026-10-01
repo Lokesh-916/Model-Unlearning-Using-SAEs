@@ -61,6 +61,10 @@ def resolve(cfg: dict) -> dict:
         m.setdefault("retain_corpus", "wikitext")
         m.setdefault("calib_seed", c["seed"])
     c["method"] = m
+    # User decision 1 (P1a): reported test numbers of gated methods use batch size 1.
+    if (c["split"] == "test" and c.get("purpose", "report") == "report" and m["name"] != "base"
+            and int(c["batch_size"]) != 1 and not c.get("allow_batched_test")):
+        raise ValueError("reported test runs of gated methods must use batch_size=1")
     # Rule 3.4: anything used for selection / tuning must be on dev.
     if c.get("purpose") in ("select", "tune") and c["split"] != "dev":
         raise ValueError(f"purpose={c['purpose']} requires split=dev (got {c['split']})")
@@ -135,7 +139,7 @@ def run(cfg: dict, progress=None, force: bool = False):
     method = make_method(c["method"], bundle, c["seed"])
     attack = make_attack(c["attack"], c["seed"])
     plan = plan_items(c)
-    log.write_config({"split_hashes": {d: split_hash(d) for d in c["datasets"]},
+    log.write_config({"batch_size": int(c["batch_size"]), "split_hashes": {d: split_hash(d) for d in c["datasets"]},
                       "method_info": method.info, "load_counts": dict(LOAD_COUNTS),
                       "selection": selection, "resolved_method": c["method"]})
     rows, traces, correct_raw, correct_sub = [], {}, {}, {}
@@ -182,7 +186,7 @@ def run(cfg: dict, progress=None, force: bool = False):
         method.remove()
     wall = time.time() - t0
     nb = c["n_boot"]
-    metrics = {"run_id": log.run_id, "n_items": len(rows), "views": {}}
+    metrics = {"run_id": log.run_id, "n_items": len(rows), "batch_size": int(c["batch_size"]), "views": {}}
     if c["view"] != "dsg_subset":
         metrics["views"]["raw"] = _acc_block(correct_raw, c["forget_datasets"], nb)
     if correct_sub:
