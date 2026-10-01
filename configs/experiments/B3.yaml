@@ -1,0 +1,46 @@
+# B3 - cross-lingual and encoded attacks (MASTER_PLAN 5.2). Translate first (task), then eval the
+# best A1-dev DSG config and the base control under each language (chrF-filtered) and encoding.
+exp_id: B3
+priority: must
+wave: 2
+base:
+  case: bio
+  split: test
+  purpose: report
+  view: both
+  batch_size: 1
+  datasets: ["@forget"]
+  dataset_label: forget
+  method: {name: dsg-faithful, select: {exp_id: A1-dev, max_utility_drop: 0.01}}
+grid:
+  attack.lang: [hi, ta, te, fr, es, zh, ar, ru]
+runs:
+  - {attack: {name: translate, min_chrf: 40}}
+extra:
+  - {attack: {name: encode, encoding: base64}}
+  - {attack: {name: encode, encoding: rot13}}
+  - {attack: {name: encode, encoding: leet}}
+  - {attack: {name: encode, encoding: spaced}}
+  - {method: {name: base}, attack: {name: translate, lang: fr, min_chrf: 40}, batch_size: 16}
+  - {method: {name: base}, attack: {name: translate, lang: hi, min_chrf: 40}, batch_size: 16}
+  - {method: {name: base}, attack: {name: encode, encoding: base64}, batch_size: 16}
+  - {method: {name: base}, attack: {name: none}, batch_size: 16}
+jobs: {group_size: 6, est_seconds_per_item: 0.3, est_vram_gb: 8.5, est_ram_gb: 20, overhead_minutes: 3, deps: ["exp:A1-dev", translate]}
+tasks:
+  - id: translate
+    entry: experiments.B3.translate_cache:task
+    args: {datasets: [wmdp-bio], split: test, batch_size: 16}
+    smoke_args: {limit: 6, langs: [fr, hi]}
+    kind_slot: gpu
+    est_minutes: 120
+    smoke_est_minutes: 5
+    est_vram_gb: 4
+    est_ram_gb: 8
+  - {id: attack-success, entry: dsgx.analysis.attack_success:task, kind_slot: cpu, est_minutes: 5, smoke_est_minutes: 1, est_ram_gb: 4, deps: ["exp:B3"]}
+smoke:
+  base: {limit: 6, method: {name: dsg-faithful, select: {exp_id: A1-dev-smoke, max_utility_drop: 0.5}}}
+  grid: {attack.lang: [fr, hi]}
+  runs: [{attack: {name: translate, min_chrf: 0}}]
+  extra:
+    - {attack: {name: encode, encoding: base64}}
+    - {method: {name: base}, attack: {name: none}, batch_size: 6}
