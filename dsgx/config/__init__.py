@@ -8,6 +8,7 @@ Format:
     grid:                     # cartesian product over dotted keys (optional)
       method.n_features: [10, 20]
     runs: [{...}, ...]        # explicit overrides, applied after the grid (optional)
+    extra: [{...}, ...]       # additional runs (merged over base, not crossed with the grid)
     jobs: {group_size: 8, est_seconds_per_item: 0.3, est_vram_gb: 7.5, est_ram_gb: 6}
     smoke: {base: {limit: 4}, grid: {...}}   # merged over the above for the smoke config
 """
@@ -45,6 +46,7 @@ def expand(exp: dict, smoke: bool = False) -> list[dict]:
     base = copy.deepcopy(exp.get("base", {}))
     grid = exp.get("grid") or {}
     runs = exp.get("runs")
+    extra = exp.get("extra") or []
     if smoke:
         s = exp.get("smoke") or {}
         base = deep_merge(base, s.get("base", {}))
@@ -52,6 +54,8 @@ def expand(exp: dict, smoke: bool = False) -> list[dict]:
             grid = s["grid"] or {}
         if "runs" in s:
             runs = s["runs"]
+        if "extra" in s:
+            extra = s["extra"] or []
     out = []
     keys = list(grid)
     for combo in itertools.product(*[grid[k] for k in keys]) if keys else [()]:
@@ -62,4 +66,8 @@ def expand(exp: dict, smoke: bool = False) -> list[dict]:
             rr = deep_merge(r, ov)
             rr["exp_id"] = exp["exp_id"] + ("-smoke" if smoke else "")
             out.append(rr)
+    for ov in extra:
+        rr = deep_merge(base, ov)
+        rr["exp_id"] = exp["exp_id"] + ("-smoke" if smoke else "")
+        out.append(rr)
     return out

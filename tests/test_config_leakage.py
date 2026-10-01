@@ -15,6 +15,12 @@ def test_expand_grid_and_smoke():
     assert len(sm) == 1 and sm[0]["limit"] == 2 and sm[0]["exp_id"] == "T-smoke"
 
 
+def test_extra_runs_not_crossed():
+    exp = dict(EXP, extra=[{"method": {"name": "base"}, "seed": 0}])
+    runs = expand(exp)
+    assert len(runs) == 5 and runs[-1]["method"] == {"name": "base"}
+
+
 def test_leakage_rules():
     ok = expand(EXP)
     assert check_runs(ok) == []
