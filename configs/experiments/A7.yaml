@@ -1,0 +1,30 @@
+# A7 - generality on Gemma 3 (1B, 4B) with Gemma Scope 2 SAEs: WMDP-Bio test, dilution, base control.
+# 12B is DEFERRED. Features/tau calibrated from the model's own forget/wikitext cache.
+exp_id: A7
+priority: should
+wave: 5
+base:
+  case: bio
+  split: test
+  purpose: report
+  view: raw
+  batch_size: 1
+  datasets: ["@forget", high_school_geography, human_aging]
+  dataset_label: forget+util
+  attack: {name: dilution, pad: 0}
+runs:
+  - {model: {name: gemma-3-1b-it, sae_release: gemma-scope-2-1b-it-res, sae_id: 'layer_13_width_16k_l0_medium'},
+      method: {name: gated, gate: {type: rho, n_features: 20, retain_pct: 95}, calib: {source: cache-retain}}}
+  - {model: {name: gemma-3-4b-it, sae_release: gemma-scope-2-4b-it-res, sae_id: 'layer_17_width_16k_l0_medium'},
+      method: {name: gated, gate: {type: rho, n_features: 20, retain_pct: 95}, calib: {source: cache-retain}}}
+extra:
+  - {model: {name: gemma-3-1b-it, sae_release: gemma-scope-2-1b-it-res, sae_id: 'layer_13_width_16k_l0_medium'}, method: {name: base}}
+  - {model: {name: gemma-3-4b-it, sae_release: gemma-scope-2-4b-it-res, sae_id: 'layer_17_width_16k_l0_medium'}, method: {name: base}}
+jobs: {group_size: 1, est_seconds_per_item: 0.5, est_vram_gb: 12, est_ram_gb: 28, overhead_minutes: 5, gpu_exclusive: true}
+smoke:
+  base: {limit: 4, datasets: ["@forget"]}
+  runs:
+    - {model: {name: gemma-3-1b-it, sae_release: gemma-scope-2-1b-it-res, sae_id: 'layer_13_width_16k_l0_medium'},
+        method: {name: gated, gate: {type: rho, n_features: 20, retain_pct: 95}, calib: {source: cache-retain}}}
+  extra:
+    - {model: {name: gemma-3-1b-it, sae_release: gemma-scope-2-1b-it-res, sae_id: 'layer_13_width_16k_l0_medium'}, method: {name: base}}
