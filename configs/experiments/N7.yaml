@@ -1,0 +1,35 @@
+# N7 - multi-layer voting: any-of / majority over layers 3,8,12 (top gates from C3), vs B1 dilution.
+exp_id: N7
+priority: should
+wave: 3
+base:
+  case: bio
+  split: test
+  purpose: report
+  view: both
+  batch_size: 1
+  datasets: ["@forget", "@dsg4"]
+  dataset_label: forget+dsg4
+  attack: {name: dilution, pad: 0}
+runs:
+  - method:
+      name: composite
+      combine: any
+      gates: &g3
+        - {gate: {type: rho, n_features: 20, retain_pct: 95}, calib: {source: cache-retain}, intervene: true}
+        - {gate: {type: rho, sae_release: gemma-scope-2b-pt-res-canonical, sae_id: 'layer_8/width_16k/canonical', n_features: 20}, calib: {fpr: 0.05, source: mmlu-dev}, intervene: true}
+        - {gate: {type: rho, sae_release: gemma-scope-2b-pt-res-canonical, sae_id: 'layer_12/width_16k/canonical', n_features: 20}, calib: {fpr: 0.05, source: mmlu-dev}, intervene: true}
+  - method: {name: composite, combine: majority, gates: *g3}
+extra:
+  - {method: {name: base}, batch_size: 16}
+jobs: {group_size: 1, est_seconds_per_item: 0.8, est_vram_gb: 10, est_ram_gb: 24, overhead_minutes: 4, deps: ["exp:A1-dev"]}
+smoke:
+  base: {limit: 6, datasets: ["@forget", high_school_geography]}
+  runs:
+    - method:
+        name: composite
+        combine: any
+        gates:
+          - {gate: {type: rho, n_features: 20, retain_pct: 95}, calib: {source: cache-retain}, intervene: true}
+          - {gate: {type: rho, sae_release: gemma-scope-2b-pt-res-canonical, sae_id: 'layer_8/width_16k/canonical', n_features: 20}, calib: {fpr: 0.05, source: mmlu-dev}, intervene: true}
+  extra: [{method: {name: base}, batch_size: 6}]
