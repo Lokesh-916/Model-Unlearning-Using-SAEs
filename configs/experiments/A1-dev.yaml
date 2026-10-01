@@ -1,32 +1,49 @@
 # A1 · Unified baselines, stage 1: DSG hyperparameter sweep on DEV (MASTER_PLAN 5.1).
-# Cyber-chatretain is added in P1b once the seeded chat-retain corpus builder exists.
+# Three baselines: Bio, Cyber-faithful (WikiText retain), Cyber-chatretain (MMLU auxiliary_train
+# chat-MCQ retain, user decision 2). Dev sweep at batch size 16 (user decision 1).
+# Grid shrunk to fit Wave 1 (< 20 h): N=10 and multiplier 100 dropped (see DEVIATIONS.md).
 exp_id: A1-dev
 priority: must
 wave: 1
 base:
   split: dev
   purpose: select
-  view: both                       # raw full-set + DSG subset
-  batch_size: 1                    # dsg-faithful is exact only at bs=1
-  datasets: ["@forget", "@utility"]   # full MMLU minus hazard-adjacent subjects (decision 4)
+  view: both
+  batch_size: 16
+  datasets: ["@forget", "@utility"]
   dataset_label: forget+utility
-  method: {name: dsg-faithful, multiplier: 500}
+  method: {name: dsg-faithful}
 grid:
-  case: [bio, cyber]
-  method.n_features: [10, 20, 30, 50, 100, 200]
+  method.n_features: [20, 30, 50, 100, 200]
   method.retain_pct: [90, 95]
-  method.multiplier: [100, 500, 1000]
+  method.multiplier: [500, 1000]
+runs:
+  - {case: bio}
+  - {case: cyber}
+  - {case: cyber, method: {retain_corpus: mmlu-aux-chat}, dataset_label: chatretain}
 extra:
   - {case: bio, method: {name: base}}
   - {case: cyber, method: {name: base}}
-jobs: {group_size: 6, est_seconds_per_item: 0.27, est_vram_gb: 7.5, est_ram_gb: 20, overhead_minutes: 3}
+jobs: {group_size: 6, est_seconds_per_item: 0.068, est_vram_gb: 8.5, est_ram_gb: 20, overhead_minutes: 3}
+tasks:
+  - id: dsg-subset-ids
+    entry: dsgx.data.dsg_subset:task
+    args: {datasets: "@all", batch_size: 32}
+    smoke_args: {datasets: [high_school_geography, wmdp-bio], limit: 6}
+    kind_slot: gpu
+    est_minutes: 150
+    smoke_est_minutes: 2
+    est_vram_gb: 9
 smoke:
   base: {limit: 3, datasets: ["@forget", "@dsg4", "virology"], dataset_label: smoke}
   grid:
-    case: [bio, cyber]
     method.n_features: [20]
     method.retain_pct: [95]
     method.multiplier: [500]
+  runs:
+    - {case: bio}
+    - {case: cyber}
+    - {case: cyber, method: {retain_corpus: mmlu-aux-chat}, dataset_label: chatretain}
   extra:
     - {case: bio, method: {name: base}}
     - {case: cyber, method: {name: base}}

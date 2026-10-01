@@ -1,5 +1,7 @@
-# A1 · Unified baselines, stage 2: best DEV config per case on TEST with 5 calibration seeds,
-# plus the base model. Enqueue with --after-exp A1-dev (selection reads finished dev runs).
+# A1 · Unified baselines, stage 2: best DEV config per baseline on TEST with 5 calibration seeds
+# (batch size 1, user decision 1), plus the base model and an RMU reference.
+# RMU: no official gemma-2-2b checkpoint exists; AMindToThink/gemma-2-2b-it_RMU_s200_a300_layer3
+# is an undocumented third-party RMU model, reported as "unverified RMU reference".
 exp_id: A1-test
 priority: must
 wave: 1
@@ -14,12 +16,17 @@ base:
     name: dsg-faithful
     select: {exp_id: A1-dev, keys: [n_features, retain_pct, multiplier], max_utility_drop: 0.01}
 grid:
-  case: [bio, cyber]
   seed: [0, 1, 2, 3, 4]            # seed = calibration sample of the forget corpus
+runs:
+  - {case: bio}
+  - {case: cyber}
+  - {case: cyber, method: {retain_corpus: mmlu-aux-chat, select: {match: {retain_corpus: mmlu-aux-chat}}}, dataset_label: chatretain}
 extra:
-  - {case: bio, method: {name: base}}
-  - {case: cyber, method: {name: base}}
-jobs: {group_size: 5, est_seconds_per_item: 0.27, est_vram_gb: 7.5, est_ram_gb: 20, overhead_minutes: 5}
+  - {case: bio, method: {name: base}, batch_size: 16}
+  - {case: cyber, method: {name: base}, batch_size: 16}
+  - {case: bio, method: {name: base}, batch_size: 16, model: {weights: AMindToThink/gemma-2-2b-it_RMU_s200_a300_layer3}, dataset_label: rmu-unverified}
+  - {case: cyber, method: {name: base}, batch_size: 16, model: {weights: AMindToThink/gemma-2-2b-it_RMU_s200_a300_layer3}, dataset_label: rmu-unverified}
+jobs: {group_size: 5, est_seconds_per_item: 0.26, est_vram_gb: 8.5, est_ram_gb: 20, overhead_minutes: 5, deps: ["exp:A1-dev"]}
 smoke:
   base:
     limit: 3
@@ -29,7 +36,10 @@ smoke:
       name: dsg-faithful
       select: {exp_id: A1-dev-smoke, keys: [n_features, retain_pct, multiplier], max_utility_drop: 0.5}
   grid:
-    case: [bio]
     seed: [0, 1]
+  runs:
+    - {case: bio}
+    - {case: cyber, method: {retain_corpus: mmlu-aux-chat, select: {match: {retain_corpus: mmlu-aux-chat}}}, dataset_label: chatretain}
   extra:
     - {case: bio, method: {name: base}}
+    - {case: bio, method: {name: base}, model: {weights: AMindToThink/gemma-2-2b-it_RMU_s200_a300_layer3}, dataset_label: rmu-unverified}
