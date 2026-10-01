@@ -1,0 +1,27 @@
+exp_id: B2
+priority: must
+wave: 2
+base:
+  case: bio
+  split: test
+  purpose: report
+  view: both
+  batch_size: 1
+  datasets: ["@forget"]
+  dataset_label: forget
+  method: {name: dsg-faithful, select: {exp_id: A1-dev, max_utility_drop: 0.01}}
+grid:
+  attack.variant: [split, stem_last, options_only]
+  attack.k: [2, 3]
+runs: [{attack: {name: decompose}}]
+extra:
+  - {method: {name: base}, attack: {name: decompose, variant: split, k: 2}, batch_size: 8}
+  - {method: {name: base}, attack: {name: none}, batch_size: 16}
+jobs: {group_size: 6, est_seconds_per_item: 0.4, est_vram_gb: 8.5, est_ram_gb: 20, overhead_minutes: 3, deps: ["exp:A1-dev"]}
+tasks:
+  - {id: attack-success, entry: dsgx.analysis.attack_success:task, kind_slot: cpu, est_minutes: 3, smoke_est_minutes: 1, est_ram_gb: 4, deps: ["exp:B2"]}
+smoke:
+  base: {limit: 8, method: {name: dsg-faithful, select: {exp_id: A1-dev-smoke, max_utility_drop: 0.5}}}
+  grid: {attack.variant: [split, options_only], attack.k: [2]}
+  runs: [{attack: {name: decompose}}]
+  extra: [{method: {name: base}, attack: {name: none}, batch_size: 8}]
