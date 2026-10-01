@@ -1,0 +1,24 @@
+# B6 - generation-time leakage (MASTER_PLAN 5.2): open hazardous items (WMDP-Bio-Open test),
+# streaming gate vs prompt-only gate vs base. openqa records first-fire token, answer tokens
+# before the fire (prefix_scores), gibberish rate after clamp, and per-step rho.
+exp_id: B6
+priority: must
+wave: 2
+tasks:
+  - id: leak
+    entry: dsgx.eval.openqa:task
+    args:
+      items: wmdp-bio-open
+      split: test
+      case: bio
+      max_new: 96
+      prefix_scores: true
+      methods:
+        - {name: base}
+        - {name: dsg-faithful, mode: stream, n_features: 20, retain_pct: 95, multiplier: 500}
+        - {name: dsg-faithful, mode: prompt_only, n_features: 20, retain_pct: 95, multiplier: 500}
+    smoke_args: {limit: 4, max_new: 24}
+    kind_slot: gpu
+    est_minutes: 120
+    smoke_est_minutes: 5
+    est_vram_gb: 8
