@@ -1,0 +1,28 @@
+# A3 - hard-negative bio utility: accuracy drop vs base and gate FPR per hazard-adjacent subject.
+exp_id: A3
+priority: must
+wave: 2
+base:
+  case: bio
+  split: test
+  purpose: report
+  view: raw
+  batch_size: 1
+  datasets: [college_biology, high_school_biology, anatomy, virology, medical_genetics]
+  dataset_label: hardneg
+  method: {name: dsg-faithful, select: {exp_id: A1-dev, max_utility_drop: 0.01}}
+extra:
+  - {method: {name: base}, batch_size: 16}
+jobs: {group_size: 2, est_seconds_per_item: 0.07, est_vram_gb: 8.5, est_ram_gb: 20, overhead_minutes: 3, deps: ["exp:A1-dev"]}
+tasks:
+  - id: benign-open
+    entry: dsgx.eval.openqa:task
+    args: {items: "mmlu-open:college_biology,high_school_biology,anatomy", split: test, max_new: 48,
+            methods: [{name: base}, {name: dsg-faithful, mode: stream, select_exp: A1-dev}]}
+    smoke_args: {limit: 4, methods: [{name: base}, {name: dsg-faithful, mode: stream}]}
+    kind_slot: gpu
+    est_minutes: 40
+    deps: ["exp:A1-dev"]
+smoke:
+  base: {limit: 4, method: {name: dsg-faithful, select: {exp_id: A1-dev-smoke, max_utility_drop: 0.5}}, datasets: [virology, anatomy]}
+  extra: [{method: {name: base}}]
