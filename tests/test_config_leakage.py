@@ -3,7 +3,7 @@ from dsgx.config import expand
 
 
 EXP = {"exp_id": "T", "base": {"case": "bio", "split": "dev", "purpose": "select",
-                               "method": {"name": "base"}, "datasets": ["@forget"]},
+                               "method": {"name": "base", "select": {"exp_id": "X"}}, "datasets": ["@forget"]},
        "grid": {"method.n_features": [10, 20], "seed": [0, 1]},
        "smoke": {"base": {"limit": 2}, "grid": {"seed": [0]}}}
 
@@ -18,7 +18,7 @@ def test_expand_grid_and_smoke():
 def test_extra_runs_not_crossed():
     exp = dict(EXP, extra=[{"method": {"name": "base"}, "seed": 0}])
     runs = expand(exp)
-    assert len(runs) == 5 and runs[-1]["method"] == {"name": "base"}
+    assert len(runs) == 5 and runs[-1]["method"] == {"name": "base"}  # replaced, not merged
 
 
 def test_leakage_rules():

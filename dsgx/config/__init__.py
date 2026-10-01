@@ -8,7 +8,8 @@ Format:
     grid:                     # cartesian product over dotted keys (optional)
       method.n_features: [10, 20]
     runs: [{...}, ...]        # explicit overrides, applied after the grid (optional)
-    extra: [{...}, ...]       # additional runs (merged over base, not crossed with the grid)
+    extra: [{...}, ...]       # additional runs (merged over base, not crossed with the grid;
+                              # an extra run's `method` replaces the base method wholesale)
     jobs: {group_size: 8, est_seconds_per_item: 0.3, est_vram_gb: 7.5, est_ram_gb: 6}
     smoke: {base: {limit: 4}, grid: {...}}   # merged over the above for the smoke config
 """
@@ -68,6 +69,8 @@ def expand(exp: dict, smoke: bool = False) -> list[dict]:
             out.append(rr)
     for ov in extra:
         rr = deep_merge(base, ov)
+        if "method" in ov:
+            rr["method"] = copy.deepcopy(ov["method"])
         rr["exp_id"] = exp["exp_id"] + ("-smoke" if smoke else "")
         out.append(rr)
     return out

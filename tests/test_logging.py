@@ -17,6 +17,7 @@ def test_run_id_format():
     assert make_run_id(dict(CFG, seed=4)) != rid
     many = dict(CFG, datasets=["a", "b", "c"])
     assert make_run_id(many).split("__")[3] == "3sets"
+    assert make_run_id(dict(CFG, case="cyber")).split("__")[3] == "cyber-wmdp-bio"
 
 
 def test_run_logger_files(tmp_path):
