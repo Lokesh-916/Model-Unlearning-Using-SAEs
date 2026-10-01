@@ -1,0 +1,27 @@
+# B5 - white-box obfuscation (should): a GCG-lite discrete suffix minimising the gate score; eval
+# the suffix on held-out forget TEST items vs base. Step budgets are a grid over search tasks.
+exp_id: B5
+priority: should
+wave: 3
+base:
+  case: bio
+  split: test
+  purpose: report
+  view: both
+  batch_size: 1
+  datasets: ["@forget"]
+  dataset_label: forget
+  method: {name: dsg-faithful, select: {exp_id: A1-dev, max_utility_drop: 0.01}}
+runs:
+  - {attack: {name: suffix, path: B5/suffix-200/suffix.json}}
+extra:
+  - {method: {name: base}, attack: {name: suffix, path: B5/suffix-200/suffix.json}, batch_size: 16}
+  - {method: {name: base}, attack: {name: none}, batch_size: 16}
+jobs: {group_size: 4, est_seconds_per_item: 0.35, est_vram_gb: 8.5, est_ram_gb: 20, overhead_minutes: 3, deps: ["exp:A1-dev", suffix-200]}
+tasks:
+  - {id: suffix-50, entry: experiments.B5.suffix_search:task, args: {steps: 50, suffix_len: 8}, smoke_args: {steps: 4, n_fit: 4}, kind_slot: gpu, gpu_exclusive: true, est_minutes: 20, smoke_est_minutes: 3, est_vram_gb: 8}
+  - {id: suffix-200, entry: experiments.B5.suffix_search:task, args: {steps: 200, suffix_len: 8}, smoke_args: {steps: 4, n_fit: 4}, kind_slot: gpu, gpu_exclusive: true, est_minutes: 70, smoke_est_minutes: 3, est_vram_gb: 8}
+smoke:
+  base: {limit: 6, method: {name: dsg-faithful, select: {exp_id: A1-dev-smoke, max_utility_drop: 0.5}}}
+  runs: [{attack: {name: suffix, path: B5/suffix-200/suffix.json}}]
+  extra: [{method: {name: base}, attack: {name: none}, batch_size: 6}]
