@@ -36,15 +36,21 @@ def _utility(met):
     return v["utility"]["pooled"]["mean"]
 
 
-def select_config(case: str, method_name: str, spec: dict) -> dict:
+def select_config(case: str, method_name: str, spec: dict, current: dict | None = None) -> dict:
+    """current: the method config being filled; by default only dev runs with the same forget and
+    retain corpora are candidates (e.g. Cyber-faithful vs Cyber-chatretain). spec['match'] adds
+    or overrides required method fields."""
     exp_id = spec["exp_id"]
+    match = {k: (current or {}).get(k) for k in ("forget_corpus", "retain_corpus") if (current or {}).get(k)}
+    match.update(spec.get("match") or {})
     keys = spec.get("keys", ["n_features", "retain_pct", "multiplier"])
     drop = float(spec.get("max_utility_drop", 0.01))
     runs = [(d, c, m) for d, c, m in _runs(exp_id) if c.get("case") == case]
     if any(c["split"] != "dev" for _, c, _ in runs):
         runs = [(d, c, m) for d, c, m in runs if c["split"] == "dev"]
-    base = [m for _, c, m in runs if c["method"]["name"] == "base"]
-    cands = [(d, c, m) for d, c, m in runs if c["method"]["name"] == method_name]
+    base = [m for _, c, m in runs if c["method"]["name"] == "base" and not (c.get("model") or {}).get("weights")]
+    cands = [(d, c, m) for d, c, m in runs if c["method"]["name"] == method_name
+             and all(c["method"].get(k) == v for k, v in match.items())]
     if not cands:
         raise RuntimeError(f"no finished dev runs of {method_name} for {case} in {exp_id}")
     if not base:
@@ -57,4 +63,4 @@ def select_config(case: str, method_name: str, spec: dict) -> dict:
     return {"method": {k: c["method"][k] for k in keys if k in c["method"]},
             "info": {"source_run": str(d), "forget": _forget(m), "utility": _utility(m),
                      "base_utility": base_u, "n_candidates": len(cands), "n_within_bound": len(ok),
-                     "bound_met": bool(ok), "split": c["split"]}}
+                     "bound_met": bool(ok), "split": c["split"], "match": match}}

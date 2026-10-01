@@ -158,7 +158,7 @@ def run(cfg: dict, progress=None, force: bool = False):
     if "select" in c["method"]:
         from dsgx.analysis.select import select_config
 
-        selection = select_config(c["case"], c["method"]["name"], c["method"]["select"])
+        selection = select_config(c["case"], c["method"]["name"], c["method"]["select"], c["method"])
         c["method"] = {**{k: v for k, v in c["method"].items() if k != "select"}, **selection["method"]}
     ensure_cache(c, bundle, progress)
     method = make_method(c["method"], bundle, c["seed"])
