@@ -108,23 +108,28 @@ class Gate:
     def _fit_probe(self):
         from sklearn.linear_model import LogisticRegression
 
-        key = hashlib.sha256(json.dumps([self.type, self.cache.meta["key"], self.features,
-                                         self.spec.get("probe_k", 256)]).encode()).hexdigest()[:16]
+        src = self.spec.get("probe_train", "cache")
+        key = hashlib.sha256(json.dumps([self.type, self.cache.meta["key"], self.features, src,
+                                         self.spec.get("probe_k", 256), self.spec.get("case", "bio"),
+                                         self.spec.get("probe_n", 600)]).encode()).hexdigest()[:16]
         f = paths.cache_dir() / "gates" / f"probe_{key}.npz"
         if f.exists():
             z = np.load(f)
             return {k: z[k] for k in z.files}
-        if self.type == "probe_sae":
-            k = int(self.spec.get("probe_k", 256))
-            cand = self.cache.candidates[:k]
+        k = int(self.spec.get("probe_k", 256))
+        cand = np.asarray(self.cache.candidates[:k])
+        extra = {"cand": cand} if self.type == "probe_sae" else {}
+        if src == "mcq-dev":
+            # DEV-split prompts: forget dataset (positive) vs utility subjects (negative).
+            X, n_f = self._mcq_dev_features(cand)
+        elif self.type == "probe_sae":
             pos = self.cache.candidate_positions(cand)
             X = np.concatenate([np.asarray(self.cache.seqfire("forget"))[:, pos],
                                 np.asarray(self.cache.seqfire("retain"))[:, pos]]).astype(np.float32)
-            extra = {"cand": np.asarray(cand)}
+            n_f = len(X) // 2
         else:
             X = self._resid_chunks()
-            extra = {}
-        n_f = len(X) // 2 if self.type == "probe_sae" else self._n_forget_chunks
+            n_f = self._n_forget_chunks
         y = np.r_[np.ones(n_f), np.zeros(len(X) - n_f)]
         mu, sd = X.mean(0), X.std(0) + 1e-6
         clf = LogisticRegression(C=float(self.spec.get("C", 1.0)), max_iter=2000).fit((X - mu) / sd, y)
@@ -133,6 +138,32 @@ class Gate:
         f.parent.mkdir(parents=True, exist_ok=True)
         np.savez(f, **out)
         return out
+
+    @torch.no_grad()
+    def _mcq_dev_features(self, cand):
+        from dsgx.data.mcq import FORGET_DATASET, format_prompt, load_mcq
+        from dsgx.data.splits import get_split
+
+        case = self.spec.get("case", "bio")
+        n = int(self.spec.get("probe_n", 600))
+        fd = FORGET_DATASET[case]
+        items = load_mcq(fd)
+        pos = [format_prompt(items[i]) for i in get_split(fd, "dev")[:n]]
+        neg = benign_calibration_prompts(case, n, seed=1)
+        b = self.bundle
+        cand_t = torch.tensor(cand, device=b.device)
+        X = []
+        for p in pos + neg:
+            t = b.model.to_tokens(p, prepend_bos=False).to(b.device)
+            _, c = b.model.run_with_cache(t, stop_at_layer=b.layer + 1, names_filter=b.hook_name)
+            r = c[b.hook_name][0]
+            if self.type == "probe_sae":
+                a = b.sae.encode(r)
+                a[0] = 0
+                X.append(((a[:, cand_t] > 0).float().sum(0) / t.shape[1]).cpu().numpy())
+            else:
+                X.append(r[1:].float().mean(0).cpu().numpy())
+        return np.array(X, dtype=np.float32), len(pos)
 
     @torch.no_grad()
     def _resid_chunks(self, chunk: int = 64, max_rows: int = 128):
@@ -327,7 +358,8 @@ class Gated(Method):
 
     def __init__(self, cfg, bundle, seed=0):
         super().__init__(cfg, bundle, seed)
-        gspec = cfg.get("gate", {"type": "rho"})
+        gspec = dict(cfg.get("gate", {"type": "rho"}))
+        gspec.setdefault("case", cfg.get("case", "bio"))
         self.gbundle = _bundle_for(gspec, bundle)
         self.gate = Gate(gspec, self.gbundle, seed)
         cal = cfg.get("calib", {})
