@@ -1,0 +1,34 @@
+# C3 - layer sweep: gate (rho) at layers [1, 3, 5, 8, 12, 16, 20, 24], 5% dev FPR, test + B1 dilution.
+exp_id: C3
+priority: should
+wave: 3
+base:
+  case: bio
+  split: test
+  purpose: report
+  view: both
+  batch_size: 1
+  datasets: ["@forget", "@dsg4"]
+  dataset_label: forget+dsg4
+  calib: {fpr: 0.05, n_max: 1000, source: mmlu-dev}
+  attack: {name: dilution, pad: 0}
+runs:
+  - {method: {name: gated, gate: {type: rho, sae_release: gemma-scope-2b-pt-res-canonical, sae_id: 'layer_1/width_16k/canonical', retain_pct: 95, n_features: 20}}}
+  - {method: {name: gated, gate: {type: rho, sae_release: gemma-scope-2b-pt-res-canonical, sae_id: 'layer_3/width_16k/canonical', retain_pct: 95, n_features: 20}}}
+  - {method: {name: gated, gate: {type: rho, sae_release: gemma-scope-2b-pt-res-canonical, sae_id: 'layer_5/width_16k/canonical', retain_pct: 95, n_features: 20}}}
+  - {method: {name: gated, gate: {type: rho, sae_release: gemma-scope-2b-pt-res-canonical, sae_id: 'layer_8/width_16k/canonical', retain_pct: 95, n_features: 20}}}
+  - {method: {name: gated, gate: {type: rho, sae_release: gemma-scope-2b-pt-res-canonical, sae_id: 'layer_12/width_16k/canonical', retain_pct: 95, n_features: 20}}}
+  - {method: {name: gated, gate: {type: rho, sae_release: gemma-scope-2b-pt-res-canonical, sae_id: 'layer_16/width_16k/canonical', retain_pct: 95, n_features: 20}}}
+  - {method: {name: gated, gate: {type: rho, sae_release: gemma-scope-2b-pt-res-canonical, sae_id: 'layer_20/width_16k/canonical', retain_pct: 95, n_features: 20}}}
+  - {method: {name: gated, gate: {type: rho, sae_release: gemma-scope-2b-pt-res-canonical, sae_id: 'layer_24/width_16k/canonical', retain_pct: 95, n_features: 20}}}
+extra:
+  - {method: {name: base}, batch_size: 16}
+jobs: {group_size: 1, est_seconds_per_item: 0.4, est_vram_gb: 9, est_ram_gb: 20, overhead_minutes: 4, deps: ["exp:A1-dev"]}
+tasks:
+  - {id: auroc, entry: dsgx.analysis.gate_quality:task, args: {exp_id: C3}, kind_slot: cpu, est_minutes: 5, smoke_est_minutes: 1, est_ram_gb: 4, deps: ["exp:C3"]}
+smoke:
+  base: {limit: 6, datasets: ["@forget", high_school_geography]}
+  runs:
+    - {method: {name: gated, gate: {type: rho, sae_release: gemma-scope-2b-pt-res-canonical, sae_id: 'layer_3/width_16k/canonical', n_features: 20}}}
+    - {method: {name: gated, gate: {type: rho, sae_release: gemma-scope-2b-pt-res-canonical, sae_id: 'layer_8/width_16k/canonical', n_features: 20}}}
+  extra: [{method: {name: base}, batch_size: 6}]
