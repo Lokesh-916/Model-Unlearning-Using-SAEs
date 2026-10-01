@@ -7,6 +7,7 @@ A config here is one *resolved run config* (see dsgx.config.expand for experimen
 Two evaluation views are always computed when possible: raw accuracy on the split, and the
 DSG subset (items the base model gets right under all 24 answer permutations).
 """
+import json
 import resource
 import time
 
@@ -56,6 +57,12 @@ def resolve(cfg: dict) -> dict:
     c["datasets"] = expand_datasets(c.get("datasets", ["@forget", "@dsg4"]), c["case"])
     c.setdefault("forget_datasets", [FORGET_DATASET[c["case"]]])
     m = dict(c["method"])
+    if m["name"] in ("gated", "composite"):
+        m.setdefault("case", c["case"])
+        for g in ([m.setdefault("gate", {"type": "rho"})] if m["name"] == "gated"
+                  else [x.setdefault("gate", {"type": "rho"}) for x in m.get("gates", [])]):
+            g.setdefault("forget_corpus", f"{c['case']}-forget-corpus")
+            g.setdefault("calib_seed", c["seed"])
     if m["name"] in CACHE_METHODS:
         m.setdefault("forget_corpus", f"{c['case']}-forget-corpus")
         m.setdefault("retain_corpus", "wikitext")
@@ -92,17 +99,35 @@ def count_items(cfg: dict) -> int:
     return sum(len(v) for v in plan_items(resolve(cfg)).values())
 
 
+def _cache_specs(c):
+    """(sae_release, sae_id, forget, retain, seed) for every activation cache the method needs."""
+    m, mc = c["method"], c["model"]
+    if m["name"] in CACHE_METHODS and not ("features" in m and "tau" in m):
+        yield mc["sae_release"], mc["sae_id"], m["forget_corpus"], m["retain_corpus"], m["calib_seed"]
+    gates = []
+    if m["name"] == "gated":
+        gates = [m.get("gate", {})]
+    elif m["name"] == "composite":
+        gates = [g.get("gate", {}) for g in m.get("gates", [])]
+    for g in gates:
+        yield (g.get("sae_release", mc["sae_release"]), g.get("sae_id", mc["sae_id"]),
+               g.get("forget_corpus", f"{c['case']}-forget-corpus"), g.get("retain_corpus", "wikitext"),
+               g.get("calib_seed", c["seed"]))
+
+
 def ensure_cache(c, bundle, progress=None):
-    m = c["method"]
-    if m["name"] not in CACHE_METHODS or ("features" in m and "tau" in m):
-        return None
+    from dsgx.models.loader import get_bundle
 
     def _p(done, total):
         if progress:
             progress.update(phase=f"build-cache {done}/{total}")
 
-    return ac.build_cache(bundle, m["forget_corpus"], m["retain_corpus"], m["calib_seed"],
-                          m.get("dataset_size", 1024), m.get("seq_len", 1024), progress=_p)
+    out = []
+    for rel, sid, fg, rt, seed in _cache_specs(c):
+        b = bundle if (rel, sid) == (bundle.sae_release, bundle.sae_id) else get_bundle(
+            bundle.model_name, rel, sid, bundle.dtype, bundle.device)
+        out.append(ac.build_cache(b, fg, rt, seed, progress=_p))
+    return out
 
 
 def _acc_block(correct_by_ds: dict, forget: list[str], n_boot: int) -> dict:
@@ -126,7 +151,7 @@ def run(cfg: dict, progress=None, force: bool = False):
         progress.add_path(str(log.dir / "progress.json"))
     t0 = time.time()
     mc = c["model"]
-    bundle = get_bundle(mc["name"], mc["sae_release"], mc["sae_id"], mc["dtype"])
+    bundle = get_bundle(mc["name"], mc["sae_release"], mc["sae_id"], mc["dtype"], weights=mc.get("weights"))
     if torch.cuda.is_available():
         torch.cuda.reset_peak_memory_stats()
     selection = None
@@ -142,7 +167,7 @@ def run(cfg: dict, progress=None, force: bool = False):
     log.write_config({"batch_size": int(c["batch_size"]), "split_hashes": {d: split_hash(d) for d in c["datasets"]},
                       "method_info": method.info, "load_counts": dict(LOAD_COUNTS),
                       "selection": selection, "resolved_method": c["method"]})
-    rows, traces, correct_raw, correct_sub = [], {}, {}, {}
+    rows, traces, correct_raw, correct_sub, skipped = [], {}, {}, {}, {}
     n_prompt_tokens = 0
     method.install()
     try:
@@ -153,7 +178,11 @@ def run(cfg: dict, progress=None, force: bool = False):
             ids = plan[ds]
             if progress:
                 progress.update(phase=f"eval {ds}")
-            prompts, infos = zip(*[attack.prompt(items[i]) for i in ids]) if ids else ((), ())
+            pairs = [(i, *attack.prompt(items[i])) for i in ids]
+            skipped[ds] = sum(p is None for _, p, _ in pairs)
+            pairs = [x for x in pairs if x[1] is not None]
+            ids = [i for i, _, _ in pairs]
+            prompts, infos = [p for _, p, _ in pairs], [inf for _, _, inf in pairs]
             base = progress.state["items_done"] if progress else 0
             probs, recs, lens = score_prompts(
                 bundle.model, list(prompts), c["batch_size"], method,
@@ -164,7 +193,8 @@ def run(cfg: dict, progress=None, force: bool = False):
             for j, i in enumerate(ids):
                 it = items[i]
                 r = {"item_id": it.item_id, "dataset": ds, "subject": it.subject, "split": c["split"],
-                     "language": "en", "attack": attack.name, "attack_params": attack.params(),
+                     "language": infos[j].get("language", "en"), "attack": attack.name,
+                     "attack_params": attack.params(), "attack_info": json.dumps(infos[j]),
                      "prompt_len": lens[j], "pad_len": infos[j].get("pad_len", 0),
                      "gold": it.answer, "pred": int(pred[j]), "correct": bool(pred[j] == it.answer),
                      "prob_A": float(probs[j, 0]), "prob_B": float(probs[j, 1]),
@@ -186,7 +216,8 @@ def run(cfg: dict, progress=None, force: bool = False):
         method.remove()
     wall = time.time() - t0
     nb = c["n_boot"]
-    metrics = {"run_id": log.run_id, "n_items": len(rows), "batch_size": int(c["batch_size"]), "views": {}}
+    metrics = {"run_id": log.run_id, "n_items": len(rows), "batch_size": int(c["batch_size"]),
+               "skipped_by_attack": skipped, "views": {}}
     if c["view"] != "dsg_subset":
         metrics["views"]["raw"] = _acc_block(correct_raw, c["forget_datasets"], nb)
     if correct_sub:

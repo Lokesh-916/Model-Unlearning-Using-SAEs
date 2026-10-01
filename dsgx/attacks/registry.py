@@ -17,7 +17,13 @@ def register(name):
 
 
 def make_attack(cfg: dict | None, seed: int = 0):
+    import importlib
+
+    import dsgx.attacks.transforms  # noqa: F401  (registers the shared attack suite)
+
     cfg = cfg or {"name": "none"}
+    if cfg.get("module"):
+        importlib.import_module(cfg["module"])
     name = cfg["name"]
     if name not in ATTACKS:
         raise KeyError(f"unknown attack {name!r}; known: {sorted(ATTACKS)}")
