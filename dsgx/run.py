@@ -151,7 +151,11 @@ def run(cfg: dict, progress=None, force: bool = False):
         progress.add_path(str(log.dir / "progress.json"))
     t0 = time.time()
     mc = c["model"]
-    bundle = get_bundle(mc["name"], mc["sae_release"], mc["sae_id"], mc["dtype"], weights=mc.get("weights"))
+    w = mc.get("weights")
+    if isinstance(w, str) and w.startswith("ckpt:"):
+        from dsgx import paths as _p
+        w = str(_p.cache_dir() / "models" / c["exp_id"] / w[5:])
+    bundle = get_bundle(mc["name"], mc["sae_release"], mc["sae_id"], mc["dtype"], weights=w)
     if torch.cuda.is_available():
         torch.cuda.reset_peak_memory_stats()
     selection = None
