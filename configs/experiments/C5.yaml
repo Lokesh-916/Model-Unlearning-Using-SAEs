@@ -1,0 +1,27 @@
+# C5 - intervention type: clamp-500 vs mean-ablation vs per-feature vs scaled, all with the DSG gate.
+exp_id: C5
+priority: should
+wave: 3
+base:
+  case: bio
+  split: test
+  purpose: report
+  view: both
+  batch_size: 1
+  datasets: ["@forget", "@dsg4"]
+  dataset_label: forget+dsg4
+  method: {name: gated, gate: {type: rho, n_features: 20, retain_pct: 95}, calib: {source: cache-retain}}
+runs:
+  - {method: {intervention: {type: clamp_all, multiplier: 500}}}
+  - {method: {intervention: {type: mean_ablate}}}
+  - {method: {intervention: {type: clamp_per_feature, multiplier: 500}}}
+  - {method: {intervention: {type: clamp_scaled, multiplier: 500}}}
+extra:
+  - {method: {name: base}, batch_size: 16}
+jobs: {group_size: 4, est_seconds_per_item: 0.3, est_vram_gb: 8.5, est_ram_gb: 20, overhead_minutes: 3, deps: ["exp:A1-dev"]}
+smoke:
+  base: {limit: 6, datasets: ["@forget", high_school_geography]}
+  runs:
+    - {method: {intervention: {type: clamp_all, multiplier: 500}}}
+    - {method: {intervention: {type: mean_ablate}}}
+  extra: [{method: {name: base}, batch_size: 6}]
