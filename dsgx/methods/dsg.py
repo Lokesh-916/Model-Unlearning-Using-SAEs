@@ -85,7 +85,18 @@ class DSGHook:
         target_features = feature_activations[:, :, feats]
         activation_mask = target_features > 0
         activation_mask = activation_mask.sum(dim=2) > 0
-        batch_activation_rates = activation_mask.sum(dim=1) / activation_mask.shape[1]
+        if self.lengths is not None and resid.shape[0] > 1:
+            # Batched rows: count and divide over each row's own length, which is exactly what
+            # the legacy code computes at batch size 1 (right padding never reaches earlier
+            # positions under causal attention). The legacy batch>1 rule (padded length) is a
+            # known artefact and is not reproduced.
+            L = resid.shape[1]
+            valid = torch.arange(L, device=resid.device)[None, :] < torch.tensor(
+                self.lengths, device=resid.device)[:, None]
+            activation_mask = activation_mask & valid
+            batch_activation_rates = activation_mask.sum(dim=1) / valid.sum(dim=1)
+        else:
+            batch_activation_rates = activation_mask.sum(dim=1) / activation_mask.shape[1]
         active_batches = batch_activation_rates > self.tau
         if self.record:
             self._record(resid, feature_activations, reconstruction, target_features,

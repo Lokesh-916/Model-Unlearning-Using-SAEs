@@ -125,12 +125,19 @@ def run(cfg: dict, progress=None, force: bool = False):
     bundle = get_bundle(mc["name"], mc["sae_release"], mc["sae_id"], mc["dtype"])
     if torch.cuda.is_available():
         torch.cuda.reset_peak_memory_stats()
+    selection = None
+    if "select" in c["method"]:
+        from dsgx.analysis.select import select_config
+
+        selection = select_config(c["case"], c["method"]["name"], c["method"]["select"])
+        c["method"] = {**{k: v for k, v in c["method"].items() if k != "select"}, **selection["method"]}
     ensure_cache(c, bundle, progress)
     method = make_method(c["method"], bundle, c["seed"])
     attack = make_attack(c["attack"], c["seed"])
     plan = plan_items(c)
     log.write_config({"split_hashes": {d: split_hash(d) for d in c["datasets"]},
-                      "method_info": method.info, "load_counts": dict(LOAD_COUNTS)})
+                      "method_info": method.info, "load_counts": dict(LOAD_COUNTS),
+                      "selection": selection, "resolved_method": c["method"]})
     rows, traces, correct_raw, correct_sub = [], {}, {}, {}
     n_prompt_tokens = 0
     method.install()

@@ -134,3 +134,21 @@ def test_selection_and_tau_match_legacy(tmp_path):
         mine = dsg.select_features(cache, n, 90)
         assert mine == [int(x) for x in sel[:n]]
         assert abs(dsg.calibrate_tau(cache, mine, 95) - taus[str(n)]) < 1e-12
+
+
+def test_faithful_batched_equals_rowwise(toy):
+    """Batched faithful hook == batch-size-1 faithful hook on every real (unpadded) position."""
+    sae, resid = toy
+    feats = [3, 7, 11, 19, 25]
+    lengths = [12, 9, 6]
+    for tau in (0.2, 0.5, 0.8):
+        h = dsg.DSGHook(sae, feats, 500, tau, faithful=True)
+        h.lengths = lengths
+        out = h(resid.clone())
+        recs = h.pop_records()
+        for b, n in enumerate(lengths):
+            h1 = dsg.DSGHook(sae, feats, 500, tau, faithful=True)
+            ref = h1(resid[b:b + 1, :n].clone())
+            r1 = h1.pop_records()[0]
+            assert torch.allclose(out[b, :n], ref[0], atol=1e-5)
+            assert abs(recs[b]["rho"] - r1["rho"]) < 1e-9 and recs[b]["gate_fired"] == r1["gate_fired"]

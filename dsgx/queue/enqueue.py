@@ -84,6 +84,7 @@ def main(argv=None) -> int:
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--worktree")
     ap.add_argument("--deps", nargs="*", default=[])
+    ap.add_argument("--after-exp", nargs="*", default=[], help="depend on every job of these exp ids")
     ap.add_argument("--overwrite", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--test-job", choices=["hang", "sleep"])
@@ -104,7 +105,8 @@ def main(argv=None) -> int:
                    "seconds": a.seconds})
         print(jid)
         return 0
-    jobs = jobs_from_experiment(a.config, a.smoke, a.worktree, a.deps)
+    deps = list(a.deps) + [j for j, job in q.load_jobs().items() if job["exp_id"] in set(a.after_exp)]
+    jobs = jobs_from_experiment(a.config, a.smoke, a.worktree, deps)
     for j in jobs:
         if a.dry_run:
             print(j["id"], j["items_total"], j["est_minutes"])
