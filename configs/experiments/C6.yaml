@@ -1,0 +1,33 @@
+# C6 - two-level gate: domain (WikiText-calibrated rho) AND hazard (probe on benign-bio contrast).
+exp_id: C6
+priority: should
+wave: 3
+base:
+  case: bio
+  split: test
+  purpose: report
+  view: both
+  batch_size: 1
+  datasets: ["@forget", "@dsg4", college_biology, virology, anatomy]
+  dataset_label: forget+dsg4+hardneg
+  attack: {name: dilution, pad: 0}
+runs:
+  - method:
+      name: composite
+      combine: all
+      gates:
+        - {gate: {type: rho, n_features: 20, retain_pct: 95}, calib: {source: cache-retain}, intervene: true}
+        - {gate: {type: probe_resid, probe_train: mcq-dev}, calib: {fpr: 0.05, source: mmlu-dev}, intervene: false}
+extra:
+  - {method: {name: base}, batch_size: 16}
+jobs: {group_size: 1, est_seconds_per_item: 0.6, est_vram_gb: 9, est_ram_gb: 20, overhead_minutes: 4, deps: ["exp:A1-dev"]}
+smoke:
+  base: {limit: 6, datasets: ["@forget", virology]}
+  runs:
+    - method:
+        name: composite
+        combine: all
+        gates:
+          - {gate: {type: rho, n_features: 20, retain_pct: 95}, calib: {source: cache-retain}, intervene: true}
+          - {gate: {type: probe_resid, probe_train: mcq-dev, probe_n: 100}, calib: {fpr: 0.05, source: mmlu-dev}, intervene: false}
+  extra: [{method: {name: base}, batch_size: 6}]
