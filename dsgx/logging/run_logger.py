@@ -37,6 +37,8 @@ def make_run_id(cfg: dict) -> str:
     attack = (cfg.get("attack") or {"name": "none"})["name"]
     ds = cfg["datasets"]
     dataset = cfg.get("dataset_label") or ("+".join(ds) if len(ds) <= 2 else f"{len(ds)}sets")
+    if cfg.get("case"):
+        dataset = f"{cfg['case']}-{dataset}"
     return "__".join([_slug(cfg["exp_id"]), _slug(method), _slug(attack), _slug(dataset),
                       cfg["split"], f"s{cfg.get('seed', 0)}", stable_hash(cfg)])
 
