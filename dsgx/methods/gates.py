@@ -88,7 +88,10 @@ class Gate:
         if "features" in spec:
             self.features = [int(f) for f in spec["features"]]
         elif "features_file" in spec:
-            self.features = [int(f) for f in json.loads(Path(spec["features_file"]).read_text())["features"]][
+            ff = Path(spec["features_file"])
+            if not ff.is_absolute() and not ff.exists():
+                ff = paths.cache_dir() / "features" / spec["features_file"]
+            self.features = [int(f) for f in json.loads(ff.read_text())["features"]][
                 : int(spec.get("n_features", 10 ** 9))]
         else:
             self.features = dsg.select_features(self.cache, int(spec.get("n_features", 20)),
