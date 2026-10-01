@@ -1,0 +1,35 @@
+# A1 · Unified baselines, stage 2: best DEV config per case on TEST with 5 calibration seeds,
+# plus the base model. Enqueue with --after-exp A1-dev (selection reads finished dev runs).
+exp_id: A1-test
+priority: must
+wave: 1
+base:
+  split: test
+  purpose: report
+  view: both
+  batch_size: 1
+  datasets: ["@forget", "@utility"]
+  dataset_label: forget+utility
+  method:
+    name: dsg-faithful
+    select: {exp_id: A1-dev, keys: [n_features, retain_pct, multiplier], max_utility_drop: 0.01}
+grid:
+  case: [bio, cyber]
+  seed: [0, 1, 2, 3, 4]            # seed = calibration sample of the forget corpus
+extra:
+  - {case: bio, method: {name: base}}
+  - {case: cyber, method: {name: base}}
+jobs: {group_size: 5, est_seconds_per_item: 0.27, est_vram_gb: 7.5, est_ram_gb: 20, overhead_minutes: 5}
+smoke:
+  base:
+    limit: 3
+    datasets: ["@forget", "@dsg4", "virology"]
+    dataset_label: smoke
+    method:
+      name: dsg-faithful
+      select: {exp_id: A1-dev-smoke, keys: [n_features, retain_pct, multiplier], max_utility_drop: 0.5}
+  grid:
+    case: [bio]
+    seed: [0, 1]
+  extra:
+    - {case: bio, method: {name: base}}

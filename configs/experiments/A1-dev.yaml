@@ -1,0 +1,33 @@
+# A1 · Unified baselines, stage 1: DSG hyperparameter sweep on DEV (MASTER_PLAN 5.1).
+# Cyber-chatretain is added in P1b once the seeded chat-retain corpus builder exists.
+exp_id: A1-dev
+priority: must
+wave: 1
+base:
+  split: dev
+  purpose: select
+  view: both                       # raw full-set + DSG subset
+  batch_size: 1                    # dsg-faithful is exact only at bs=1
+  datasets: ["@forget", "@utility"]   # full MMLU minus hazard-adjacent subjects (decision 4)
+  dataset_label: forget+utility
+  method: {name: dsg-faithful, multiplier: 500}
+grid:
+  case: [bio, cyber]
+  method.n_features: [10, 20, 30, 50, 100, 200]
+  method.retain_pct: [90, 95]
+  method.multiplier: [100, 500, 1000]
+extra:
+  - {case: bio, method: {name: base}}
+  - {case: cyber, method: {name: base}}
+jobs: {group_size: 6, est_seconds_per_item: 0.27, est_vram_gb: 7.5, est_ram_gb: 20, overhead_minutes: 3}
+smoke:
+  base: {limit: 3, datasets: ["@forget", "@dsg4", "virology"], dataset_label: smoke}
+  grid:
+    case: [bio, cyber]
+    method.n_features: [20]
+    method.retain_pct: [95]
+    method.multiplier: [500]
+  extra:
+    - {case: bio, method: {name: base}}
+    - {case: cyber, method: {name: base}}
+    - {case: bio, method: {name: dsg-fixed, n_features: 20, retain_pct: 95}}
