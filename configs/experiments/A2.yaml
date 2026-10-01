@@ -1,0 +1,33 @@
+# A2 - open-ended QA: WMDP-Bio-Open and TOFU, DSG vs base, stream vs prompt-only gate.
+exp_id: A2
+priority: must
+wave: 5
+tasks:
+  - id: wmdp-bio-open
+    entry: dsgx.eval.openqa:task
+    args:
+      items: wmdp-bio-open
+      split: test
+      case: bio
+      max_new: 64
+      prefix_scores: true
+      methods:
+        - {name: base}
+        - {name: dsg-faithful, mode: stream, n_features: 20, retain_pct: 95, multiplier: 500}
+        - {name: dsg-faithful, mode: prompt_only, n_features: 20, retain_pct: 95, multiplier: 500}
+    smoke_args: {limit: 4, max_new: 24}
+    kind_slot: gpu
+    est_minutes: 90
+    smoke_est_minutes: 4
+    est_vram_gb: 8
+  - id: tofu-forget
+    entry: dsgx.eval.openqa:task
+    args:
+      items: tofu-forget10
+      max_new: 64
+      methods: [{name: base}]
+    smoke_args: {limit: 4, max_new: 24}
+    kind_slot: gpu
+    est_minutes: 20
+    smoke_est_minutes: 3
+    est_vram_gb: 8
