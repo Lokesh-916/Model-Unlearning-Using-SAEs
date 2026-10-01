@@ -9,3 +9,6 @@ evals/unlearning/data/
 
 # secrets
 .env
+
+# harness
+.pytest_cache/
