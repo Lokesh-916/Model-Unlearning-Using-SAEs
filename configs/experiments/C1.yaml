@@ -1,0 +1,31 @@
+# C1 - causal feature selection (should): attribution-patching vs chi2 vs DSG feature sets; select
+# (task), then eval each set as a gated(rho) detector on forget+utility test + B1 dilution.
+exp_id: C1
+priority: should
+wave: 3
+base:
+  case: bio
+  split: test
+  purpose: report
+  view: both
+  batch_size: 1
+  datasets: ["@forget", "@dsg4"]
+  dataset_label: forget+dsg4
+  attack: {name: dilution, pad: 0}
+  calib: {source: cache-retain}
+runs:
+  - {method: {name: gated, gate: {type: rho, features_file: C1_attr_bio.json, n_features: 20, retain_pct: 95}}}
+  - {method: {name: gated, gate: {type: rho, features_file: C1_chi2_bio.json, n_features: 20, retain_pct: 95}}}
+  - {method: {name: gated, gate: {type: rho, features_file: C1_dsg_bio.json, n_features: 20, retain_pct: 95}}}
+extra:
+  - {method: {name: base}, batch_size: 16}
+jobs: {group_size: 3, est_seconds_per_item: 0.3, est_vram_gb: 8.5, est_ram_gb: 20, overhead_minutes: 3, deps: ["exp:A1-dev", select]}
+tasks:
+  - {id: select, entry: experiments.C1.attribution:task, args: {case: bio, n_features: 20, n_fit: 64}, smoke_args: {n_fit: 4}, kind_slot: gpu, est_minutes: 15, smoke_est_minutes: 3, est_vram_gb: 9}
+  - {id: gate-quality, entry: dsgx.analysis.gate_quality:task, args: {exp_id: C1}, kind_slot: cpu, est_minutes: 3, smoke_est_minutes: 1, est_ram_gb: 4, deps: ["exp:C1"]}
+smoke:
+  base: {limit: 6, datasets: ["@forget", high_school_geography]}
+  runs:
+    - {method: {name: gated, gate: {type: rho, features_file: C1_attr_bio.json, n_features: 20, retain_pct: 95}}}
+    - {method: {name: gated, gate: {type: rho, features_file: C1_dsg_bio.json, n_features: 20, retain_pct: 95}}}
+  extra: [{method: {name: base}, batch_size: 6}]
