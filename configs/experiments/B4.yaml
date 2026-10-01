@@ -1,0 +1,37 @@
+# B4 - black-box rewrite (MASTER_PLAN 5.2): attacker LLM rewrites each forget question k times;
+# eval DSG and base on each rewrite index. Transfer to the C gates is run in C2/N7 via rewrite_cache.
+exp_id: B4
+priority: must
+wave: 2
+base:
+  case: bio
+  split: test
+  purpose: report
+  view: both
+  batch_size: 1
+  datasets: ["@forget"]
+  dataset_label: forget
+  method: {name: dsg-faithful, select: {exp_id: A1-dev, max_utility_drop: 0.01}}
+grid:
+  attack.index: [0, 1, 2, 3, 4]
+runs:
+  - {attack: {name: rewrite_cache, path: B4/rewrites}}
+extra:
+  - {method: {name: base}, attack: {name: rewrite_cache, path: B4/rewrites, index: 0}, batch_size: 16}
+  - {method: {name: base}, attack: {name: none}, batch_size: 16}
+jobs: {group_size: 5, est_seconds_per_item: 0.35, est_vram_gb: 8.5, est_ram_gb: 20, overhead_minutes: 3, deps: ["exp:A1-dev", rewrite]}
+tasks:
+  - id: rewrite
+    entry: experiments.B4.rewrite:task
+    args: {datasets: [wmdp-bio], split: test, k: 5, attacker: gemma-2-2b-it}
+    smoke_args: {limit: 6, k: 2}
+    kind_slot: gpu
+    est_minutes: 90
+    smoke_est_minutes: 5
+    est_vram_gb: 7
+  - {id: attack-success, entry: dsgx.analysis.attack_success:task, kind_slot: cpu, est_minutes: 3, smoke_est_minutes: 1, est_ram_gb: 4, deps: ["exp:B4"]}
+smoke:
+  base: {limit: 6, method: {name: dsg-faithful, select: {exp_id: A1-dev-smoke, max_utility_drop: 0.5}}}
+  grid: {attack.index: [0, 1]}
+  runs: [{attack: {name: rewrite_cache, path: B4/rewrites}}]
+  extra: [{method: {name: base}, attack: {name: none}, batch_size: 6}]
