@@ -48,7 +48,7 @@ def select_config(case: str, method_name: str, spec: dict, current: dict | None 
     runs = [(d, c, m) for d, c, m in _runs(exp_id) if c.get("case") == case]
     if any(c["split"] != "dev" for _, c, _ in runs):
         runs = [(d, c, m) for d, c, m in runs if c["split"] == "dev"]
-    base = [m for _, c, m in runs if c["method"]["name"] == "base"]
+    base = [m for _, c, m in runs if c["method"]["name"] == "base" and not (c.get("model") or {}).get("weights")]
     cands = [(d, c, m) for d, c, m in runs if c["method"]["name"] == method_name
              and all(c["method"].get(k) == v for k, v in match.items())]
     if not cands:
