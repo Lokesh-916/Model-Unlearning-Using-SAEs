@@ -10,4 +10,13 @@
 #SBATCH --requeue
 #SBATCH --kill-on-invalid-dep=yes
 source "$HOME/dsg_cluster/slurm/preamble.sh"
-python cluster/a6_full.py
+# Optional hard end (GPU promised to someone else): submit with --export=ALL,DSG_END_BY=2026-10-03T09:00
+# (plus --deadline/--time-min). The run is stopped 5 min before it; checkpoints make the loss small.
+RUN=()
+if [ -n "${DSG_END_BY:-}" ]; then
+    left=$(( $(date -d "$DSG_END_BY" +%s) - $(date +%s) - 300 ))
+    [ "$left" -gt 900 ] || { echo "=== DSG_END_BY $DSG_END_BY: less than 20 min left, not starting"; exit 0; }
+    echo "=== DSG_END_BY $DSG_END_BY: stopping after ${left}s at the latest"
+    RUN=(timeout --signal=TERM --kill-after=120 "$left")
+fi
+"${RUN[@]}" python cluster/a6_full.py

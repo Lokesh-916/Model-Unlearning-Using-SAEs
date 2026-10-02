@@ -125,7 +125,7 @@ def load_sae(release="gemma-scope-2b-pt-res", sae_id="layer_3/width_16k/average_
         return TinySAE()
     from dsgx.models.loader import get_sae
 
-    return get_sae(release, sae_id, device(), dtype)
+    return get_sae(release, sae_id, dtype=dtype, device=device())
 
 
 def dsg_features(case="bio", n=20, pct=95, sae_release="gemma-scope-2b-pt-res",
@@ -136,8 +136,7 @@ def dsg_features(case="bio", n=20, pct=95, sae_release="gemma-scope-2b-pt-res",
     from dsgx.data import activation_cache as ac
     from dsgx.methods import dsg
 
-    cache = ac.open_cache("gemma-2-2b-it", sae_release, sae_id, f"{case}-forget-corpus",
-                                             "wikitext", 0)
+    cache = ac.open_cache("gemma-2-2b-it", sae_release, sae_id, f"{case}-forget-corpus", "wikitext", 0)
     feats = dsg.select_features(cache, n, pct)
     return [int(f) for f in feats], float(dsg.calibrate_tau(cache, feats, pct))
 
