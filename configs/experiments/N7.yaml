@@ -21,7 +21,7 @@ runs:
         - {gate: {type: rho, sae_release: gemma-scope-2b-pt-res-canonical, sae_id: 'layer_12/width_16k/canonical', n_features: 20}, calib: {fpr: 0.05, source: mmlu-dev}, intervene: true}
   - method: {name: composite, combine: majority, gates: *g3}
 extra:
-  - {method: {name: base}, batch_size: 16}
+  - {method: {name: base}, batch_size: 1}
 jobs: {group_size: 1, est_seconds_per_item: 0.8, est_vram_gb: 10, est_ram_gb: 24, overhead_minutes: 4, deps: ["exp:A1-dev"]}
 smoke:
   base: {limit: 6, datasets: ["@forget", high_school_geography]}
