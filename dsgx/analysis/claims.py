@@ -209,6 +209,8 @@ def _recovery_test(rb, pb, nb, ro, po, no):
 
 def ch6(runs):
     rl = [r for r in runs if r.base_exp == "A6" and "curve" in r.metrics and r.metrics.get("curve")]
+    if not rl:  # the gpuws report: full fine-tune relearning (job a6-full)
+        rl = [r for r in runs if r.base_exp == "A6-full" and r.metrics.get("curve")]
     if not rl:
         return _claim("C-H6", "Inconclusive", ["missing: A6 relearning results"])
     cells = {}

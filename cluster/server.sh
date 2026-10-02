@@ -54,6 +54,10 @@ stage_gb() {    # total size of the STAGE sources, GB (rounded up)
     done < <(stage_lines)
     echo $(( (tot + 1073741823) / 1073741824 ))
 }
+peak_gb() {     # max(staged size, EST_DISK_GB): the job's peak footprint on the server
+    local e="${EST_DISK_GB%.*}"; [[ "$e" =~ ^[0-9]+$ ]] || e=0
+    [ "$1" -gt "$e" ] && echo "$1" || echo "$e"
+}
 disk() {        # prints "free_gb ours_gb"
     remote 'echo "$(df -BG --output=avail "$HOME" | tail -1 | tr -dc 0-9) $(du -sBG "$HOME/dsg_cluster" 2>/dev/null | cut -f1 | tr -dc 0-9)"'
 }
@@ -73,10 +77,10 @@ sync)
 plan)
     conf
     read -r free ours < <(disk)
-    need=$(stage_gb)
-    echo "job $JOB: stage ${need} GB (est. peak incl. outputs ${EST_DISK_GB} GB), runtime ~${EST_HOURS} h"
+    need=$(stage_gb); peak=$(peak_gb "$need")
+    echo "job $JOB: stage ${need} GB, est. peak incl. outputs ${peak} GB, runtime ~${EST_HOURS} h"
     echo "server now: ${free} GB free on /, ours ${ours} GB"
-    echo "after staging: free $((free - need)) GB (must stay >= $MIN_FREE_GB), ours $((ours + need)) GB (must stay < $MAX_OURS_GB)"
+    echo "at peak: free $((free - peak)) GB (must stay >= $MIN_FREE_GB), ours $((ours + peak)) GB (must stay < $MAX_OURS_GB)"
     stage_lines | while read -r src dest; do printf '  %-8s %s -> %s\n' "$(du -shL "$src" 2>/dev/null | cut -f1)" "$src" "$dest"; done
     [ -n "$STAGE_SCRIPT" ] && echo "  + $STAGE_SCRIPT"
     echo "chain: validate.sbatch ${CHAIN}"
@@ -84,15 +88,18 @@ plan)
 stage)
     conf
     read -r free ours < <(disk)
-    need=$(stage_gb)
-    if [ $((free - need)) -lt $MIN_FREE_GB ] || [ $((ours + need)) -ge $MAX_OURS_GB ]; then
-        echo "REFUSING to stage $JOB: needs ${need} GB; free ${free} -> $((free - need)) (min $MIN_FREE_GB), ours ${ours} -> $((ours + need)) (max $MAX_OURS_GB)."
+    need=$(stage_gb); peak=$(peak_gb "$need")
+    if [ $((free - peak)) -lt $MIN_FREE_GB ] || [ $((ours + peak)) -ge $MAX_OURS_GB ]; then
+        echo "REFUSING to stage $JOB: peak ${peak} GB; free ${free} -> $((free - peak)) (min $MIN_FREE_GB), ours ${ours} -> $((ours + peak)) (max $MAX_OURS_GB)."
         echo "Clean up a finished job first (server.sh cleanup <job> --yes) and tell the team."; exit 1
     fi
     lab=$(df -BG --output=avail "$HOME" | tail -1 | tr -dc 0-9)
     [ "$lab" -gt "$LAB_MIN_FREE_GB" ] || { echo "REFUSING: lab PC free ${lab} GB <= $LAB_MIN_FREE_GB"; exit 1; }
     rlog "rsync stage $JOB (${need} GB)" "server.sh stage $JOB"
-    stage_lines | while read -r src dest; do echo "stage $src -> $dest"; push "$src" "$dest"; done
+    stage_lines | while read -r src dest; do
+        [ -e "$src" ] || { echo "skip (not on the lab PC): $src"; continue; }
+        echo "stage $src -> $dest"; push "$src" "$dest"
+    done
     [ -n "$STAGE_SCRIPT" ] && { [ -n "$FAKE" ] && echo "(fake) skip $STAGE_SCRIPT" || bash "$REPO/$STAGE_SCRIPT"; }
     remote "mkdir -p ~/dsg_cluster/results/.staged && date -Is > ~/dsg_cluster/results/.staged/$JOB"
     read -r free ours < <(disk); echo "staged $JOB; server free ${free} GB, ours ${ours} GB"
