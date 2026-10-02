@@ -19,7 +19,7 @@ runs:
         - {gate: {type: rho, n_features: 20, retain_pct: 95}, calib: {source: cache-retain}, intervene: true}
         - {gate: {type: probe_resid, probe_train: mcq-dev}, calib: {fpr: 0.05, source: mmlu-dev}, intervene: false}
 extra:
-  - {method: {name: base}, batch_size: 16}
+  - {method: {name: base}, batch_size: 1}
 jobs: {group_size: 1, est_seconds_per_item: 0.6, est_vram_gb: 9, est_ram_gb: 20, overhead_minutes: 4, deps: ["exp:A1-dev"]}
 smoke:
   base: {limit: 6, datasets: ["@forget", virology]}
