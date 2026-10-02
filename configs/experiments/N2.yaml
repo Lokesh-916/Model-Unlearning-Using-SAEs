@@ -1,0 +1,7 @@
+# N2 - OpenUnlearning adapter (should): DSG as a drop-in HF wrapper, verified on the A2 TOFU model;
+# writes $DSG_RESULTS/N2_PR.md (draft, not opened).
+exp_id: N2
+priority: should
+wave: 6
+tasks:
+  - {id: adapter, entry: experiments.N2.adapter:task, args: {n: 40}, smoke_args: {n: 3}, kind_slot: gpu, est_minutes: 15, smoke_est_minutes: 4, est_vram_gb: 12, est_ram_gb: 28, deps: ["exp:A2"]}
