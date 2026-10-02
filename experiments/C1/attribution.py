@@ -37,7 +37,10 @@ def attribution_scores(bundle, items, topk=200):
             a = sae.encode(resid)
             a.retain_grad()
             feats["a"] = a
-            return sae.decode(a) + (resid - sae.decode(a))
+            # Detach the SAE error so the model output depends on the features through the
+            # reconstruction (attribution patching); otherwise the two decode(a) cancel and a.grad=0.
+            error = (resid - sae.decode(a)).detach()
+            return sae.decode(a) + error
 
         m.reset_hooks()
         logits = m.run_with_hooks(t, fwd_hooks=[(bundle.hook_name, hook)])[0, -1]
@@ -45,9 +48,10 @@ def attribution_scores(bundle, items, topk=200):
         lp = torch.log_softmax(logits.float(), -1)[gold]
         m.zero_grad(set_to_none=True)
         lp.backward()
-        a = feats["a"][0]
-        g = a.grad[0] if a.grad.dim() == 3 else a.grad
-        acc += (torch.relu(a) * a.grad)[-1].abs().detach()
+        a = feats["a"]
+        if a.grad is None:
+            continue
+        acc += (torch.relu(a) * a.grad)[0, -1].abs().detach()
         m.reset_hooks()
     torch.set_grad_enabled(False)
     s = (acc / len(items)).cpu().numpy()
