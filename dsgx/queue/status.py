@@ -9,6 +9,7 @@ import time
 from collections import defaultdict
 
 from dsgx import paths
+from dsgx.labels import reference_label
 from dsgx.queue import common as q
 from dsgx.queue import resources
 
@@ -41,6 +42,14 @@ def _run_dirs_for_job(job):
     return out
 
 
+def _run_label(run_dir) -> str | None:
+    try:
+        cfg = json.loads(open(f"{run_dir}/config.json").read()).get("config")
+    except (OSError, ValueError):
+        return None
+    return reference_label(cfg)
+
+
 def headline_for_job(job) -> str | None:
     dirs = _run_dirs_for_job(job)
     if not dirs:
@@ -49,7 +58,9 @@ def headline_for_job(job) -> str | None:
         d = json.loads(open(f"{dirs[-1]}/DONE").read())["headline"]
     except (OSError, ValueError, KeyError):
         return None
-    return f"forget {_ci(d.get('forget'))}; util {_ci(d.get('utility_pooled'))} ({d.get('view')})"
+    label = _run_label(dirs[-1])
+    head = f"forget {_ci(d.get('forget'))}; util {_ci(d.get('utility_pooled'))} ({d.get('view')})"
+    return f"[{label}] {head}" if label else head
 
 
 def collect():
@@ -176,12 +187,41 @@ def _compact(lines, limit=40) -> str:
     return "\n".join(out) + "\n"
 
 
+def _run_row(run_dir) -> tuple[str | None, str] | None:
+    """(reference label, markdown row) for one finished run: both views with 95% CI and n."""
+    try:
+        m = json.loads(open(f"{run_dir}/metrics.json").read())
+        c = json.loads(open(f"{run_dir}/config.json").read())
+    except (OSError, ValueError):
+        return None
+    cfg = c.get("config") or {}
+    views = m.get("views") or {}
+    cells = []
+    for view in ("raw", "dsg_subset"):
+        v = views.get(view) or {}
+        cells += [_ci(v.get("forget")), _ci((v.get("utility") or {}).get("pooled"))]
+    name = str(run_dir).rstrip("/").rsplit("/", 1)[-1]
+    row = (f"| {name} | {cfg.get('split', '-')} | {cfg.get('seed', '-')} | {m.get('batch_size', '-')} | "
+           + " | ".join(cells) + " |")
+    return reference_label(cfg), row
+
+
 def wave_report(w: int) -> str:
     jobs, states, rows, _ = collect()
-    L = [f"# Wave {w} finished", "", "| job | status | headline (CI, n) |", "|---|---|---|"]
+    L = [f"# Wave {w} finished", "", "## Jobs", "", "| job | status | headline (CI, n) |", "|---|---|---|"]
+    main_rows, ref_rows = [], {}
     for r in rows:
         if r["job"].get("wave", 0) <= w:
             L.append(f"| {r['id']} | {r['st']['status']} | {headline_for_job(r['job']) or '-'} |")
+            for d in _run_dirs_for_job(r["job"]):
+                got = _run_row(d)
+                if got:
+                    (ref_rows.setdefault(got[0], []) if got[0] else main_rows).append(got[1])
+    head = ["| run | split | seed | bs | raw forget | raw utility | DSG-subset forget | DSG-subset utility |",
+            "|---|---|---|---|---|---|---|---|"]
+    L += ["", "## Results per run (mean [95% bootstrap CI] n)", ""] + head + main_rows
+    for label, rr in ref_rows.items():
+        L += ["", f"## {label}: not a main comparison", ""] + head + rr
     L += ["", "Resume with: python -m dsgx.queue.resume"]
     return "\n".join(L) + "\n"
 
