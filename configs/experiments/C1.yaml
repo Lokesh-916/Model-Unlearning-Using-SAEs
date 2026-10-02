@@ -18,7 +18,7 @@ runs:
   - {method: {name: gated, gate: {type: rho, features_file: C1_chi2_bio.json, n_features: 20, retain_pct: 95}}}
   - {method: {name: gated, gate: {type: rho, features_file: C1_dsg_bio.json, n_features: 20, retain_pct: 95}}}
 extra:
-  - {method: {name: base}, batch_size: 16}
+  - {method: {name: base}, batch_size: 1}
 jobs: {group_size: 3, est_seconds_per_item: 0.3, est_vram_gb: 8.5, est_ram_gb: 20, overhead_minutes: 3, deps: ["exp:A1-dev", select]}
 tasks:
   - {id: select, entry: experiments.C1.attribution:task, args: {case: bio, n_features: 20, n_fit: 64}, smoke_args: {n_fit: 4}, kind_slot: gpu, est_minutes: 15, smoke_est_minutes: 3, est_vram_gb: 9}
