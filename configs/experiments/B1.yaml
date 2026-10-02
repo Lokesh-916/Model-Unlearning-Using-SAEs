@@ -17,9 +17,9 @@ grid:
 runs:
   - {attack: {name: dilution}}
 extra:
-  - {method: {name: base}, attack: {name: dilution, pad: 0}, batch_size: 16}
-  - {method: {name: base}, attack: {name: dilution, pad: 400}, batch_size: 16}
-  - {method: {name: base}, attack: {name: dilution, pad: 1600}, batch_size: 16}
+  - {method: {name: base}, attack: {name: dilution, pad: 0}, batch_size: 1}
+  - {method: {name: base}, attack: {name: dilution, pad: 400}, batch_size: 1}
+  - {method: {name: base}, attack: {name: dilution, pad: 1600}, batch_size: 1}
 jobs: {group_size: 8, est_seconds_per_item: 0.35, est_vram_gb: 8.5, est_ram_gb: 20, overhead_minutes: 3, deps: ["exp:A1-dev"]}
 tasks:
   - {id: attack-success, entry: dsgx.analysis.attack_success:task, kind_slot: cpu, est_minutes: 5, smoke_est_minutes: 1, est_ram_gb: 4, deps: ["exp:B1"]}
