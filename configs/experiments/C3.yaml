@@ -22,7 +22,7 @@ runs:
   - {method: {name: gated, gate: {type: rho, sae_release: gemma-scope-2b-pt-res-canonical, sae_id: 'layer_20/width_16k/canonical', retain_pct: 95, n_features: 20}}}
   - {method: {name: gated, gate: {type: rho, sae_release: gemma-scope-2b-pt-res-canonical, sae_id: 'layer_24/width_16k/canonical', retain_pct: 95, n_features: 20}}}
 extra:
-  - {method: {name: base}, batch_size: 16}
+  - {method: {name: base}, batch_size: 1}
 jobs: {group_size: 1, est_seconds_per_item: 0.4, est_vram_gb: 9, est_ram_gb: 20, overhead_minutes: 4, deps: ["exp:A1-dev"]}
 tasks:
   - {id: auroc, entry: dsgx.analysis.gate_quality:task, args: {exp_id: C3}, kind_slot: cpu, est_minutes: 5, smoke_est_minutes: 1, est_ram_gb: 4, deps: ["exp:C3"]}
