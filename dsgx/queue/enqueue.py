@@ -79,7 +79,7 @@ def jobs_from_experiment(cfg_path, smoke=False, worktree=None, deps=None):
     # 1. tasks
     task_ids = [f"{exp_id}-{t['id']}" for t in exp.get("tasks") or []]
     for t in exp.get("tasks") or []:
-        if smoke and t.get("skip_smoke"):
+        if (smoke and t.get("skip_smoke")) or (not smoke and t.get("smoke_only")):
             continue
         args = deep_merge(t.get("args") or {}, (t.get("smoke_args") or {}) if smoke else {})
         est = t.get("smoke_est_minutes", 5) if smoke else t.get("est_minutes", 60)
