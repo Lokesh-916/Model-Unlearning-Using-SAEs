@@ -11,5 +11,5 @@ no large downloads, no hazardous text.
 | 3 | `python -m dsgx.combine` (combination wave) | done: rule + screening + TEST/LOO generation + enqueue (5 tests, incl. temp-worktree enqueue); harness: conformal calib rule, `exp` key for B4/B5 attacks |
 | 4 | server job scripts + SERVER_JOBS_MANIFEST.md | done: 7 jobs (script + sbatch + conf), jobcommon, fetch_models.sh, wheels/q2 (29 MB); 14 CPU tests (tiny model) |
 | 5 | qualitative track (Q1–Q8) tools | done: Q1 cards (+Neuronpedia fetch, l0_142 only), Q3, Q5, Q6 run on smoke data; Q4/Q8 sheet / kappa / gallery (TOFU-only guard); 5 tests. Fixed open_cache misuse in cluster/jobcommon (would have crashed every server job) |
-| 6 | `python -m dsgx.analysis.paper_assets` | in progress |
-| 7 | CLAUDE.md, merge notes, final PREP_PROGRESS | next |
+| 6 | `python -m dsgx.analysis.paper_assets` | done: 23 booktabs tables + 16 paper-size PDFs from smoke; test document compiles with pdflatex; 2 tests |
+| 7 | CLAUDE.md, merge notes, final PREP_PROGRESS | in progress |

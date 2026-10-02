@@ -18,6 +18,10 @@ class Skip(Exception):
     pass
 
 
+PAPER = False          # set by paper_assets: resize every figure to a paper column width, PDF only
+COL_IN, WIDE_IN = 3.4, 6.75   # one column; full text width of two-column venues (ICML/ACL)
+
+
 def setup(paper=False):
     import matplotlib
 
@@ -43,8 +47,14 @@ def save(fig, outdir: Path, stem: str, size=None):
     outdir.mkdir(parents=True, exist_ok=True)
     if size:
         fig.set_size_inches(*size)
+    exts = ("png", "pdf")
+    if PAPER:  # single column unless the figure was designed wide; keep the aspect ratio
+        w, h = fig.get_size_inches()
+        tw = WIDE_IN if w > 6 else COL_IN
+        fig.set_size_inches(tw, h * tw / w)
+        exts = ("pdf",)
     fig.tight_layout()
-    for ext in ("png", "pdf"):
+    for ext in exts:
         fig.savefig(outdir / f"{stem}.{ext}", dpi=200 if ext == "png" else None)
     import matplotlib.pyplot as plt
 
