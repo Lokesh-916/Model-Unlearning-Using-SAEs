@@ -1,0 +1,10 @@
+# T-checks (CPU theory checks, MASTER_PLAN 5.6). Each reads finished run artifacts; no model is loaded.
+exp_id: T
+priority: should
+wave: 4
+tasks:
+  - {id: T1, entry: experiments.T.checks:t1, kind_slot: cpu, est_minutes: 3, smoke_est_minutes: 1, est_ram_gb: 4, deps: ["exp:B1"]}
+  - {id: T2, entry: experiments.T.checks:t2, kind_slot: cpu, est_minutes: 2, smoke_est_minutes: 1, est_ram_gb: 4, deps: ["exp:C2"]}
+  - {id: T3, entry: experiments.T.checks:t3, kind_slot: cpu, est_minutes: 2, smoke_est_minutes: 1, est_ram_gb: 4}
+  - {id: T4, entry: experiments.T.checks:t4, kind_slot: cpu, est_minutes: 1, smoke_est_minutes: 1, est_ram_gb: 2, deps: ["exp:D2"]}
+  - {id: T5, entry: experiments.T.checks:t5, kind_slot: cpu, est_minutes: 2, smoke_est_minutes: 1, est_ram_gb: 4, deps: ["exp:C2"]}
