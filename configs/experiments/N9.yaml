@@ -1,0 +1,8 @@
+# N9 - SAE-quality explanation (must): correlate per-item SAE recon MSE, L0 and rho with DSG gate
+# misses (base-correct and DSG-still-correct) via logistic regression with bootstrap CIs; plus
+# decoder-cosine feature-splitting indicators. Reads a finished DSG run (B1 or A1).
+exp_id: N9
+priority: must
+wave: 4
+tasks:
+  - {id: explain, entry: experiments.N9.quality:task, args: {case: bio}, smoke_args: {case: bio}, kind_slot: gpu, est_minutes: 10, smoke_est_minutes: 3, est_vram_gb: 9, est_ram_gb: 20, deps: ["exp:B1"]}
