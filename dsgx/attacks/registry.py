@@ -37,7 +37,7 @@ class Attack:
         self.cfg, self.seed = cfg, seed
 
     def params(self) -> dict:
-        return {k: v for k, v in self.cfg.items() if k != "name"}
+        return {k: v for k, v in self.cfg.items() if k not in ("name", "_exp_id")}
 
     def prompt(self, item) -> tuple[str, dict]:
         """Return (prompt, per-item info such as pad_len)."""
