@@ -17,7 +17,7 @@ runs:
   - {method: {intervention: {type: clamp_per_feature, multiplier: 500}}}
   - {method: {intervention: {type: clamp_scaled, multiplier: 500}}}
 extra:
-  - {method: {name: base}, batch_size: 16}
+  - {method: {name: base}, batch_size: 1}
 jobs: {group_size: 4, est_seconds_per_item: 0.3, est_vram_gb: 8.5, est_ram_gb: 20, overhead_minutes: 3, deps: ["exp:A1-dev"]}
 smoke:
   base: {limit: 6, datasets: ["@forget", high_school_geography]}
