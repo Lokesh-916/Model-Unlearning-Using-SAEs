@@ -22,10 +22,10 @@ runs:
   - {case: cyber}
   - {case: cyber, method: {retain_corpus: mmlu-aux-chat, select: {match: {retain_corpus: mmlu-aux-chat}}}, dataset_label: chatretain}
 extra:
-  - {case: bio, method: {name: base}, batch_size: 16}
-  - {case: cyber, method: {name: base}, batch_size: 16}
-  - {case: bio, method: {name: base}, batch_size: 16, model: {weights: AMindToThink/gemma-2-2b-it_RMU_s200_a300_layer3}, dataset_label: rmu-unverified}
-  - {case: cyber, method: {name: base}, batch_size: 16, model: {weights: AMindToThink/gemma-2-2b-it_RMU_s200_a300_layer3}, dataset_label: rmu-unverified}
+  - {case: bio, method: {name: base}, batch_size: 1}
+  - {case: cyber, method: {name: base}, batch_size: 1}
+  - {case: bio, method: {name: base}, batch_size: 1, model: {weights: AMindToThink/gemma-2-2b-it_RMU_s200_a300_layer3}, dataset_label: rmu-unverified}
+  - {case: cyber, method: {name: base}, batch_size: 1, model: {weights: AMindToThink/gemma-2-2b-it_RMU_s200_a300_layer3}, dataset_label: rmu-unverified}
 jobs: {group_size: 5, est_seconds_per_item: 0.26, est_vram_gb: 8.5, est_ram_gb: 20, overhead_minutes: 5, deps: ["exp:A1-dev"]}
 smoke:
   base:
