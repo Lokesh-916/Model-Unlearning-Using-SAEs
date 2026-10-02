@@ -1,0 +1,7 @@
+# N1 - GuardBreak toolkit (must): package guardbreak/ (CLI over the shared attack suite) and run it end
+# to end. Public part = transformation code only; nothing is published.
+exp_id: N1
+priority: must
+wave: 6
+tasks:
+  - {id: cli-e2e, entry: experiments.N1.smoke:task, args: {n: 100, split: test}, smoke_args: {n: 3}, kind_slot: gpu, est_minutes: 30, smoke_est_minutes: 4, est_vram_gb: 9}
