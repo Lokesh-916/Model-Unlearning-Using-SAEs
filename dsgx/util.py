@@ -86,6 +86,9 @@ def git_info(cwd=None) -> dict:
             return ""
 
     status = _git("status", "--porcelain", "--untracked-files=no")
+    stamp = Path(cwd) / "CODE_COMMIT.json"  # written by cluster/sync_code.sh (copies have no .git)
+    if not _git("rev-parse", "HEAD") and stamp.exists():
+        return {**json.loads(stamp.read_text()), "cwd": cwd}
     return {
         "commit": _git("rev-parse", "HEAD"),
         "branch": _git("rev-parse", "--abbrev-ref", "HEAD"),
