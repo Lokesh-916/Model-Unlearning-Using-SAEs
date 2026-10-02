@@ -78,6 +78,23 @@ def resolve(cfg: dict) -> dict:
     return c
 
 
+def resolve_weights(w, exp_id: str):
+    """'ckpt:<tag>' -> $DSG_CACHE/models/<exp_id>/<tag>; 'ckpt:<EXP>/<tag>' -> another experiment's
+    checkpoint (with '-smoke' appended when the caller is a smoke experiment). Other values pass."""
+    if not (isinstance(w, str) and w.startswith("ckpt:")):
+        return w
+    from dsgx import paths as _p
+
+    rest = w[5:]
+    if "/" in rest:
+        exp, tag = rest.split("/", 1)
+        if exp_id.endswith("-smoke") and not exp.endswith("-smoke"):
+            exp += "-smoke"
+    else:
+        exp, tag = exp_id, rest
+    return str(_p.cache_dir() / "models" / exp / tag)
+
+
 def plan_items(c: dict) -> dict[str, list[int]]:
     """Item ids to evaluate per dataset, after split, view and limit."""
     out = {}
@@ -151,10 +168,7 @@ def run(cfg: dict, progress=None, force: bool = False):
         progress.add_path(str(log.dir / "progress.json"))
     t0 = time.time()
     mc = c["model"]
-    w = mc.get("weights")
-    if isinstance(w, str) and w.startswith("ckpt:"):
-        from dsgx import paths as _p
-        w = str(_p.cache_dir() / "models" / c["exp_id"] / w[5:])
+    w = resolve_weights(mc.get("weights"), c["exp_id"])
     bundle = get_bundle(mc["name"], mc["sae_release"], mc["sae_id"], mc["dtype"], weights=w)
     if torch.cuda.is_available():
         torch.cuda.reset_peak_memory_stats()
