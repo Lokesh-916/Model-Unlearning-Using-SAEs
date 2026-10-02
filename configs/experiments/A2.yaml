@@ -1,4 +1,7 @@
-# A2 - open-ended QA: WMDP-Bio-Open and TOFU, DSG vs base, stream vs prompt-only gate.
+# A2 - open-ended QA (MASTER_PLAN 5.1): WMDP-Bio-Open (stream vs prompt-only gate vs base) and TOFU
+# (LoRA fine-tune full + retain-only reference, then ROUGE/embedding QA, truth ratio, forget quality,
+# model utility, with and without DSG on TOFU features). LLM judge: TOFU only, if a key works (not
+# run by default; hazardous text is never sent to an external API).
 exp_id: A2
 priority: must
 wave: 5
@@ -20,14 +23,49 @@ tasks:
     est_minutes: 90
     smoke_est_minutes: 4
     est_vram_gb: 8
-  - id: tofu-forget
+  - id: tofu-finetune-full
+    entry: experiments.A2.tofu:finetune
+    args: {config: full, tag: tofu_full, steps: 1000, bs: 8}
+    smoke_args: {steps: 4, bs: 2}
+    kind_slot: gpu
+    gpu_exclusive: true
+    wave: 1
+    est_minutes: 60
+    smoke_est_minutes: 5
+    est_vram_gb: 14
+    est_ram_gb: 30
+  - id: tofu-finetune-retain
+    entry: experiments.A2.tofu:finetune
+    args: {config: retain90, tag: tofu_retain, steps: 900, bs: 8}
+    smoke_args: {steps: 4, bs: 2}
+    kind_slot: gpu
+    gpu_exclusive: true
+    wave: 1
+    est_minutes: 55
+    smoke_est_minutes: 5
+    est_vram_gb: 14
+    est_ram_gb: 30
+  - id: tofu-qa
     entry: dsgx.eval.openqa:task
     args:
       items: tofu-forget10
+      model: {weights: "ckpt:tofu_full"}
       max_new: 64
-      methods: [{name: base}]
+      methods:
+        - {name: base}
+        - {name: dsg-faithful, mode: stream, forget_corpus: tofu-forget10, retain_corpus: tofu-retain90, n_features: 20, retain_pct: 95}
     smoke_args: {limit: 4, max_new: 24}
     kind_slot: gpu
-    est_minutes: 20
-    smoke_est_minutes: 3
-    est_vram_gb: 8
+    est_minutes: 40
+    smoke_est_minutes: 5
+    est_vram_gb: 9
+    deps: [tofu-finetune-full]
+  - id: tofu-metrics
+    entry: experiments.A2.tofu:metrics
+    args: {n_features: 20, retain_pct: 95}
+    smoke_args: {limit: 4}
+    kind_slot: gpu
+    est_minutes: 60
+    smoke_est_minutes: 6
+    est_vram_gb: 9
+    deps: [tofu-finetune-full, tofu-finetune-retain]
