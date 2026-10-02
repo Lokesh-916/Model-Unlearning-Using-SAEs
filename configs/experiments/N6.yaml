@@ -1,0 +1,8 @@
+# N6 - conformal threshold (must): split-conformal tau for alpha in {0.01,0.05,0.1}; empirical FPR on
+# held-out benign and shifted-benign. Run for the DSG rho gate and the C2 window gate.
+exp_id: N6
+priority: must
+wave: 3
+tasks:
+  - {id: conformal-rho, entry: experiments.N6.conformal:task, args: {gate: {type: rho, n_features: 20, retain_pct: 95}, n: 400}, smoke_args: {n: 30}, kind_slot: gpu, est_minutes: 15, smoke_est_minutes: 3, est_vram_gb: 9}
+  - {id: conformal-window, entry: experiments.N6.conformal:task, args: {gate: {type: window, w: 16}, n: 400}, smoke_args: {n: 30}, kind_slot: gpu, est_minutes: 15, smoke_est_minutes: 3, est_vram_gb: 9}
