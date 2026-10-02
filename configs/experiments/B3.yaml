@@ -21,10 +21,10 @@ extra:
   - {attack: {name: encode, encoding: rot13}}
   - {attack: {name: encode, encoding: leet}}
   - {attack: {name: encode, encoding: spaced}}
-  - {method: {name: base}, attack: {name: translate, lang: fr, min_chrf: 40}, batch_size: 16}
-  - {method: {name: base}, attack: {name: translate, lang: hi, min_chrf: 40}, batch_size: 16}
-  - {method: {name: base}, attack: {name: encode, encoding: base64}, batch_size: 16}
-  - {method: {name: base}, attack: {name: none}, batch_size: 16}
+  - {method: {name: base}, attack: {name: translate, lang: fr, min_chrf: 40}, batch_size: 1}
+  - {method: {name: base}, attack: {name: translate, lang: hi, min_chrf: 40}, batch_size: 1}
+  - {method: {name: base}, attack: {name: encode, encoding: base64}, batch_size: 1}
+  - {method: {name: base}, attack: {name: none}, batch_size: 1}
 jobs: {group_size: 6, est_seconds_per_item: 0.3, est_vram_gb: 8.5, est_ram_gb: 20, overhead_minutes: 3, deps: ["exp:A1-dev", translate]}
 tasks:
   - id: translate
