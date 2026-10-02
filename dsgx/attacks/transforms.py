@@ -193,7 +193,7 @@ class RewriteCache(Attack):
 
     def prompt(self, item):
         if item.dataset not in self._rw:
-            p = paths.private_dir() / self.cfg["path"] / f"{item.dataset}.jsonl"
+            p = paths.private_dir() / (self.cfg.get("_exp_id") or "") / self.cfg["path"] / f"{item.dataset}.jsonl"
             self._rw[item.dataset] = {}
             if p.exists():
                 for line in p.open():
@@ -213,6 +213,6 @@ class Suffix(Attack):
     def prompt(self, item):
         text = self.cfg.get("text")
         if text is None:
-            text = json.loads((paths.private_dir() / self.cfg["path"]).read_text())["text"]
+            text = json.loads((paths.private_dir() / (self.cfg.get("_exp_id") or "") / self.cfg["path"]).read_text())["text"]
         return wrap(pre_question(item.dataset) + item.question + choices_block(item.choices) + "\n" + text), \
             {"pad_len": 0}
