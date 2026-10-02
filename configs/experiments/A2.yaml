@@ -29,7 +29,7 @@ tasks:
     smoke_args: {steps: 4, bs: 2}
     kind_slot: gpu
     gpu_exclusive: true
-    wave: 1
+    wave: 4
     est_minutes: 60
     smoke_est_minutes: 5
     est_vram_gb: 14
@@ -40,7 +40,7 @@ tasks:
     smoke_args: {steps: 4, bs: 2}
     kind_slot: gpu
     gpu_exclusive: true
-    wave: 1
+    wave: 4
     est_minutes: 55
     smoke_est_minutes: 5
     est_vram_gb: 14
