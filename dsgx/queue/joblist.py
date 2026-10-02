@@ -43,18 +43,11 @@ def build(smoke: bool, only=None) -> list[dict]:
         if only and exp["exp_id"] not in only and Path(cp).stem not in only:
             continue
         jobs += jobs_from_experiment(cp, smoke=smoke, worktree=wt)
-    by_exp = defaultdict(list)
-    for j in jobs:
-        by_exp[j["exp_id"]].append(j["id"])
+    from dsgx.queue.enqueue import expand_batch_deps
+
+    expand_batch_deps(jobs)
     ids = {j["id"] for j in jobs} | set(q.load_jobs())
     for j in jobs:
-        deps = []
-        for d in j["deps"]:
-            if d.endswith("-*"):
-                deps += by_exp.get(d[:-2], [d])
-            else:
-                deps.append(d)
-        j["deps"] = sorted(set(deps) - {j["id"]})
         j["missing_deps"] = [d for d in j["deps"] if d not in ids]
     return jobs
 
