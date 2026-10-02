@@ -1,0 +1,8 @@
+# N4 - red-team challenge app (should, local only, fictitious TOFU domain): DSG-guarded TOFU model,
+# anonymised attempt logs, leaderboard. The task self-tests submission + logging + leaderboard and
+# builds the UI without serving. Serve manually: python -m experiments.N4.app
+exp_id: N4
+priority: should
+wave: 6
+tasks:
+  - {id: challenge-check, entry: experiments.N4.app:task, args: {n: 16}, smoke_args: {n: 3}, kind_slot: gpu, est_minutes: 8, smoke_est_minutes: 3, est_vram_gb: 9, deps: ["exp:A2"]}
