@@ -129,3 +129,32 @@ def test_bs1_rule_for_reported_test_runs():
     with pytest.raises(ValueError):
         resolve(dict(base, method={"name": "dsg-faithful"}))
     resolve(dict(base, split="dev", purpose="select", method={"name": "dsg-faithful"}))
+
+
+def test_attack_success_compute(tmp_path, monkeypatch):
+    """attack_success.compute over synthetic runs: gated items, paired test, base control."""
+    import json
+
+    import pandas as pd
+
+    from dsgx import paths
+    from dsgx.analysis import attack_success as asx
+
+    root = paths.runs_dir() / "BX"
+    def _run(name, method, attack, correct_by_item):
+        d = root / name
+        d.mkdir(parents=True)
+        (d / "DONE").write_text("{}")
+        (d / "config.json").write_text(json.dumps({"config": {"method": method, "attack": attack,
+            "case": "bio", "forget_datasets": ["wmdp-bio"], "split": "test"}}))
+        pd.DataFrame([{"item_id": f"wmdp-bio:{i}", "dataset": "wmdp-bio", "correct": c,
+                       "gate_fired": method["name"] != "base", "rho": 0.5}
+                      for i, c in enumerate(correct_by_item)]).to_parquet(d / "items.parquet")
+    # base gets all right; dsg gets first 3 wrong (gated); under attack dsg recovers 2 of them
+    _run("base__none", {"name": "base"}, {"name": "none"}, [1, 1, 1, 1, 1])
+    _run("dsg__none", {"name": "dsg-faithful"}, {"name": "none"}, [0, 0, 0, 1, 1])
+    _run("dsg__pad", {"name": "dsg-faithful"}, {"name": "dilution", "pad": 400}, [1, 1, 0, 1, 1])
+    df = asx.compute("BX")
+    atk = df[df["attack"].str.contains("dilution")].iloc[0]
+    assert atk["n_gated"] == 3 and abs(atk["attack_success"]["mean"] - 2 / 3) < 1e-9
+    assert atk["vs_clean_paired"]["n"] == 5
