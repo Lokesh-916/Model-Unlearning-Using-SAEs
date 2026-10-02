@@ -152,3 +152,22 @@ def test_faithful_batched_equals_rowwise(toy):
             r1 = h1.pop_records()[0]
             assert torch.allclose(out[b, :n], ref[0], atol=1e-5)
             assert abs(recs[b]["rho"] - r1["rho"]) < 1e-9 and recs[b]["gate_fired"] == r1["gate_fired"]
+
+
+def test_hf_functional_clamp_matches_eval_and_is_differentiable(toy):
+    """HFDSGHook's functional (grad-on) clamp must match the inplace DSGHook (grad-off) and allow
+    backprop through the gate."""
+    import torch
+
+    from dsgx.train.core import HFDSGHook
+    sae, resid = toy
+    feats = [3, 7, 11, 19, 25]
+    for tau in (0.0, 0.3, 0.7):
+        hook = HFDSGHook(sae, feats, 500, tau)
+        with torch.no_grad():
+            ref = hook((resid.clone(),), None, (resid.clone(),))[0]            # grad off -> inplace path
+        x = resid.clone().requires_grad_(True)
+        out = hook((x,), None, (x,))[0]                                        # grad on -> functional
+        assert torch.allclose(ref, out, atol=1e-4), tau
+        out.sum().backward()
+        assert x.grad is not None and torch.isfinite(x.grad).all()
