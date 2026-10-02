@@ -29,12 +29,13 @@ MIN_FREE_GB=50; MAX_OURS_GB=100; LAB_MIN_FREE_GB=60
 DEST_LOCAL="${DSG_RESULTS_CLUSTER:-$HOME/projects/mechunlearn-project/dsg_results_cluster}"
 
 remote() {  # run a shell command on gpuws (or in the fake server dir)
-    if [ -n "$FAKE" ]; then HOME="$FAKE" bash -c "$1"; else ssh -o BatchMode=yes gpuws "$1"; fi
+    # -n: never read stdin, or ssh swallows the rest of a `stage_lines | while read` loop (only line 1 staged)
+    if [ -n "$FAKE" ]; then HOME="$FAKE" bash -c "$1" < /dev/null; else ssh -n -o BatchMode=yes gpuws "$1"; fi
 }
 push() {    # push SRC to ~/dsg_cluster/DEST
     local src="$1" dest="$2"
     if [ -n "$FAKE" ]; then mkdir -p "$FAKE/dsg_cluster/$dest"; rsync "${RS_OPTS[@]}" "$src" "$FAKE/dsg_cluster/$dest/";
-    else remote "mkdir -p ~/dsg_cluster/$dest"; rsync "${RS_OPTS[@]}" "$src" "gpuws:dsg_cluster/$dest/"; fi
+    else remote "mkdir -p ~/dsg_cluster/$dest"; rsync "${RS_OPTS[@]}" "$src" "gpuws:dsg_cluster/$dest/" < /dev/null; fi
 }
 rlog() {    # append to the server command log (rule 8)
     remote "mkdir -p ~/dsg_cluster && printf -- '- %s | %s | %s\n' \"\$(date '+%F %T')\" \"$1\" \"$2\" >> ~/dsg_cluster/COMMAND_LOG.md"
