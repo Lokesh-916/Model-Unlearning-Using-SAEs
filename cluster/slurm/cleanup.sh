@@ -20,9 +20,14 @@ done
 h=$(echo "$listing" | sha256sum | cut -c1-16)
 [ "$h" = "$(cut -d' ' -f1 "$marker")" ] || { echo "REFUSING: results changed since fetch ($h vs marker); fetch again"; exit 1; }
 echo "results verified as fetched: $(cat "$marker")"
+# Inputs shared by several jobs: never delete them while one of our dsg jobs is still queued or running
+# (e.g. rmu-v2 queued behind a6-full needs the corpus that a6-full's cleanup would remove).
+SHARED="private/corpora/bio-forget-corpus.jsonl"
+busy=$(squeue -h -u "$USER" -o "%i %j" 2>/dev/null | awk '$2 ~ /^dsg-/' || true)
 for p in $LARGE_INPUTS; do
     case "$p" in ""|/*|*..*|env|env/*|code|code/*|slurm*|logs*|results*) echo "skip unsafe path: $p"; continue;; esac
     [ -e "$p" ] || { echo "already gone: $p"; continue; }
+    if [ -n "$busy" ] && [[ " $SHARED " == *" $p "* ]]; then echo "kept $p (shared input; queued/running: $(echo $busy))"; continue; fi
     sz=$(du -sh "$p" | cut -f1)
     if [ "$DRY" = "--dry-run" ]; then echo "would delete $p ($sz)"; continue; fi
     rm -rf -- "$DSGC/$p"

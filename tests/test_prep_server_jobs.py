@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
-JOBS = ["d1-full", "a6-full", "tofu-full", "a7-12b", "muse", "mtbench", "q2-graphs"]
+JOBS = ["d1-full", "a6-full", "tofu-full", "a7-12b", "muse", "mtbench", "q2-graphs", "rmu-v2"]
 
 
 @pytest.fixture

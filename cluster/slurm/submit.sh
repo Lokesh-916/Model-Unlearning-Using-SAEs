@@ -2,7 +2,7 @@
 # Submit one dsg job on gpuws after checking disk and showing the queue (rules 4, 5, 8).
 #   submit.sh <job.sbatch> [extra sbatch args, e.g. --dependency=afterok:123]
 # Refuses if one of our dsg-* jobs is already queued/running, unless the new job is chained
-# with --dependency=afterok:<id>.
+# with --dependency=afterok:<id> or (to start even if that job fails) --dependency=afterany:<id>.
 set -euo pipefail
 DSGC="$HOME/dsg_cluster"
 [ $# -ge 1 ] || { echo "usage: submit.sh <job.sbatch> [sbatch args]"; exit 2; }
@@ -19,9 +19,9 @@ fi
 echo "--- squeue (all users)"
 squeue -o "%.7i %.9u %.20j %.2t %.10M %.12l %.6C %b %R"
 mine=$(squeue -h -u "$USER" -o "%i %j" | awk '$2 ~ /^dsg-/' || true)
-if [ -n "$mine" ] && ! printf '%s\n' "$@" | grep -q -- '--dependency=afterok:'; then
+if [ -n "$mine" ] && ! printf '%s\n' "$@" | grep -qE -- '--dependency=after(ok|any):[0-9]+'; then
     echo "REFUSING: one of our dsg jobs is already queued/running:"; echo "$mine"
-    echo "Chain the new job with --dependency=afterok:<id> or wait."; exit 1
+    echo "Chain the new job with --dependency=afterok:<id> (or afterany:<id>) or wait."; exit 1
 fi
 
 out=$(sbatch --parsable "$@" "$script")

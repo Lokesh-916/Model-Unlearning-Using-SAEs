@@ -6,6 +6,7 @@
 #   cluster/server.sh plan  <job>            # what <job> stages, its size, disk after staging (no changes)
 #   cluster/server.sh stage <job>            # copy <job>'s inputs (refuses if limits would be broken)
 #   cluster/server.sh submit <job>           # validate.sbatch -> <job> sbatch chain (afterok)
+#   cluster/server.sh submit <job> --after-any <id>   # same, but validate waits for job <id> to end (any state)
 #   cluster/server.sh check <job>            # queue state + last log lines (metrics only) of <job>
 #   cluster/server.sh fetch <job>            # pull results (+ validate) to dsg_results_cluster, sha256-verified
 #   cluster/server.sh verify <job>           # local file count + summary headline of fetched results
@@ -101,7 +102,10 @@ stage)
         [ -e "$src" ] || { echo "skip (not on the lab PC): $src"; continue; }
         echo "stage $src -> $dest"; push "$src" "$dest"
     done
-    [ -n "$STAGE_SCRIPT" ] && { [ -n "$FAKE" ] && echo "(fake) skip $STAGE_SCRIPT" || bash "$REPO/$STAGE_SCRIPT"; }
+    if [ -n "$STAGE_SCRIPT" ]; then  # "script [args]"
+        read -r -a ss <<< "$STAGE_SCRIPT"
+        [ -n "$FAKE" ] && echo "(fake) skip $STAGE_SCRIPT" || bash "$REPO/${ss[0]}" "${ss[@]:1}"
+    fi
     remote "mkdir -p ~/dsg_cluster/results/.staged && date -Is > ~/dsg_cluster/results/.staged/$JOB"
     read -r free ours < <(disk); echo "staged $JOB; server free ${free} GB, ours ${ours} GB"
     ;;
@@ -109,8 +113,10 @@ submit)
     conf
     [ -n "$CHAIN" ] || { echo "no CHAIN in $JOB.conf"; exit 2; }
     remote "test -f ~/dsg_cluster/results/.staged/$JOB" || [ -z "$STAGE" ] || { echo "REFUSING: $JOB not staged (server.sh stage $JOB)"; exit 1; }
-    if [ -n "$FAKE" ]; then echo "(fake) would submit: validate.sbatch -> $CHAIN"; exit 0; fi
-    prev=$(remote "cd ~/dsg_cluster/slurm && ./submit.sh validate.sbatch" | tee /dev/stderr | sed -n 's/^submitted .* as job \([0-9]*\)$/\1/p')
+    dep=""
+    if [ "${3:-}" = "--after-any" ]; then [[ "${4:-}" =~ ^[0-9]+$ ]] || { echo "usage: submit <job> --after-any <id>"; exit 2; }; dep="--dependency=afterany:$4"; fi
+    if [ -n "$FAKE" ]; then echo "(fake) would submit: validate.sbatch $dep -> $CHAIN"; exit 0; fi
+    prev=$(remote "cd ~/dsg_cluster/slurm && ./submit.sh validate.sbatch $dep" | tee /dev/stderr | sed -n 's/^submitted .* as job \([0-9]*\)$/\1/p')
     [ -n "$prev" ] || { echo "validate submit failed"; exit 1; }
     for sb in $CHAIN; do
         prev=$(remote "cd ~/dsg_cluster/slurm && ./submit.sh $sb --dependency=afterok:$prev" | tee /dev/stderr | sed -n 's/^submitted .* as job \([0-9]*\)$/\1/p')
