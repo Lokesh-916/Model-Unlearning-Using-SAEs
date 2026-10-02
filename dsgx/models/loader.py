@@ -43,9 +43,14 @@ def get_model(model_name: str = "gemma-2-2b-it", dtype: str = "bfloat16", device
     if key not in _MODELS:
         from transformer_lens import HookedTransformer
 
+        # A 16 GB card holds at most one 2B model: evict every other resident model before loading
+        # a new one (so base + an alternate-weights model never coexist). Same-key reuse is free,
+        # so an eval worker sharing one model across configs never reloads.
+        for k in list(_MODELS):
+            del _MODELS[k]
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         if weights:
-            for k in [k for k in _MODELS if k[3]]:
-                del _MODELS[k]
             import torch as _t
             from transformers import AutoModelForCausalLM
 
