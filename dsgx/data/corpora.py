@@ -35,6 +35,8 @@ def load_forget_docs(name: str = "bio-forget-corpus", min_len: int = 50) -> list
         ds = load_dataset("cais/wmdp-corpora", "cyber-forget-corpus", split="train")
         ds = ds.filter(lambda x: len(x["text"]) > min_len)
         docs = list(ds["text"])  # legacy .shuffle(seed=42) result was discarded: no shuffle
+    elif name.startswith("tofu-"):
+        docs = _tofu_docs(name[5:])
     else:
         raise ValueError(f"unknown forget corpus {name!r}")
     return docs
@@ -46,7 +48,17 @@ def load_retain_docs(name: str = "wikitext", min_len: int = 50) -> list[str]:
     if name == "wikitext":
         ds = load_dataset("Salesforce/wikitext", "wikitext-2-raw-v1", split="test")
         return [str(x["text"]) for x in ds if len(x["text"]) > min_len]
+    if name.startswith("tofu-"):
+        return _tofu_docs(name[5:])
     raise ValueError(f"unknown retain corpus {name!r} (chat-retain is built by exp/A1)")
+
+
+def _tofu_docs(config: str) -> list[str]:
+    """TOFU QA pairs as plain text documents (fictitious authors; safe to store anywhere)."""
+    from datasets import load_dataset
+
+    d = load_dataset("locuslab/TOFU", config, split="train")
+    return [f"Question: {x['question']}\nAnswer: {x['answer']}" for x in d]
 
 
 def tokenize_and_concat(tokenizer, docs: list[str], seq_len: int = 1024, add_bos: bool = True):
