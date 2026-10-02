@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from dsgx import paths
+from dsgx.labels import reference_label
 
 
 def _ci(x):
@@ -28,7 +29,8 @@ def collect(include_smoke=False) -> pd.DataFrame:
         except (OSError, ValueError):
             continue
         cfg = c.get("config") or {"method": {"name": c.get("task_id")}}
-        r = {"exp": d.parent.name, "run": d.name, "method": (cfg.get("method") or {}).get("name"),
+        r = {"exp": d.parent.name, "run": d.name, "reference": reference_label(cfg) or "",
+             "method": (cfg.get("method") or {}).get("name"),
              "attack": json.dumps(cfg.get("attack")) if cfg.get("attack") else None, "split": cfg.get("split"),
              "case": cfg.get("case"), "seed": cfg.get("seed"), "batch_size": m.get("batch_size"),
              "commit": (c.get("git") or {}).get("commit", "")[:10], "wall_s": c.get("wall_seconds"),
@@ -51,7 +53,13 @@ def tables(ctx):
     out.mkdir(parents=True, exist_ok=True)
     df.to_csv(out / "all_runs.csv", index=False)
     for exp, g in df.groupby("exp") if len(df) else []:
-        (out / f"{exp}.md").write_text(g.drop(columns=["exp"]).to_markdown(index=False, floatfmt=".4f"))
+        g = g.drop(columns=["exp"])
+        main, refs = g[g["reference"] == ""], g[g["reference"] != ""]
+        text = main.drop(columns=["reference"]).to_markdown(index=False, floatfmt=".4f")
+        for label, rg in refs.groupby("reference"):
+            text += (f"\n\n### {label}: not a main comparison\n\n"
+                     + rg.drop(columns=["reference"]).to_markdown(index=False, floatfmt=".4f"))
+        (out / f"{exp}.md").write_text(text)
     ctx.write_metrics({"n_runs": int(len(df)), "n_experiments": int(df["exp"].nunique()) if len(df) else 0,
                        "missing_ci": int(df["raw_forget"].notna().sum() - df["raw_forget_lo"].notna().sum()) if len(df) else 0,
                        "out": str(out)})
