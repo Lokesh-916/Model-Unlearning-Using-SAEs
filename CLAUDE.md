@@ -17,14 +17,16 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | paper tables (booktabs) + paper-size PDFs | `python -m dsgx.analysis.paper_assets` |
 | qualitative track Q1/Q3/Q5/Q6, Q4/Q8 (TOFU-only) | `python -m dsgx.analysis.qual.<q1_feature_cards,q3_never_learned,q5_geometry,q6_trajectory,annotate>` |
 | all server work from the lab PC | `cluster/server.sh {status,sync,plan,stage,submit,check,fetch,verify,cleanup,run} <job>` |
-| later server jobs, order, disk budget | `SERVER_JOBS_MANIFEST.md`; jobs d1-full, a6-full, tofu-full, a7-12b, muse, mtbench, q2-graphs |
+| later server jobs, order, disk budget | `SERVER_JOBS_MANIFEST.md`; jobs d1-full, a6-full, tofu-full, a7-12b, muse, mtbench, q2-graphs, rmu-v2 |
+| queue a job behind a running chain without touching code/ | `cluster/stage_code_snapshot.sh <name>` (code-<name>/ snapshot) + `server.sh submit <job> --after-any <id>` |
+| TMLR paper draft (own git repo, branch `draft`) | `~/projects/mechunlearn-project/paper` (`latexmk -pdf main.tex`; README there) |
 | downloads still needed (lab PC, network) | `cluster/fetch_models.sh {a7-12b,mtbench,q2-graphs,muse,list}` |
 | progress of this branch | `PREP_PROGRESS.md` |
 
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
 `calibrate(..., rule="conformal")` (cache key unchanged for the default quantile rule); `dsgx/attacks/transforms.py`
 rewrite_cache / suffix accept `exp:` to read another experiment's private artifacts (used by X1).
-Tests: `python -m pytest -q tests` = 76 pass on CPU (~4.5 min; 36 new `tests/test_prep_*.py`; server jobs run with a
+Tests: `CUDA_VISIBLE_DEVICES= ~/miniconda3/envs/mechunlearn2/bin/python -m pytest -q tests` = 81 pass on CPU (~4.5 min; 41 new `tests/test_prep_*.py`; server jobs run with a
 tiny random Gemma-2 via `DSG_TINY=1`).
 Gotchas found: Neuronpedia's `3-gemmascope-res-16k` is the canonical **l0_59** SAE, not DSG's l0_142 (Q1 only queries
 `3-gemmascope-res-16k__l0-142`, unverified whether hosted: run `--probe`); circuit-tracer 0.5.0 needs
@@ -153,3 +155,29 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   then `cleanup tofu-full --yes`, `cleanup d1-full --yes`, `cleanup a6-full --yes` (a6-full's cleanup removes
   D1-full students, RMU best and the corpus). If a step failed, afterok cancels the rest: inputs stay staged;
   resubmit from the failed step with `~/dsg_cluster/slurm/submit.sh <x>.sbatch` (finished cells / DONE runs are skipped).
+
+### Session 5 — 2026-10-02 (end state)
+- **RMU v2 (code `64279d0`)**: v1 was under-tuned (TEST WMDP 0.556 vs base 0.644, third-party 0.498; selected
+  4x r at the grid edge). New job `rmu-v2` (`cluster/rmu_v2_train.py`, `rmu_v2_eval.py`): pre-registered 16 of
+  48 configs (steering {4,8,12,20} x r_L, alpha {100,300,1200}, layer 3 (upd 1,2,3) / 7 (upd 5,6,7), steps
+  {150,300}; rationale in GRID_RATIONALE + `jobs/rmu-v2/GRID.md`), train and dev-eval batch size = largest that
+  fits min(0.70 x 48 GB, free - 4 GiB) (probed once, stored in grid_state.json), same selection rule, TEST bs=1
+  of base / RMU-v2 / DSG paper / third-party RMU (+ paired vs v1 from its gpuws run). Weights:
+  `data/dsg_cache/models/RMU-v2` (v1's `RMU-cluster/best`, used by a6-full, untouched).
+- **Staged** (sha256-verified): third-party RMU (listing 0fd26642…), corpus (ff48dff6…, already there), code
+  snapshot `~/dsg_cluster/code-rmu-v2` = 64279d0 (rmu-v2 runs from it, so `code/` under the chain never changed).
+  Budget: ours 39 GB after staging, `/` 113 GB free; worst case ≈ 67 GB ours while the chain runs, ≈ 78 GB at
+  rmu-v2 run time. Server `slurm/`: added rmu-v2 sbatch/conf; submit.sh (accepts afterany) and cleanup.sh
+  (keeps the shared forget corpus while any dsg job is queued) updated, old copies `*.bak-569e462`.
+- **Queue at session end:** 84 tofu-full R → 85 d1-full → 86 a6-full (tonight's chain, unchanged) →
+  **87 dsg-validate (afterany:86) → 88 dsg-rmu-v2-train (afterok:87, --time 16 h) → 89 dsg-rmu-v2-eval
+  (afterok:88, 4 h)**. Est. rmu-v2 ≈ 3–5 h train + 0.5 h eval.
+- **Next:** when 84–89 have all left the queue: fetch/verify/cleanup tofu-full, d1-full, a6-full (as session 4),
+  then `cluster/server.sh fetch rmu-v2` (also pulls RMU-v2 best, ~5 GB, to `dsg_results_cluster/checkpoints/RMU-v2/best`),
+  `verify rmu-v2`, read `dsg_results_cluster/jobs/rmu-v2/SUMMARY.md` (selected cfg, `at_grid_edge`), then
+  `cleanup rmu-v2 --yes` (removes RMU-v2 models, third-party RMU, corpus, code-rmu-v2). If 87 fails, 88/89 are
+  cancelled: inputs stay staged; resubmit `submit.sh validate.sbatch` then the two rmu-v2 sbatch with afterok.
+- Gotcha: run the test suite with the project env: `CUDA_VISIBLE_DEVICES= ~/miniconda3/envs/mechunlearn2/bin/python
+  -m pytest -q tests` (81 pass); the base `python` lacks rouge_score (2 false failures).
+- Paper: `~/projects/mechunlearn-project/paper` (see its README). latexmk 4.88 installed in `~/.local/bin`, Latin
+  Modern fonts in `~/texmf` (+ `updmap-user --enable Map=lm.map`), because the system TeX Live lacks both.

@@ -20,6 +20,7 @@ L3 16k SAE 0.3 GB · WMDP / MMLU / wikitext 0.2 GB · bio activation cache s0 0.
 | step | job | prerequisites (lab PC) | staged inputs | ours at peak | est. runtime (RTX 6000 Ada) | after fetch: cleanup frees |
 |---|---|---|---|---|---|---|
 | 0 | rmu (jobs 79→80→81, DONE, fetched, cleaned) | — | (staged) | 25 GB | ~2 h | 11 GB (`cleanup.sh rmu`) |
+| 0b | **rmu-v2** (jobs 87→88→89, queued behind a6-full) | rmu fetched | third-party RMU 9.8, corpus 0.7, code snapshot | 39 now; + RMU-v2 best/tmp ≈ 11 at run | ~3–5 h train (16 cfgs, probed bs) + 0.5 h TEST | ≈ 21 GB (`cleanup rmu-v2 --yes`) |
 | 1 | **d1-full** | — | forget corpus 0.7 GB | 14 + 0.7 + 15.6 students + 10 trainer (transient) ≈ **41 GB** | ~4 h (3 × 2000 steps + 4 TEST evals) | corpus only; students stay for step 2 |
 | 2 | **a6-full** | lab queue D1 (`models/D1/sameref_a0.0`) and D2 (`models/D2/nullspace`) DONE; rmu fetched | D1 sameref 5.2, D2 nullspace 5.2, RMU best 5.2, corpus 0.7 | 14 + 15.6 + 16.3 ≈ **46 GB** | ~3 h (6 targets × 3 k × 200 steps) | 32 GB (students, targets, corpus) |
 | 3 | **tofu-full** | (optional) X1 selection done → best gate window size | TOFU 6 MB, COMBINE_SELECTION.json | 14 + 10.4 models + 10 transient ≈ **35 GB** | ~2.5 h | 10.4 GB (models) |
@@ -38,6 +39,7 @@ All: `cluster/server.sh run <job>` (= plan + stage + submit), then `check`, `fet
 
 | job | script / sbatch | results fetched (lab PC `dsg_results_cluster/`) | --time | what is measured |
 |---|---|---|---|---|
+| rmu-v2 | `cluster/rmu_v2_train.py`, `rmu_v2_eval.py` / `rmu-v2-{train,eval}.sbatch` | `runs/RMU-v2-{train,dev,test}`, `jobs/rmu-v2/` (summary, SUMMARY.md, GRID.md), `checkpoints/RMU-v2/best` | 16 h + 4 h | 16-config RMU DEV grid at the largest safe batch size; TEST bs=1 vs base, DSG, third-party RMU, RMU v1 |
 | d1-full | `cluster/d1_full.py` / `d1-full.sbatch` | `runs/D1-full/*` (harness TEST runs: base, DSG paper config, 3 students), `jobs/d1-full/summary.json` | 12 h | UNDO full-parameter distillation, noise α ∈ {0.1, 0.3, 0.5} |
 | a6-full | `cluster/a6_full.py` / `a6-full.sbatch` | `runs/A6-full/relearn-<target>-k<k>/metrics.json` (exp/A6 format) | 10 h | full fine-tune relearning, k ∈ {10, 100, 1000}, 200 steps; C-H6 on gpuws |
 | tofu-full | `cluster/tofu_full.py` / `tofu-full.sbatch` | `runs/A2-tofu-full/tofu-metrics/metrics.json` | 8 h | full TOFU FT; DSG + best gate; forget quality, utility, truth ratio, ROUGE |
