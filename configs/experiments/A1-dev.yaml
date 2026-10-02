@@ -27,6 +27,7 @@ extra:
 jobs: {group_size: 6, est_seconds_per_item: 0.068, est_vram_gb: 8.5, est_ram_gb: 20, overhead_minutes: 3}
 tasks:
   - id: dsg-subset-ids
+    wave: 2
     entry: dsgx.data.dsg_subset:task
     args: {datasets: "@all", batch_size: 32}
     smoke_args: {datasets: [high_school_geography, wmdp-bio], limit: 6}
