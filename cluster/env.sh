@@ -2,6 +2,8 @@
 export DSGC="$HOME/dsg_cluster"
 export PATH="$DSGC/env/mechunlearn2/bin:$PATH"
 export DSGX_PY="$DSGC/env/mechunlearn2/bin/python"
+# `python cluster/<script>.py` puts cluster/ (not code/) on sys.path; make dsgx importable for every script.
+export PYTHONPATH="$DSGC/code${PYTHONPATH:+:$PYTHONPATH}"
 export HF_HOME="$DSGC/hf_cache"
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_DATASETS_OFFLINE=1
 export HF_HUB_DISABLE_TELEMETRY=1
