@@ -39,6 +39,12 @@ class TaskContext:
         d.mkdir(parents=True, exist_ok=True)
         return d
 
+    def exp_private_dir(self, *parts) -> Path:
+        """$DSG_PRIVATE/<exp_id>/<parts...> (not task-scoped); attacks read this via their path."""
+        d = paths.private_dir().joinpath(self.exp_id, *parts)
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
     def cache_dir(self, *parts) -> Path:
         d = paths.cache_dir().joinpath(*parts)
         d.mkdir(parents=True, exist_ok=True)
