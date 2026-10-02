@@ -1,0 +1,7 @@
+# N8 - reasoning-trace gating (stretch): step-by-step prompting; leakage in reasoning vs final answer,
+# and when the streaming gate first fires. none / prompt-only / streaming.
+exp_id: N8
+priority: stretch
+wave: 5
+tasks:
+  - {id: reasoning, entry: experiments.N8.reason:task, args: {split: test, max_new: 160}, smoke_args: {limit: 3, max_new: 32}, kind_slot: gpu, est_minutes: 90, smoke_est_minutes: 5, est_vram_gb: 8, deps: ["exp:A1-dev"]}
