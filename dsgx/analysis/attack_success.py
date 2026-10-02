@@ -79,7 +79,7 @@ def compute(exp_id: str, forget_only: bool = True) -> pd.DataFrame:
                 ctrl = base_same[0]["items"]["correct"] if base_same else None
                 both = att.index.intersection(mc.index)
                 pb = stats.paired_bootstrap(att.loc[both, "correct"].astype(float).values,
-                                            mc.loc[both, "correct"].astype(float).values) if len(both) else None
+                                            mc.loc[both].astype(float).values) if len(both) else None
                 out.append({
                     "case": case, "method": m, "attack": x["attack"],
                     "attack_success": stats.bootstrap_ci(att.loc[g, "correct"].astype(float).values) if g else None,
