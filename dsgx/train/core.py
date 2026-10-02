@@ -147,6 +147,8 @@ class Trainer:
     def run(self, step_fn):
         import pandas as pd
 
+        # get_bundle() disables grad globally for eval; training needs it back on.
+        torch.set_grad_enabled(True)
         self.model.train()
         t0 = time.time()
         for step in range(self.start, self.steps):
