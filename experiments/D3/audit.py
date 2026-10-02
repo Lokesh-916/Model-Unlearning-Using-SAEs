@@ -31,10 +31,18 @@ def task(ctx):
     feats = dsg.select_features(cache, 20, 95)
     rows = np.asarray(cache.tokens("forget"))[:nrows]
     mu_base = _feature_means(base, rows)
+    # Release the base model before loading edited models (one 2B model fits on a 16 GB card).
+    import gc
+
+    from dsgx.models import loader
+    del base
+    loader.clear(); gc.collect(); torch.cuda.empty_cache()
     out = {}
     for tag, w in a.get("models", {"d1": "ckpt:D1/undo_a0.3", "d2": "ckpt:D2/nullspace"}).items():
         b = get_bundle(weights=resolve_weights(w, ctx.exp_id))
         mu = _feature_means(b, rows)
+        del b
+        loader.clear(); gc.collect(); torch.cuda.empty_cache()
         d = mu - mu_base
         top = np.argsort(-np.abs(d))[:20]
         out[tag] = {"weights": b.meta["weights"], "dsg_feature_mean_act": float(mu[feats].mean()),
