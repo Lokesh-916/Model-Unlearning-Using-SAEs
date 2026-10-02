@@ -22,7 +22,7 @@ def task(ctx):
     name = a.get("attacker", "gemma-2-2b-it")
     model = get_model(name, dtype="bfloat16")
     tok = model.tokenizer
-    out_dir = ctx.private_dir("rewrites")
+    out_dir = ctx.exp_private_dir("rewrites")
     plan = []
     for d in datasets:
         ids = get_split(d, split)

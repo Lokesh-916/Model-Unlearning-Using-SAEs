@@ -15,9 +15,9 @@ base:
 grid:
   attack.index: [0, 1, 2, 3, 4]
 runs:
-  - {attack: {name: rewrite_cache, path: B4/rewrites}}
+  - {attack: {name: rewrite_cache, path: rewrites}}
 extra:
-  - {method: {name: base}, attack: {name: rewrite_cache, path: B4/rewrites, index: 0}, batch_size: 16}
+  - {method: {name: base}, attack: {name: rewrite_cache, path: rewrites, index: 0}, batch_size: 16}
   - {method: {name: base}, attack: {name: none}, batch_size: 16}
 jobs: {group_size: 5, est_seconds_per_item: 0.35, est_vram_gb: 8.5, est_ram_gb: 20, overhead_minutes: 3, deps: ["exp:A1-dev", rewrite]}
 tasks:
@@ -33,5 +33,5 @@ tasks:
 smoke:
   base: {limit: 6, method: {name: dsg-faithful, select: {exp_id: A1-dev-smoke, max_utility_drop: 0.5}}}
   grid: {attack.index: [0, 1]}
-  runs: [{attack: {name: rewrite_cache, path: B4/rewrites}}]
+  runs: [{attack: {name: rewrite_cache, path: rewrites}}]
   extra: [{method: {name: base}, attack: {name: none}, batch_size: 6}]
