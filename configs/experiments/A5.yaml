@@ -1,0 +1,15 @@
+# A5 - privacy and indistinguishability (should): MIA AUROC (loss, zlib, min-k%) on the A2 TOFU model,
+# forget10 members vs holdout10 non-members, gated vs ungated. MUSE target models: DEFERRED.
+exp_id: A5
+priority: should
+wave: 5
+tasks:
+  - id: mia
+    entry: experiments.A5.mia:task
+    args: {weights: "ckpt:A2/tofu_full"}
+    smoke_args: {limit: 6}
+    kind_slot: gpu
+    est_minutes: 30
+    smoke_est_minutes: 4
+    est_vram_gb: 9
+    deps: ["exp:A2"]
