@@ -12,6 +12,9 @@ export DSG_PRIVATE="$DSGC/private"
 export DSG_LEGACY_ROOT="$DSGC/data/legacy"
 export DSG_WORKTREES="$DSGC/code"
 export DSG_DEBUG=0
+# Per-GPU baselines (user decision 2026-10-02): the exact sanity gate here is "sanity-gpuws", and every
+# result is labelled with this hardware. Never mix gpuws and lab-PC numbers in one table or paired test.
+export DSG_HARDWARE=gpuws DSG_SANITY_TARGET=gpuws
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 # Slurm does not confine CPUs on this node (no task/cgroup): cap threads ourselves.
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-8}" MKL_NUM_THREADS="${SLURM_CPUS_PER_TASK:-8}" TOKENIZERS_PARALLELISM=false

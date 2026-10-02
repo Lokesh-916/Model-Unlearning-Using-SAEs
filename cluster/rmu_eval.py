@@ -5,6 +5,8 @@ hazard-adjacent excluded). Primary utility = full-MMLU pooled; secondary = legac
 (MMLU-u = unweighted mean of the 4 subject accuracies), both views. 95% bootstrap CIs (10k),
 paired bootstrap + exact McNemar for RMU vs each comparator on identical items.
 DSG = the paper config (N=20, retain 95th pct, multiplier 500, seed 0); A1's tuned DSG comes later.
+All four conditions run on gpuws (hardware label "gpuws"); never mix these numbers with lab-PC runs
+in one table or paired test (per-GPU baselines, user decision 2026-10-02).
 Writes $DSG_RESULTS/jobs/rmu/summary.json and SUMMARY.md (metrics only; no item text).
 """
 import json
@@ -20,7 +22,7 @@ from dsgx.eval import stats
 from dsgx.labels import reference_label
 from dsgx.models.loader import clear
 from dsgx.run import run
-from dsgx.util import atomic_write_json, now_iso
+from dsgx.util import atomic_write_json, gpu_info, hardware_label, now_iso
 
 JOBDIR = paths.results_dir() / "jobs" / "rmu"
 BEST = paths.cache_dir() / "models" / "RMU-cluster" / "best"
@@ -81,6 +83,7 @@ def fmt(x):
 
 def main():
     JOBDIR.mkdir(parents=True, exist_ok=True)
+    hw = hardware_label()
     cfgs, sel = runs()
     res, items = {}, {}
     for name, cfg in cfgs.items():
@@ -88,15 +91,17 @@ def main():
         rd = run(cfg)
         clear()
         m = json.loads((rd / "metrics.json").read_text())
+        rhw = json.loads((rd / "config.json").read_text()).get("hardware", {}).get("label")
+        assert rhw == hw, f"{name}: run hardware {rhw!r} != {hw!r}; never mix hardware in one table"
         items[name] = pd.read_parquet(rd / "items.parquet", columns=["item_id", "dataset", "correct", "in_dsg_subset"])
         res[name] = {"run_dir": str(rd), "raw": view_block(items[name], "raw"),
                      "dsg_subset": view_block(items[name], "dsg_subset"), "timing": m["timing"],
-                     "label": reference_label(cfg)}
+                     "label": reference_label(cfg), "hardware": hw}
         print(f"[eval] {name}: WMDP raw {fmt(res[name]['raw']['wmdp_bio'])} | util full "
               f"{fmt(res[name]['raw']['utility_full']['pooled'])}", flush=True)
     comp = {f"rmu_cluster_vs_{b}": {v: paired(items["rmu_cluster"], items[b], v) for v in ("raw", "dsg_subset")}
             for b in ("base", "dsg_paper", "rmu_third_party_unverified")}
-    out = {"time": now_iso(), "slurm_job": os.environ.get("SLURM_JOB_ID"), "selected": sel, "runs": res,
+    out = {"time": now_iso(), "hardware": {"label": hw, **gpu_info()}, "slurm_job": os.environ.get("SLURM_JOB_ID"), "selected": sel, "runs": res,
            "paired": comp, "notes": [
                "DSG-subset view: legacy base-correct ids exist only for WMDP-Bio and the 4 legacy subjects; "
                "full-MMLU DSG-subset ids are the lab-PC Wave-1 job (not yet available), so utility_full is raw only.",
@@ -104,6 +109,8 @@ def main():
     atomic_write_json(JOBDIR / "summary.json", out)
 
     L = [f"# RMU (cluster) TEST summary — {out['time']}", "",
+         f"Hardware: **{hw}** ({out['hardware'].get('gpu')}, driver {out['hardware'].get('driver')}). "
+         "All rows and paired tests are on this hardware only; do not combine with other hardware.", "",
          f"Selected config c{sel['cfg']}: steering {sel['hp']['steering_coeff']} ({sel['hp']['steering_mult']} x r={sel['hp']['r']}), "
          f"alpha {sel['hp']['alpha']}, layer {sel['hp']['layer_id']}, update {sel['hp']['layer_ids']}", ""]
     for v in ("raw", "dsg_subset"):

@@ -23,6 +23,17 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 9. Never open or print hazardous dataset text or generations: ids, hashes and metrics only.
 10. Never store passwords. Use the gpuws alias only.
 
+## Per-GPU baselines (user decision, 2026-10-02)
+Cross-GPU bf16 gated evals are not bit-reproducible (lab PC RTX 2000 Ada vs gpuws RTX 6000 Ada), so each
+machine is its own hardware baseline.
+1. **sanity-gpuws** is the exact sanity gate for every server job: WMDP-Bio 161/538, MMLU-u 0.9971
+   (108/9/103/84), tau 0.5458, the same 20 legacy features. Set by `DSG_SANITY_TARGET=gpuws` in env.sh
+   (`dsgx/checks/sanity.py` TARGETS["gpuws"]), checked exactly by `cluster/validate_check.py`.
+   Every server chain starts with `validate.sbatch`; the rest is chained with `--dependency=afterok`.
+2. Every compared condition (base, DSG, our RMU, the unverified third-party RMU) runs on gpuws.
+3. Never mix lab-PC and gpuws numbers in one table or paired test. Label every result with its hardware
+   (`DSG_HARDWARE=gpuws` → `hardware.label` in each run's config.json; summaries state it).
+
 ## Hazardous-text rule
 Never open, print or quote WMDP questions, hazardous generations, attack prompts or anything in
 $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics only.

@@ -1,5 +1,7 @@
 #!/bin/bash
-# Step 6: sanity gate on the cluster (Bio N=20, seed 0, bs=1, DSG-subset view). Must be exact.
+# sanity-gpuws gate (Bio N=20, seed 0, bs=1, DSG-subset view): must match the gpuws targets EXACTLY
+# (161/538, MMLU-u 0.9971, tau 0.5458, same 20 features), which also confirms same-GPU determinism.
+# Run first in every server chain; a mismatch exits non-zero and afterok cancels the rest.
 #SBATCH --job-name=dsg-validate
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
