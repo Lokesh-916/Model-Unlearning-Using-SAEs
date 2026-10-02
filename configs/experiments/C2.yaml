@@ -25,7 +25,7 @@ runs:
   - {method: {name: gated, gate: {type: probe_resid, probe_train: mcq-dev}}, attack: {name: dilution}}
   - {method: {name: dsg-faithful, select: {exp_id: A1-dev, max_utility_drop: 0.01}}, attack: {name: dilution}}
 extra:
-  - {method: {name: base}, attack: {name: dilution, pad: 0}, batch_size: 16}
+  - {method: {name: base}, attack: {name: dilution, pad: 0}, batch_size: 1}
 jobs: {group_size: 4, est_seconds_per_item: 0.4, est_vram_gb: 9, est_ram_gb: 20, overhead_minutes: 4, deps: ["exp:A1-dev"]}
 tasks:
   - {id: attack-success, entry: dsgx.analysis.attack_success:task, kind_slot: cpu, est_minutes: 5, smoke_est_minutes: 1, est_ram_gb: 4, deps: ["exp:C2"]}
