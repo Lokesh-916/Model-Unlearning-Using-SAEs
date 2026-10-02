@@ -38,18 +38,43 @@ def decoder_layers(model):
 
 
 class HFDSGHook:
+    """DSG-faithful clamp as an HF forward hook. Uses the bit-exact inplace DSGHook when grad is off
+    (eval), and a functional (non-inplace) clamp when grad is on, so the student can be trained
+    *through* the gate (A6 'dsg-hook' relearning) without autograd inplace errors."""
+
     def __init__(self, sae, features, multiplier, tau, faithful=True):
         from dsgx.methods.dsg import DSGHook
 
         self.h = DSGHook(sae, features, multiplier, tau, faithful=faithful, record=False)
+        self.sae, self.multiplier, self.tau = sae, float(multiplier), float(tau)
+        self.feat_t = torch.tensor([int(f) for f in features], device=sae.W_dec.device)
         self.enabled = True
-        self.fired = []
+
+    def _functional(self, resid):
+        sae = self.sae
+        a = sae.encode(resid)
+        keep = torch.ones(a.shape[1], device=a.device, dtype=a.dtype)
+        keep[0] = 0.0
+        a = a * keep[None, :, None]                      # zero BOS, non-inplace
+        error = resid - sae.decode(a)
+        tgt = a[:, :, self.feat_t]
+        fire = (tgt > 0).any(dim=2)
+        rate = fire.sum(dim=1) / fire.shape[1]
+        final = fire & (rate > self.tau)[:, None]
+        src = torch.where(final[:, :, None], torch.full_like(tgt, -self.multiplier), tgt)
+        idx = self.feat_t.view(1, 1, -1).expand(a.shape[0], a.shape[1], -1)
+        a_new = a.scatter(2, idx, src)                   # non-inplace clamp of the selected features
+        return sae.decode(a_new) + error
 
     def __call__(self, module, inputs, output):
         if not self.enabled:
             return output
         hs = output[0] if isinstance(output, tuple) else output
-        new = self.h(hs.to(self.h.sae.W_dec.dtype)).to(hs.dtype)
+        wdt = self.sae.W_dec.dtype
+        if torch.is_grad_enabled():
+            new = self._functional(hs.to(wdt)).to(hs.dtype)
+        else:
+            new = self.h(hs.to(wdt)).to(hs.dtype)
         return (new, *output[1:]) if isinstance(output, tuple) else new
 
 
