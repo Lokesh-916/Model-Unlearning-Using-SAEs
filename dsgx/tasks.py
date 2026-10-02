@@ -6,6 +6,7 @@ An experiment config declares
         entry: experiments.B3.translate:main     # function(ctx) -> headline dict
         args: {...}
         smoke_args: {...}                         # merged over args for the smoke config
+        skip_smoke: true / smoke_only: true       # task only in the full / only in the smoke list
         kind_slot: gpu | cpu
         est_minutes / smoke_est_minutes / est_vram_gb / est_ram_gb / gpu_exclusive
         deps: [other_task_id, "exp:A1-test"]     # "exp:X" = every job of experiment X
