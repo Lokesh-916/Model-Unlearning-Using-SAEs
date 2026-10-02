@@ -11,7 +11,13 @@ marker="$DSGC/results/.fetched/$JOB"
 [ -f "$marker" ] || { echo "REFUSING: $marker missing; run fetch_results.sh $JOB on the lab PC first"; exit 1; }
 cd "$DSGC"
 paths="$RESULT_PATHS ${FETCH_EXTRA:-}"
-h=$(for p in $paths; do [ -e "$p" ] && find "$p" -type f ! -name ".lock" -print0; done | sort -z | xargs -0 -r sha256sum | sha256sum | cut -c1-16)
+lst='find . -type f ! -name ".lock" -print0 | sort -z | xargs -0 -r sha256sum'
+listing=""
+for p in $paths; do
+    [ -e "$p" ] || continue
+    listing+="== $p"$'\n'"$(cd "$DSGC/$p" && bash -c "$lst")"$'\n'
+done
+h=$(echo "$listing" | sha256sum | cut -c1-16)
 [ "$h" = "$(cut -d' ' -f1 "$marker")" ] || { echo "REFUSING: results changed since fetch ($h vs marker); fetch again"; exit 1; }
 echo "results verified as fetched: $(cat "$marker")"
 for p in $LARGE_INPUTS; do
