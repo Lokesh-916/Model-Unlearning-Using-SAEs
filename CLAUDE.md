@@ -40,4 +40,19 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
 - Lab PC results: `~/projects/mechunlearn-project/dsg_results_cluster/`
 
 ## Session state (update at the end of every session)
-_Not yet filled — first session in progress (2026-10-02)._
+### Session 1 — 2026-10-02 (end state)
+- **Server disk:** `~/dsg_cluster` = 14 GB; `/` has 138 GB free (152 GB at start; peak use 25 GB).
+- **Data on server now:** env/mechunlearn2 (8.2 GB, conda-pack of lab env + hatchling), code/ (cluster/setup,
+  CODE_COMMIT.json), hf_cache: gemma-2-2b-it, Gemma Scope 2b-pt-res layer_3/width_16k/average_l0_142 only,
+  cais/wmdp, cais/mmlu (57 subjects, no auxiliary_train), wikitext; data/dsg_cache/actcache bio s0 (layer 3);
+  data/legacy (bio question ids + sparsity txt). private/ is EMPTY (forget corpus deleted). No checkpoints.
+- **Jobs:** 73 dsg-validate ran but **validation FAILED**: WMDP 161/538 (target 158), MMLU-u 0.9971
+  (target 0.9941), tau 0.5458 exact, calibration bit-exact. Cross-GPU bf16 numerics (RTX 6000 vs RTX 2000 Ada);
+  see CLUSTER_SETUP_REPORT.md §3. 74 dsg-rmu-train / 75 dsg-rmu-eval cancelled by afterok (never ran).
+  Nothing of ours is queued or running.
+- **Next planned job:** waiting on the user's decision (report §6). Then RMU: re-stage with
+  `cluster/stage_rmu.sh` + third-party RMU rsync, `submit.sh rmu_train.sbatch`, then
+  `submit.sh rmu_eval.sbatch --dependency=afterok:<id>`.
+- **Gotchas:** any `--mem` is rejected (node RealMemory=1); always pass `--gres=gpu:1`; no CPU/mem confinement;
+  `sacct` unavailable; run conda-unpack via the env's python; never use system python3 on the server.
+- Lab PC tools: `cluster/sync_code.sh`, `cluster/stage_rmu.sh`, `cluster/slurm/fetch_results.sh <job>`.
