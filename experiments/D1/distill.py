@@ -38,8 +38,13 @@ def task(ctx):
     cache = ac.ActivationCache(ac.build_cache(b, f"{case}-forget-corpus", "wikitext", 0))
     feats = dsg.select_features(cache, 20, 95)
     tau = dsg.calibrate_tau(cache, feats, 95)
+    sae = b.sae  # keep the SAE; drop the TransformerLens model so the HF student fits in 16 GB
+    from dsgx.models import loader
+
+    loader._MODELS.clear()
+    torch.cuda.empty_cache()
     model, tok = load_hf(dtype=torch.bfloat16)
-    teach_hook, _ = add_dsg_hook_hf(model, b.sae, feats, 500, tau, b.layer)
+    teach_hook, _ = add_dsg_hook_hf(model, sae, feats, 500, tau, b.layer)
     teach_hook.enabled = False
     lcfg = LoraConfig(r=rank, lora_alpha=2 * rank, target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                       "gate_proj", "up_proj", "down_proj"], lora_dropout=0.0, task_type="CAUSAL_LM")
