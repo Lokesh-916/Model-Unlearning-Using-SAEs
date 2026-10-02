@@ -64,7 +64,8 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
 - **Next planned job:** waiting on the user's decision (report §6). Then RMU: re-stage with
   `cluster/stage_rmu.sh` + third-party RMU rsync, `submit.sh rmu_train.sbatch`, then
   `submit.sh rmu_eval.sbatch --dependency=afterok:<id>`.
-- **Gotchas:** any `--mem` is rejected (node RealMemory=1); always pass `--gres=gpu:1`; no CPU/mem confinement;
+- **Gotchas:** server scripts need `PYTHONPATH=$DSGC/code` (set in env.sh since session 3); run
+  `CUDA_VISIBLE_DEVICES= python cluster/import_check.py` on the login node after code changes; any `--mem` is rejected (node RealMemory=1); always pass `--gres=gpu:1`; no CPU/mem confinement;
   `sacct` unavailable; run conda-unpack via the env's python; never use system python3 on the server.
 - Lab PC tools: `cluster/sync_code.sh`, `cluster/stage_rmu.sh`, `cluster/slurm/fetch_results.sh <job>`.
 
@@ -78,3 +79,12 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
 - **Next:** when all three have left the queue: `fetch_results.sh validate`, `fetch_results.sh rmu`, verify, then on the
   server `cleanup.sh rmu` (deletes RMU checkpoints, third-party RMU, forget corpus; keeps base model/SAE/data).
   If 76 MISMATCHES: same-GPU determinism is broken; stop and report (77/78 are auto-cancelled).
+
+### Session 3 — 2026-10-02 (end state)
+- Job 76: sanity-gpuws PASSED (`SANITY (gpuws) PASS`), but `python cluster/validate_check.py` failed with
+  ModuleNotFoundError dsgx (script dir, not code/, on sys.path) → 77/78 cancelled by afterok.
+- Fix `fb2c8c7`: env.sh exports `PYTHONPATH=$DSGC/code`; new `cluster/import_check.py` (CPU, imports only)
+  passed on the lab PC and the gpuws login node for validate_check.py, rmu_train.py, rmu_eval.py.
+- Inputs still staged from session 2 (ours 25 GB, `/` 128 GB free).
+- **Chain resubmitted:** 79 dsg-validate → 80 dsg-rmu-train (afterok:79) → 81 dsg-rmu-eval (afterok:80).
+  79 RUNNING at session end. Next: fetch validate + rmu, verify, `cleanup.sh rmu`.
