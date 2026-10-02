@@ -15,8 +15,8 @@ base:
 runs:
   - {attack: {name: suffix, path: suffix-200/suffix.json}}
 extra:
-  - {method: {name: base}, attack: {name: suffix, path: suffix-200/suffix.json}, batch_size: 16}
-  - {method: {name: base}, attack: {name: none}, batch_size: 16}
+  - {method: {name: base}, attack: {name: suffix, path: suffix-200/suffix.json}, batch_size: 1}
+  - {method: {name: base}, attack: {name: none}, batch_size: 1}
 jobs: {group_size: 4, est_seconds_per_item: 0.35, est_vram_gb: 8.5, est_ram_gb: 20, overhead_minutes: 3, deps: ["exp:A1-dev", suffix-200]}
 tasks:
   - {id: suffix-50, entry: experiments.B5.suffix_search:task, args: {steps: 50, suffix_len: 8}, smoke_args: {steps: 4, n_fit: 4}, kind_slot: gpu, gpu_exclusive: true, est_minutes: 20, smoke_est_minutes: 3, est_vram_gb: 8}
