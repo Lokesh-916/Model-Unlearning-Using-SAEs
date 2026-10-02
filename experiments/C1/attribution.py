@@ -28,6 +28,7 @@ def attribution_scores(bundle, items, topk=200):
     m, sae = bundle.model, bundle.sae
     ans = m.to_tokens(ANSWER_STRINGS, prepend_bos=False).flatten()
     acc = torch.zeros(sae.W_dec.shape[0], device=bundle.device)
+    m.requires_grad_(False)  # only d(logp)/d(activations) is needed; avoids 2B param-grad buffers (OOM)
     torch.set_grad_enabled(True)
     for it in items:
         t = m.to_tokens(format_prompt(it), prepend_bos=False).to(bundle.device)
@@ -52,7 +53,9 @@ def attribution_scores(bundle, items, topk=200):
         if a.grad is None:
             continue
         acc += (torch.relu(a) * a.grad)[0, -1].abs().detach()
+        feats.clear()
         m.reset_hooks()
+        torch.cuda.empty_cache()
     torch.set_grad_enabled(False)
     s = (acc / len(items)).cpu().numpy()
     order = np.argsort(-s)
