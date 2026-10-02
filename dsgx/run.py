@@ -47,6 +47,7 @@ def resolve(cfg: dict) -> dict:
     c = dict(cfg)
     c.setdefault("case", "bio")
     c.setdefault("attack", {"name": "none"})
+    c["attack"] = {**c["attack"], "_exp_id": c.get("exp_id")}
     c.setdefault("split", "test")
     c.setdefault("view", "both")
     c.setdefault("seed", 0)
