@@ -45,20 +45,41 @@ def _git(wt, *args):
     return subprocess.run(["git", *args], cwd=wt, capture_output=True, text=True).stdout.strip()
 
 
-def _resolve_deps(deps, exp_id, smoke, own_ids):
-    """'taskid' -> job of this experiment; 'exp:X' -> every queued job of experiment X."""
+def _norm_deps(deps, exp_id, smoke):
+    """Normalise dep tokens. 'exp:X' stays a token (expanded later against the full batch, adding
+    -smoke for smoke runs); a bare 'taskid' becomes '<exp_id>-taskid'; a full job id is left as-is."""
     out = []
-    jobs = q.load_jobs()
     for d in deps or []:
         if d.startswith("exp:"):
-            x = d[4:] + ("-smoke" if smoke and not d.endswith("-smoke") else "")
-            found = [j for j, job in jobs.items() if job["exp_id"] == x] + [j for j in own_ids if j.startswith(x + "-")]
-            out.extend(found or [f"{x}-*"])  # unresolved: stays WAITING and is reported
-        elif f"{exp_id}-{d}" in own_ids or q.job_path(f"{exp_id}-{d}").exists():
-            out.append(f"{exp_id}-{d}")
-        else:
+            x = d[4:]
+            out.append("exp:" + (x + "-smoke" if smoke and not x.endswith("-smoke") else x))
+        elif d.startswith(exp_id + "-"):
             out.append(d)
-    return sorted(set(out))
+        else:
+            # a sibling task/grid id in the same config (may itself contain hyphens)
+            out.append(f"{exp_id}-{d}")
+    return out
+
+
+def expand_batch_deps(jobs):
+    """Expand 'exp:<E>' and '<E>-*' dep tokens against this batch plus the jobs already on disk.
+    Must be called once on the complete set of jobs about to be written."""
+    by_exp = {}
+    for j in jobs:
+        by_exp.setdefault(j["exp_id"], []).append(j["id"])
+    for jid, job in q.load_jobs().items():
+        by_exp.setdefault(job["exp_id"], []).append(jid)
+    for j in jobs:
+        deps = []
+        for d in j.get("deps", []):
+            if d.startswith("exp:"):
+                deps += by_exp.get(d[4:], [])
+            elif d.endswith("-*"):
+                deps += by_exp.get(d[:-2], [])
+            else:
+                deps.append(d)
+        j["deps"] = sorted(set(deps) - {j["id"]})
+    return jobs
 
 
 def jobs_from_experiment(cfg_path, smoke=False, worktree=None, deps=None):
@@ -77,7 +98,6 @@ def jobs_from_experiment(cfg_path, smoke=False, worktree=None, deps=None):
               "wave": exp.get("wave", 1)}
     jobs = []
     # 1. tasks
-    task_ids = [f"{exp_id}-{t['id']}" for t in exp.get("tasks") or []]
     for t in exp.get("tasks") or []:
         if (smoke and t.get("skip_smoke")) or (not smoke and t.get("smoke_only")):
             continue
@@ -86,7 +106,7 @@ def jobs_from_experiment(cfg_path, smoke=False, worktree=None, deps=None):
         jobs.append({**common, "id": f"{exp_id}-{t['id']}", "kind": "task", "task_id": t["id"],
                      "entry": t["entry"], "args": args,
                      "priority": t.get("priority", common["priority"]), "wave": t.get("wave", common["wave"]),
-                     "deps": _resolve_deps(t.get("deps"), exp_id, smoke, task_ids) + list(deps or []),
+                     "deps": _norm_deps(t.get("deps"), exp_id, smoke) + list(deps or []),
                      "est_vram_gb": t.get("est_vram_gb", 7.5 if t.get("kind_slot", "gpu") == "gpu" else 0),
                      "est_ram_gb": t.get("est_ram_gb", 20 if t.get("kind_slot", "gpu") == "gpu" else 4),
                      "est_minutes": est, "gpu_exclusive": t.get("gpu_exclusive", False),
@@ -98,7 +118,7 @@ def jobs_from_experiment(cfg_path, smoke=False, worktree=None, deps=None):
     for i, r in enumerate(runs):
         m = resolve(r)["model"]
         groups.setdefault(f"{m['name']}|{m['sae_release']}|{m['sae_id']}", []).append(i)
-    grid_deps = _resolve_deps(jc["deps"], exp_id, smoke, task_ids) + list(deps or [])
+    grid_deps = _norm_deps(jc["deps"], exp_id, smoke) + list(deps or [])
     k = 0
     for gk, idxs in groups.items():
         for s in range(0, len(idxs), jc["group_size"]):
@@ -141,7 +161,7 @@ def main(argv=None) -> int:
         print(jid)
         return 0
     deps = list(a.deps) + [j for j, job in q.load_jobs().items() if job["exp_id"] in set(a.after_exp)]
-    jobs = jobs_from_experiment(a.config, a.smoke, a.worktree, deps)
+    jobs = expand_batch_deps(jobs_from_experiment(a.config, a.smoke, a.worktree, deps))
     for j in jobs:
         if a.dry_run:
             print(j["id"], j["items_total"], j["est_minutes"])
