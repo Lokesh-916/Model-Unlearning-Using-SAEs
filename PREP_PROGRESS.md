@@ -38,3 +38,8 @@ NO_CLAUDE_RUNBOOK.md: hourly status + doctor; at the Wave-1 pause `wave_check 1`
 - Paper: `~/projects/mechunlearn-project/paper` (branch `draft`). Fill results by running
   `python -m dsgx.analysis.paper_assets --out ~/projects/mechunlearn-project/paper/assets`; `\todo{}` markers list what is left;
   11 bib entries carry `% TODO-VERIFY`.
+
+## Session 6 (2026-10-02, server)
+- 84 tofu-full failed (load_sae argument order, fix `2ec30f8`); 85/86 cancelled by afterok. Queued 92 validate →
+  93 d1-full behind 89 with a hard 09:00 end (deadline + DSG_END_BY). a6-full and the tofu-full rerun wait for
+  the next free window. Details: CLAUDE.md "Session 6".

@@ -181,3 +181,22 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   -m pytest -q tests` (81 pass); the base `python` lacks rouge_score (2 false failures).
 - Paper: `~/projects/mechunlearn-project/paper` (see its README). latexmk 4.88 installed in `~/.local/bin`, Latin
   Modern fonts in `~/texmf` (+ `updmap-user --enable Map=lm.map`), because the system TeX Live lacks both.
+
+### Session 6 — 2026-10-02 22:10–22:45 (end state)
+- **Diagnosis:** 84 tofu-full FAILED in its eval stage (`RuntimeError: Invalid device string: 'bfloat16'`):
+  `jobcommon.load_sae` passed `(device, dtype)` into `get_sae(release, sae_id, dtype, device)`. TINY mode skips
+  the real SAE, so the CPU tests missed it. 85 d1-full and 86 a6-full never ran (no logs): cancelled by afterok.
+  tofu-full was not fetched (no results; its fine-tuned models `data/dsg_cache/models/A2-tofu-full`, 9.9 GB, stay
+  staged so a rerun skips training). 87 validate (afterany:86) passed EXACT; 88 rmu-v2-train running.
+- **Fix `2ec30f8`** (synced, import check OK): keyword args; real (non-TINY) jobcommon paths checked on CPU on the
+  lab PC (SAE, dsg_features tau 0.5458, corpora, MCQ, dsg_guard forward on gemma-2-2b-it); 19 server-job tests pass.
+  d1-full / a6-full sbatch honour `DSG_END_BY` (timeout 5 min before; Trainer checkpoints atomically every 100 steps).
+- **Queue (GPU must be free by 2026-10-03 09:00 for another user):** 88 → 89 (untouched; est. done ~01:30) →
+  **92 dsg-validate** (afterany:89, --time 0:30, --deadline 09:00) → **93 dsg-d1-full** (afterok:92, --time 7:20,
+  --time-min 1:00, --deadline 09:00, DSG_END_BY=2026-10-03T09:00). d1-full estimate ≈ 5–6 h (3 × 2000 full-param
+  steps at ~2 s/step + 20 trainer-state saves each + 5 TEST evals ~45 min) → ends ~07:00–07:30.
+  **a6-full NOT queued** (~3 h, cannot finish by 09:00). Caveat: 88 keeps its own 16 h limit; if rmu-v2 runs far
+  over its estimate, the 09:00 promise depends on it (we did not touch 88/89, as instructed).
+- **Next (after 09:00):** if 93 was stopped by the guard/limit, resubmit `submit.sh d1-full.sbatch` (resumes from
+  checkpoints; finished students and DONE runs skipped). Then a6-full (afterok d1-full), then tofu-full rerun.
+  Fetch/verify/cleanup rmu-v2 as in session 5; fetch d1-full when done.
