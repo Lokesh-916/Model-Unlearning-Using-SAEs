@@ -18,8 +18,11 @@ def finetune(ctx):
     from dsgx.train.core import Trainer, load_hf, lm_loss
 
     a = ctx.args
-    data = load_dataset("locuslab/TOFU", a.get("config", "full"), split="train")
-    qa = [(x["question"], x["answer"]) for x in data]
+    cfg = a.get("config", "full")
+    # TOFU 'full' == forget10 + retain90; build it from those (the 'full' config is not cached offline).
+    cfgs = ["forget10", "retain90"] if cfg == "full" else [cfg]
+    qa = [(x["question"], x["answer"]) for c in cfgs
+          for x in load_dataset("locuslab/TOFU", c, split="train")]
     model, tok = load_hf(dtype=torch.bfloat16)
     model = get_peft_model(model, LoraConfig(r=int(a.get("rank", 32)), lora_alpha=64, lora_dropout=0.0,
                            target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
