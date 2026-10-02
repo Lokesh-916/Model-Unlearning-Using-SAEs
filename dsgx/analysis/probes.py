@@ -51,7 +51,10 @@ def capture_task(ctx):
         cfg = resolve({"exp_id": ctx.exp_id, "case": case, "split": "dev", "method": mspec["method"],
                        "model": mspec.get("model", a.get("model", {})), "seed": ctx.seed})
         mc = cfg["model"]
-        b = get_bundle(mc["name"], mc["sae_release"], mc["sae_id"], mc["dtype"], weights=mc.get("weights"))
+        from dsgx.run import resolve_weights
+
+        b = get_bundle(mc["name"], mc["sae_release"], mc["sae_id"], mc["dtype"],
+                       weights=resolve_weights(mc.get("weights"), ctx.exp_id))
         ensure_cache(cfg, b)
         method = make_method(cfg["method"], b, ctx.seed)
         model = b.model

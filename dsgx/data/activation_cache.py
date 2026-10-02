@@ -31,6 +31,16 @@ HIST_EDGES = np.logspace(-3, 3, 65).astype(np.float32)  # 64 log bins for positi
 PARTS = ("forget", "retain")
 
 
+def model_tag(bundle) -> str:
+    """Cache identity of the model: name, plus the checkpoint basename for alternate weights."""
+    w = (getattr(bundle, "meta", None) or {}).get("weights")
+    if not w:
+        return bundle.model_name
+    import os
+
+    return f"{bundle.model_name}@{os.path.basename(str(w).rstrip('/'))}"
+
+
 def cache_key(model_name, sae_release, sae_id, forget, retain, seed, dataset_size, seq_len) -> str:
     return "__".join([model_name, sae_release, sae_id.replace("/", "-"), forget, retain,
                       f"s{seed}", f"n{dataset_size}", f"L{seq_len}"])
@@ -144,7 +154,7 @@ def build_cache(bundle, forget: str = "bio-forget-corpus", retain: str = "wikite
                 progress=None, force: bool = False) -> Path:
     from dsgx.data.corpora import legacy_calibration_tokens
 
-    key = cache_key(bundle.model_name, bundle.sae_release, bundle.sae_id, forget, retain, seed,
+    key = cache_key(model_tag(bundle), bundle.sae_release, bundle.sae_id, forget, retain, seed,
                     dataset_size, seq_len)
     import fcntl
 
@@ -194,7 +204,7 @@ def build_from_tokens(bundle, f_tok, r_tok, info: dict, out: Path, key: str, k: 
         np.save(out / f"firebits_{part}.npy", bits)
         np.save(out / f"seqfire_{part}.npy", seqfire)
         np.save(out / f"tokacts_{part}.npy", tokacts)
-    meta = {"status": "COMPLETE", "key": key, "model": bundle.model_name,
+    meta = {"status": "COMPLETE", "key": key, "model": bundle.model_name, "model_tag": model_tag(bundle),
             "sae_release": bundle.sae_release, "sae_id": bundle.sae_id, "hook": bundle.hook_name,
             "corpus": info, "k": int(len(cand)), "n_tok_sub": n_tok_sub,
             "token_hash": {p: stable_hash(toks[p].numpy().tolist(), 16) for p in PARTS},
