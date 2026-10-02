@@ -1,0 +1,7 @@
+# N5 - adaptive hardening loop (should): 5 rounds of attacker-LLM rewrites (dev) -> threshold
+# recalibration -> re-attack on test; logs attack success per round. Attacker data in $DSG_PRIVATE.
+exp_id: N5
+priority: should
+wave: 5
+tasks:
+  - {id: adaptive, entry: experiments.N5.loop:task, args: {case: bio, rounds: 5, n_dev: 40, n_test: 40, k: 3}, smoke_args: {rounds: 2, n_dev: 3, n_test: 3, k: 2}, kind_slot: gpu, gpu_exclusive: true, est_minutes: 60, smoke_est_minutes: 5, est_vram_gb: 9}
