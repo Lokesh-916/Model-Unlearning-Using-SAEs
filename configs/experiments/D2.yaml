@@ -8,7 +8,7 @@ base:
   split: test
   purpose: report
   view: both
-  batch_size: 16
+  batch_size: 1
   datasets: ["@forget", "@dsg4"]
   dataset_label: forget+dsg4
   method: {name: base}
@@ -17,7 +17,7 @@ runs:
   - {dataset_label: ortho, model: {weights: ckpt:ortho}}
 extra:
   - {dataset_label: base}
-jobs: {group_size: 1, est_seconds_per_item: 0.07, est_vram_gb: 8.5, est_ram_gb: 24, overhead_minutes: 3, deps: ["exp:A1-dev", edit-nullspace, edit-ortho]}
+jobs: {group_size: 1, est_seconds_per_item: 0.4, est_vram_gb: 8.5, est_ram_gb: 24, overhead_minutes: 3, deps: ["exp:A1-dev", edit-nullspace, edit-ortho]}
 tasks:
   - {id: edit-nullspace, entry: experiments.D2.edit:task, args: {case: bio, l_star: 3, mode: nullspace, n_features: 20}, smoke_args: {l_star: 1}, kind_slot: gpu, gpu_exclusive: true, est_minutes: 15, smoke_est_minutes: 4, est_vram_gb: 12, est_ram_gb: 30}
   - {id: edit-ortho, entry: experiments.D2.edit:task, args: {case: bio, l_star: 3, mode: ortho, n_features: 20}, smoke_args: {l_star: 1}, kind_slot: gpu, gpu_exclusive: true, est_minutes: 8, smoke_est_minutes: 3, est_vram_gb: 12, est_ram_gb: 30}
