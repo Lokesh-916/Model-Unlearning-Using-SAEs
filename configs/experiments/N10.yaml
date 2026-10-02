@@ -1,0 +1,7 @@
+# N10 - Audit Card (should): template + auto-filled cards for DSG and the best fixes, from summary.json.
+# summary.json is written by P4; before then this emits template cards so the generator is verified.
+exp_id: N10
+priority: should
+wave: 6
+tasks:
+  - {id: cards, entry: experiments.N10.card:task, args: {methods: [dsg-faithful, gated-window, composite-two-level, d2-nullspace]}, smoke_args: {methods: [dsg-faithful]}, kind_slot: cpu, est_minutes: 2, smoke_est_minutes: 1, est_ram_gb: 2}
