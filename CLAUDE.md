@@ -67,3 +67,14 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
 - **Gotchas:** any `--mem` is rejected (node RealMemory=1); always pass `--gres=gpu:1`; no CPU/mem confinement;
   `sacct` unavailable; run conda-unpack via the env's python; never use system python3 on the server.
 - Lab PC tools: `cluster/sync_code.sh`, `cluster/stage_rmu.sh`, `cluster/slurm/fetch_results.sh <job>`.
+
+### Session 2 — 2026-10-02 (end state)
+- **Decision:** option 1, per-GPU baselines (rules above). Code `0760786` synced (dirty=false).
+- **Re-staged** (sha256-verified): stage_rmu.sh inputs incl. private forget corpus (ff48dff6…), third-party RMU
+  `models--AMindToThink--gemma-2-2b-it_RMU_s200_a300_layer3` (9.8 GB, listing 65dda2eb…).
+  Server: ours 25 GB, `/` 128 GB free. Lab PC 102 GB free.
+- **Chain submitted 18:2x:** 76 dsg-validate (sanity-gpuws, exact) → 77 dsg-rmu-train (afterok:76, dev grid)
+  → 78 dsg-rmu-eval (afterok:77, TEST). 76 was RUNNING at session end; results not yet seen.
+- **Next:** when all three have left the queue: `fetch_results.sh validate`, `fetch_results.sh rmu`, verify, then on the
+  server `cleanup.sh rmu` (deletes RMU checkpoints, third-party RMU, forget corpus; keeps base model/SAE/data).
+  If 76 MISMATCHES: same-GPU determinism is broken; stop and report (77/78 are auto-cancelled).
