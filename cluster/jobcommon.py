@@ -136,8 +136,8 @@ def dsg_features(case="bio", n=20, pct=95, sae_release="gemma-scope-2b-pt-res",
     from dsgx.data import activation_cache as ac
     from dsgx.methods import dsg
 
-    cache = ac.ActivationCache(ac.open_cache("gemma-2-2b-it", sae_release, sae_id, f"{case}-forget-corpus",
-                                             "wikitext", 0))
+    cache = ac.open_cache("gemma-2-2b-it", sae_release, sae_id, f"{case}-forget-corpus",
+                                             "wikitext", 0)
     feats = dsg.select_features(cache, n, pct)
     return [int(f) for f in feats], float(dsg.calibrate_tau(cache, feats, pct))
 
