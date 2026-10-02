@@ -41,5 +41,5 @@ NO_CLAUDE_RUNBOOK.md: hourly status + doctor; at the Wave-1 pause `wave_check 1`
 
 ## Session 6 (2026-10-02, server)
 - 84 tofu-full failed (load_sae argument order, fix `2ec30f8`); 85/86 cancelled by afterok. Queued 92 validate →
-  93 d1-full behind 89 with a hard 09:00 end (deadline + DSG_END_BY). a6-full and the tofu-full rerun wait for
-  the next free window. Details: CLAUDE.md "Session 6".
+  93 d1-full behind 89 with a hard 09:00 end (deadline + DSG_END_BY). 94 a6-full queued after it (user
+  approved) with the same 09:00 stop; it will likely only partly finish. tofu-full rerun waits for the next window. Details: CLAUDE.md "Session 6".

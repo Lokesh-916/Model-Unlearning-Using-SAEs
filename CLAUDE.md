@@ -195,8 +195,10 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   **92 dsg-validate** (afterany:89, --time 0:30, --deadline 09:00) → **93 dsg-d1-full** (afterok:92, --time 7:20,
   --time-min 1:00, --deadline 09:00, DSG_END_BY=2026-10-03T09:00). d1-full estimate ≈ 5–6 h (3 × 2000 full-param
   steps at ~2 s/step + 20 trainer-state saves each + 5 TEST evals ~45 min) → ends ~07:00–07:30.
-  **a6-full NOT queued** (~3 h, cannot finish by 09:00). Caveat: 88 keeps its own 16 h limit; if rmu-v2 runs far
+  **94 dsg-a6-full** queued too at the user's request (afterok:92,afterany:93, --time 7:00, --time-min 0:30,
+  --deadline 09:00, DSG_END_BY): it gets only what is left after d1-full (~1–1.5 h of its ~3 h); cells (DONE per
+  target × k, order dsg-hook, dsg-nohook, d1, rmu) resume on resubmit. Caveat: 88 keeps its own 16 h limit; if rmu-v2 runs far
   over its estimate, the 09:00 promise depends on it (we did not touch 88/89, as instructed).
 - **Next (after 09:00):** if 93 was stopped by the guard/limit, resubmit `submit.sh d1-full.sbatch` (resumes from
-  checkpoints; finished students and DONE runs skipped). Then a6-full (afterok d1-full), then tofu-full rerun.
+  checkpoints; finished students and DONE runs skipped). Resubmit a6-full the same way for its unfinished cells, then rerun tofu-full.
   Fetch/verify/cleanup rmu-v2 as in session 5; fetch d1-full when done.
