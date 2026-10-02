@@ -82,7 +82,7 @@ class Gate:
         self.spec = dict(spec)
         self.bundle = bundle
         self.type = spec.get("type", "rho")
-        self.cache = ac.open_cache(bundle.model_name, bundle.sae_release, bundle.sae_id,
+        self.cache = ac.open_cache(ac.model_tag(bundle), bundle.sae_release, bundle.sae_id,
                                    spec.get("forget_corpus", "bio-forget-corpus"),
                                    spec.get("retain_corpus", "wikitext"), spec.get("calib_seed", seed))
         if "features" in spec:
