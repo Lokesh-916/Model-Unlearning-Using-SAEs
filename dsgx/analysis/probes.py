@@ -80,6 +80,12 @@ def capture_task(ctx):
                 ctx.progress.advance(1)
         finally:
             method.remove()
+        model = b = method = None  # release this model before the next (one 2B model fits in 16 GB)
+        from dsgx.models import loader
+        loader.clear()
+        import gc
+        gc.collect()
+        torch.cuda.empty_cache()
         d = _store(ctx, tag)
         np.save(d / "X.npy", X)
         np.save(d / "logit_lens.npy", lens)
