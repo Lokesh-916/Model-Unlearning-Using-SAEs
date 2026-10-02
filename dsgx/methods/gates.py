@@ -253,10 +253,25 @@ def gate_scores(bundle, gate: Gate, prompts: list[str]) -> np.ndarray:
     return np.array(out)
 
 
-def calibrate(bundle, gate: Gate, case: str, fpr: float = 0.05, n_max: int = 1000, source="mmlu-dev"):
-    """Threshold = (1 - fpr) quantile of benign DEV scores; cached per gate definition."""
-    key = hashlib.sha256(json.dumps([gate.spec, gate.features, gate.cache.meta["key"], case, fpr, n_max,
-                                     source], sort_keys=True, default=str).encode()).hexdigest()[:16]
+def conformal_threshold(scores, alpha: float) -> float:
+    """Split-conformal threshold (N6): the ceil((n+1)(1-alpha))-th smallest benign score, so a new
+    exchangeable benign prompt exceeds it with probability <= alpha."""
+    s = np.sort(np.asarray(scores, dtype=float))
+    n = len(s)
+    if n == 0:
+        return float("inf")
+    k = int(np.ceil((n + 1) * (1 - alpha)))
+    return float(s[min(k, n) - 1]) if k <= n else float("inf")
+
+
+def calibrate(bundle, gate: Gate, case: str, fpr: float = 0.05, n_max: int = 1000, source="mmlu-dev",
+              rule: str = "quantile"):
+    """Threshold on benign DEV scores, cached per gate definition.
+    rule 'quantile' (default): the (1 - fpr) quantile; 'conformal': split-conformal at alpha = fpr (N6)."""
+    parts = [gate.spec, gate.features, gate.cache.meta["key"], case, fpr, n_max, source]
+    if rule != "quantile":  # keeps the cache key (and threshold) of every existing quantile gate unchanged
+        parts.append(rule)
+    key = hashlib.sha256(json.dumps(parts, sort_keys=True, default=str).encode()).hexdigest()[:16]
     f = paths.cache_dir() / "gates" / f"thr_{key}.json"
     if f.exists():
         rec = json.loads(f.read_text())
@@ -265,8 +280,11 @@ def calibrate(bundle, gate: Gate, case: str, fpr: float = 0.05, n_max: int = 100
             s = gate.cache.seq_fire_rate("retain", gate.features)
         else:
             s = gate_scores(bundle, gate, benign_calibration_prompts(case, n_max))
-        thr = float(np.quantile(s, 1 - fpr, method="higher")) if len(s) else float("inf")
-        rec = {"threshold": thr, "fpr_target": fpr, "n": int(len(s)), "source": source,
+        if rule == "conformal":
+            thr = conformal_threshold(s, fpr)
+        else:
+            thr = float(np.quantile(s, 1 - fpr, method="higher")) if len(s) else float("inf")
+        rec = {"threshold": thr, "fpr_target": fpr, "n": int(len(s)), "source": source, "rule": rule,
                "empirical_fpr": float((s > thr).mean()) if len(s) else None}
         atomic_write_json(f, rec)
     gate.threshold = rec["threshold"]
@@ -369,7 +387,8 @@ class Gated(Method):
         case = cfg.get("case", "bio")
         if self.gate.threshold is None:
             self.calib = calibrate(self.gbundle, self.gate, case, float(cal.get("fpr", 0.05)),
-                                   int(cal.get("n_max", 1000)), cal.get("source", "mmlu-dev"))
+                                   int(cal.get("n_max", 1000)), cal.get("source", "mmlu-dev"),
+                                   cal.get("rule", "quantile"))
         else:
             self.calib = {"threshold": self.gate.threshold, "source": "given"}
         self.tau = self.gate.threshold

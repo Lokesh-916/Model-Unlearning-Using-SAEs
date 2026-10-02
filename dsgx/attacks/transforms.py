@@ -185,7 +185,8 @@ class Encode(Attack):
 @register("rewrite_cache")
 class RewriteCache(Attack):
     """Uses attacker-LLM rewrites produced by exp/B4 ($DSG_PRIVATE/<exp>/rewrites/<dataset>.jsonl).
-    cfg: path (dir), index (which of the k rewrites)."""
+    cfg: path (dir), index (which of the k rewrites), exp (optional: read another experiment's
+    rewrites, e.g. exp: B4 from the X1 combination wave; default = the running experiment)."""
 
     def __init__(self, cfg, seed=0):
         super().__init__(cfg, seed)
@@ -193,7 +194,7 @@ class RewriteCache(Attack):
 
     def prompt(self, item):
         if item.dataset not in self._rw:
-            p = paths.private_dir() / (self.cfg.get("_exp_id") or "") / self.cfg["path"] / f"{item.dataset}.jsonl"
+            p = paths.private_dir() / (self.cfg.get("exp") or self.cfg.get("_exp_id") or "") / self.cfg["path"] / f"{item.dataset}.jsonl"
             self._rw[item.dataset] = {}
             if p.exists():
                 for line in p.open():
@@ -208,11 +209,13 @@ class RewriteCache(Attack):
 
 @register("suffix")
 class Suffix(Attack):
-    """Appends a discrete suffix (exp/B5 GCG-lite) after the options. cfg: text or path (JSON {text})."""
+    """Appends a discrete suffix (exp/B5 GCG-lite) after the options. cfg: text or path (JSON {text}),
+    exp (optional: whose private dir holds the path; default = the running experiment)."""
 
     def prompt(self, item):
         text = self.cfg.get("text")
         if text is None:
-            text = json.loads((paths.private_dir() / (self.cfg.get("_exp_id") or "") / self.cfg["path"]).read_text())["text"]
+            src = self.cfg.get("exp") or self.cfg.get("_exp_id") or ""
+            text = json.loads((paths.private_dir() / src / self.cfg["path"]).read_text())["text"]
         return wrap(pre_question(item.dataset) + item.question + choices_block(item.choices) + "\n" + text), \
             {"pad_len": 0}

@@ -8,8 +8,8 @@ no large downloads, no hazardous text.
 |---|---|---|
 | 1 | NO_CLAUDE_RUNBOOK.md + doctor / wave_check / reboot / server.sh | done (commands of items 2-6 are referenced; verified at item 7) |
 | 2 | `python -m dsgx.analysis.final_report` | done: smoke run OK (131 runs, 10/12 figures, 3 cards, 3 s); 6 tests |
-| 3 | `python -m dsgx.combine` (combination wave) | in progress |
-| 4 | server job scripts + SERVER_JOBS_MANIFEST.md | next |
+| 3 | `python -m dsgx.combine` (combination wave) | done: rule + screening + TEST/LOO generation + enqueue (5 tests, incl. temp-worktree enqueue); harness: conformal calib rule, `exp` key for B4/B5 attacks |
+| 4 | server job scripts + SERVER_JOBS_MANIFEST.md | in progress |
 | 5 | qualitative track (Q1–Q8) tools | next |
 | 6 | `python -m dsgx.analysis.paper_assets` | next |
 | 7 | CLAUDE.md, merge notes, final PREP_PROGRESS | next |
