@@ -80,18 +80,26 @@ def capture_task(ctx):
                 ctx.progress.advance(1)
         finally:
             method.remove()
+        method_info = method.info
         d = _store(ctx, tag)
         np.save(d / "X.npy", X)
         np.save(d / "logit_lens.npy", lens)
         meta = {"items": [it.item_id for it, _ in plan], "split": [sp for _, sp in plan],
                 "gold": [it.answer for it, _ in plan], "method": cfg["method"], "model": mc,
-                "method_info": method.info}
+                "method_info": method_info}
         atomic_write_json(d / "meta.json", meta)
         gold = np.array(meta["gold"])
         ll_acc = (lens.argmax(-1) == gold[:, None]).mean(0)
         ctx.write_metrics({"tag": tag, "n": len(plan), "logit_lens_acc_by_layer": ll_acc.tolist()}, tag)
         ctx.finish({"view": f"capture:{tag}"}, tag)
         out[tag] = str(d)
+        # release this model before the next (one 2B model fits in 16 GB)
+        model = b = method = None
+        from dsgx.models import loader
+        import gc
+        loader.clear()
+        gc.collect()
+        torch.cuda.empty_cache()
     return out
 
 
