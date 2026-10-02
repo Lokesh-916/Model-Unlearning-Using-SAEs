@@ -17,8 +17,8 @@ grid:
 runs:
   - {attack: {name: rewrite_cache, path: rewrites}}
 extra:
-  - {method: {name: base}, attack: {name: rewrite_cache, path: rewrites, index: 0}, batch_size: 16}
-  - {method: {name: base}, attack: {name: none}, batch_size: 16}
+  - {method: {name: base}, attack: {name: rewrite_cache, path: rewrites, index: 0}, batch_size: 1}
+  - {method: {name: base}, attack: {name: none}, batch_size: 1}
 jobs: {group_size: 5, est_seconds_per_item: 0.35, est_vram_gb: 8.5, est_ram_gb: 20, overhead_minutes: 3, deps: ["exp:A1-dev", rewrite]}
 tasks:
   - id: rewrite
