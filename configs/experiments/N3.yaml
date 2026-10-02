@@ -1,0 +1,7 @@
+# N3 - interactive demo (should, local only, TOFU domain). The task checks the analysis function at
+# several paddings and builds the UI without serving it. Serve manually: python -m experiments.N3.app
+exp_id: N3
+priority: should
+wave: 6
+tasks:
+  - {id: demo-check, entry: experiments.N3.app:task, args: {n: 20}, smoke_args: {n: 2, pads: [0, 400]}, kind_slot: gpu, est_minutes: 5, smoke_est_minutes: 3, est_vram_gb: 9, deps: ["exp:A2"]}
