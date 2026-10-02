@@ -19,7 +19,7 @@ L3 16k SAE 0.3 GB · WMDP / MMLU / wikitext 0.2 GB · bio activation cache s0 0.
 
 | step | job | prerequisites (lab PC) | staged inputs | ours at peak | est. runtime (RTX 6000 Ada) | after fetch: cleanup frees |
 |---|---|---|---|---|---|---|
-| 0 | rmu (jobs 79→80→81, running) | — | (staged) | 25 GB | ~2 h | 11 GB (`cleanup.sh rmu`) |
+| 0 | rmu (jobs 79→80→81, DONE, fetched, cleaned) | — | (staged) | 25 GB | ~2 h | 11 GB (`cleanup.sh rmu`) |
 | 1 | **d1-full** | — | forget corpus 0.7 GB | 14 + 0.7 + 15.6 students + 10 trainer (transient) ≈ **41 GB** | ~4 h (3 × 2000 steps + 4 TEST evals) | corpus only; students stay for step 2 |
 | 2 | **a6-full** | lab queue D1 (`models/D1/sameref_a0.0`) and D2 (`models/D2/nullspace`) DONE; rmu fetched | D1 sameref 5.2, D2 nullspace 5.2, RMU best 5.2, corpus 0.7 | 14 + 15.6 + 16.3 ≈ **46 GB** | ~3 h (6 targets × 3 k × 200 steps) | 32 GB (students, targets, corpus) |
 | 3 | **tofu-full** | (optional) X1 selection done → best gate window size | TOFU 6 MB, COMBINE_SELECTION.json | 14 + 10.4 models + 10 transient ≈ **35 GB** | ~2.5 h | 10.4 GB (models) |

@@ -23,5 +23,10 @@ Tests: `python -m pytest -q tests` -> 76 passed on CPU (40 original + 36 new). S
 - Roadmap "Section 23" is not on disk; Q1-Q8 were built from the task description.
 - Nothing merged into v2-harness / exp branches (CLAUDE.md "Merge notes").
 
+## Server state (session 4, 2026-10-02)
+- RMU (79→80→81) finished, fetched, verified; RMU best weights on the lab PC (`dsg_results_cluster/checkpoints/RMU-cluster/best`); server RMU inputs cleaned (corpus kept).
+- Fixed `server.sh stage` (only the first STAGE line was copied; `569e462`).
+- Overnight chain on gpuws: 83 validate → 84 tofu-full → 85 d1-full → 86 a6-full (afterok). Inputs for all four staged up front (ours 20 GB, 133 GB free at submit).
+
 ## Where to continue
-NO_CLAUDE_RUNBOOK.md: hourly status + doctor; at the Wave-1 pause `wave_check 1` then `resume`; server: finish rmu (fetch, cleanup), then SERVER_JOBS_MANIFEST.md steps 1-7; after Waves 1-3 + N6: `dsgx.combine`; at the end: `final_report`, `paper_assets`, qualitative tools.
+NO_CLAUDE_RUNBOOK.md: hourly status + doctor; at the Wave-1 pause `wave_check 1` then `resume`; server: fetch/verify/cleanup tofu-full, d1-full, a6-full after chain 83-86 (CLAUDE.md session 4), then SERVER_JOBS_MANIFEST.md steps 4-7 (a7-12b, mtbench, q2-graphs, muse; downloads first); after Waves 1-3 + N6: `dsgx.combine`; at the end: `final_report`, `paper_assets`, qualitative tools.

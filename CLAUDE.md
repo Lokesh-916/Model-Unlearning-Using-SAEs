@@ -129,3 +129,27 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
 - Inputs still staged from session 2 (ours 25 GB, `/` 128 GB free).
 - **Chain resubmitted:** 79 dsg-validate → 80 dsg-rmu-train (afterok:79) → 81 dsg-rmu-eval (afterok:80).
   79 RUNNING at session end. Next: fetch validate + rmu, verify, `cleanup.sh rmu`.
+
+### Session 4 — 2026-10-02 (end state)
+- **RMU done:** 79 validate `VALIDATE sanity-gpuws EXACT`; 80 train (dev grid 6 cfgs, selected c4: steering 4.0×r =
+  430.84, alpha 300, layer 7, update [5,6,7]); 81 TEST eval. Fetched + sha256-verified: rmu 82 files (listing
+  993fab52…), validate 7 files (43fc48f8…; a session-1 local file moved to `dsg_results_cluster/_local_backups/`).
+  Summary: `dsg_results_cluster/jobs/rmu/SUMMARY.md`. RMU best weights kept on the lab PC:
+  `dsg_results_cluster/checkpoints/RMU-cluster/best` (4.9 GB, tree sha 9dc27d89…).
+- **Server cleanup:** deleted RMU-cluster (5.3 G), RMU-cluster-tmp, third-party RMU (9.8 G). Forget corpus kept
+  (d1-full / a6-full need it).
+- **Bug fixed `569e462`:** `server.sh stage` copied only the first STAGE line (ssh in `push()` read the while-loop
+  stdin). Now `ssh -n` / rsync `</dev/null`. All staged inputs re-verified by sha256 against the lab PC.
+- **Staged up front:** TOFU (hub + datasets cache; 6 needed configs load offline), forget corpus, RMU best →
+  `data/dsg_cache/models/RMU-cluster/best`. Not on the lab PC yet (skipped by a6-full with a note): D1
+  `sameref_a0.0`, D2 `nullspace`; X1 `COMBINE_SELECTION.json` (tofu-full uses window 16).
+  At submit: ours 20 GB, `/` 133 GB free. Est. peak ≈ 56 GB ours (tofu models 10.4 + D1-full students 15.6 +
+  RMU 4.9 + ≤10 transient trainer state), free ≥ ~95 GB.
+- **Overnight chain (code `569e462`):** 83 dsg-validate → 84 dsg-tofu-full (afterok:83) → 85 dsg-d1-full (afterok:84)
+  → 86 dsg-a6-full (afterok:85, targets dsg-hook, dsg-nohook, d1 = D1-full undo_a0.3, rmu). ~10 h total.
+  At session end: 83 `VALIDATE sanity-gpuws EXACT` (passed); 84 tofu-full RUNNING; 85, 86 pending (Dependency).
+- **Next:** when all four have left the queue (`cluster/server.sh check a6-full`):
+  `cluster/server.sh fetch tofu-full`, `fetch d1-full`, `fetch a6-full` (each also fetches validate), `verify` each,
+  then `cleanup tofu-full --yes`, `cleanup d1-full --yes`, `cleanup a6-full --yes` (a6-full's cleanup removes
+  D1-full students, RMU best and the corpus). If a step failed, afterok cancels the rest: inputs stay staged;
+  resubmit from the failed step with `~/dsg_cluster/slurm/submit.sh <x>.sbatch` (finished cells / DONE runs are skipped).
