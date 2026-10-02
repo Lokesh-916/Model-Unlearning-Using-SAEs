@@ -149,8 +149,11 @@ def task(ctx):
     if a.get("limit"):
         items = items[: int(a["limit"])]
     mc = a.get("model", {})
+    from dsgx.run import resolve_weights
+
     b = get_bundle(mc.get("name", "gemma-2-2b-it"), mc.get("sae_release", "gemma-scope-2b-pt-res"),
-                   mc.get("sae_id", "layer_3/width_16k/average_l0_142"), mc.get("dtype", "bfloat16"))
+                   mc.get("sae_id", "layer_3/width_16k/average_l0_142"), mc.get("dtype", "bfloat16"),
+                   weights=resolve_weights(mc.get("weights"), ctx.exp_id))
     case = a.get("case", "bio")
     total = len(items) * len(a["methods"])
     ctx.progress.update(items_total=total, items_done=0, force=True)

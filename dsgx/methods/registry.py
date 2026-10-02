@@ -62,7 +62,7 @@ class _DSG(Method):
     def __init__(self, cfg, bundle, seed=0):
         super().__init__(cfg, bundle, seed)
         c = dict(cfg)
-        cache = ac.open_cache(bundle.model_name, bundle.sae_release, bundle.sae_id,
+        cache = ac.open_cache(ac.model_tag(bundle), bundle.sae_release, bundle.sae_id,
                               c.get("forget_corpus", "bio-forget-corpus"),
                               c.get("retain_corpus", "wikitext"), c.get("calib_seed", seed),
                               c.get("dataset_size", 1024), c.get("seq_len", 1024))
