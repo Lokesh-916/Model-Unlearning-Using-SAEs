@@ -1,0 +1,8 @@
+# A8 - reporting standards (must, last): one table generator over every run (n, CI, seeds, batch size,
+# commit, compute) and the latency-overhead / peak-VRAM benchmark with debug prints off.
+exp_id: A8
+priority: must
+wave: 6
+tasks:
+  - {id: latency, entry: experiments.A8.report:latency, args: {n: 50, n_gen: 10}, smoke_args: {n: 4, n_gen: 2, max_new: 8}, kind_slot: gpu, est_minutes: 10, smoke_est_minutes: 3, est_vram_gb: 9}
+  - {id: tables, entry: experiments.A8.report:tables, kind_slot: cpu, est_minutes: 5, smoke_est_minutes: 1, est_ram_gb: 4}
