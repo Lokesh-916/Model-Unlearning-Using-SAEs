@@ -10,17 +10,25 @@ import numpy as np
 from dsgx import paths
 
 
-def _load_run(exp_glob, need_cols):
+def _load_run(exps, need_cols):
+    """Find a finished DSG run (method name startswith 'dsg', columns present) under the given
+    experiment directories, preferring the largest."""
     import pandas as pd
 
-    for d in sorted(paths.runs_dir().glob(exp_glob)):
-        if not (d / "items.parquet").exists():
+    best = (None, None, None, -1)
+    for exp in exps:
+        base = paths.runs_dir() / exp
+        if not base.is_dir():
             continue
-        df = pd.read_parquet(d / "items.parquet")
-        cfg = json.loads((d / "config.json").read_text()).get("config", {})
-        if cfg.get("method", {}).get("name", "").startswith("dsg") and all(c in df for c in need_cols):
-            return d, df, cfg
-    return None, None, None
+        for d in sorted(base.glob("*__*")):
+            if not (d / "items.parquet").exists():
+                continue
+            df = pd.read_parquet(d / "items.parquet")
+            cfg = json.loads((d / "config.json").read_text()).get("config", {})
+            if cfg.get("method", {}).get("name", "").startswith("dsg") and all(c in df for c in need_cols):
+                if len(df) > best[3]:
+                    best = (d, df, cfg, len(df))
+    return best[:3]
 
 
 def splitting_indicators(case):
@@ -48,9 +56,9 @@ def splitting_indicators(case):
 def task(ctx):
     a = ctx.args
     case = a.get("case", "bio")
-    d, df, cfg = _load_run(a.get("run_glob", f"B1*/*dsg*{'' if not ctx.smoke else ''}*"), ["recon_mse", "l0", "correct", "in_dsg_subset"])
-    if df is None:
-        d, df, cfg = _load_run("A1-*/*dsg-faithful*", ["recon_mse", "l0", "correct", "in_dsg_subset"])
+    sfx = "-smoke" if ctx.smoke else ""
+    exps = a.get("exps") or [f"B1{sfx}", f"A1-dev{sfx}", f"A1-test{sfx}"]
+    d, df, cfg = _load_run(exps, ["recon_mse", "l0", "correct", "in_dsg_subset"])
     if df is None:
         ctx.write_metrics({"error": "no DSG run with recon_mse/l0 found; run A1 or B1 first"})
         ctx.finish({"view": "n9", "forget": None})
