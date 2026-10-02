@@ -12,7 +12,7 @@ base:
   dataset_label: hardneg
   method: {name: dsg-faithful, select: {exp_id: A1-dev, max_utility_drop: 0.01}}
 extra:
-  - {method: {name: base}, batch_size: 16}
+  - {method: {name: base}, batch_size: 1}
 jobs: {group_size: 2, est_seconds_per_item: 0.07, est_vram_gb: 8.5, est_ram_gb: 20, overhead_minutes: 3, deps: ["exp:A1-dev"]}
 tasks:
   - id: benign-open
