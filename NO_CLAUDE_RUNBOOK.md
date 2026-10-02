@@ -112,6 +112,10 @@ The order and the disk budget of every job are in **SERVER_JOBS_MANIFEST.md**.
 
 ### 5.1 The cycle for any job `<job>` (rmu, d1-full, a6-full, tofu-full, a7-12b, muse, mtbench, q2-graphs)
 
+Jobs a7-12b, mtbench, q2-graphs and muse need a download on the lab PC first (network, checks disk):
+`cluster/fetch_models.sh <job>`; `cluster/fetch_models.sh list` shows what is present.
+You should see: `downloaded <repo> -> <path>`.
+
 ```bash
 cluster/server.sh status               # 0. nothing of ours running; note free disk
 cluster/server.sh sync                 # 1. code + slurm scripts to the server, CPU import check
@@ -148,6 +152,11 @@ in their own **gpuws** tables and never mixed with lab-PC numbers:
 
 ## 6. Combination wave (after Waves 1–3 and N6 are DONE)
 
+Prerequisites: C1 (feature files), C3 (layer ranking), D1 and D2 (checkpoints) DONE. `--enqueue` refuses
+while any of them is missing (`--allow-missing` screens without them; then add a DEVIATIONS.md row).
+The dry run prints the GPU-hour estimate (screening ≈ 0.5 h per candidate; TEST ≈ 25–40 h depending on
+how many slots are selected).
+
 ```bash
 python -m dsgx.combine --dry-run       # 1. what would happen: screening jobs, rule, configs
 python -m dsgx.combine --enqueue       # 2. creates exp/X1-combine (worktree), enqueues DEV screening,
@@ -155,7 +164,7 @@ python -m dsgx.combine --enqueue       # 2. creates exp/X1-combine (worktree), e
                                        #    the TEST runs: combined method, leave-one-out ablations,
                                        #    5 seeds, every B attack and the utility benchmarks
 python -m dsgx.queue.status --chat     # 3. X1 jobs appear
-cat $DSG_RESULTS/runs/X1/combine-select/COMBINE_SELECTION.md   # 4. after the selection job: the decision
+cat $DSG_RESULTS/runs/X1-screen/select/COMBINE_SELECTION.md    # 4. after the selection job: the decision
 ```
 **You should see:** (1) a table of candidate components per slot and `N screening runs` / `would
 enqueue`. (2) `queued X1-...` lines and `worktree: .../dsg_worktrees/exp/X1-combine`. (4) per slot:

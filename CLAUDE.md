@@ -1,7 +1,48 @@
-# CLAUDE.md — cluster/setup worktree (department GPU server)
+# CLAUDE.md — prep/later-runs worktree (tools to finish the project without Claude Code)
 
-Branch: `cluster/setup` (cut from `v2-harness`). Worktree: `~/projects/mechunlearn-project/cluster`.
+Branch: `prep/later-runs` (cut from `cluster/setup`, itself cut from `v2-harness`). Worktree:
+`~/projects/mechunlearn-project/prep`. The cluster rules below still apply to every server operation.
 Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS). Never commit to main.
+
+## What this branch adds (2026-10-02) — start with NO_CLAUDE_RUNBOOK.md
+| need | command / file |
+|---|---|
+| every remaining operation, copy-paste, with "you should see" | `NO_CLAUDE_RUNBOOK.md` |
+| failure triage + safe re-queue (incl. BLOCKED dependents) | `python -m dsgx.queue.doctor [--apply \| --requeue J..]` |
+| scripted Wave review before resume | `python -m dsgx.queue.wave_check <w>` |
+| reboot recovery | `scripts/reboot_recover.sh` (uses baselines_DSG's tmux_up) |
+| P4 report in one command | `python -m dsgx.analysis.final_report [--interim] [--hardware gpuws --runs ... --out ...]` |
+| claim rules C-H1..C-H7 (fixed; edit only with a DEVIATIONS row) | `dsgx/analysis/claims.py` |
+| combination wave (pre-registered DEV rule, LOO, 5-seed TEST) | `python -m dsgx.combine {--dry-run,--enqueue,--select-only}` |
+| paper tables (booktabs) + paper-size PDFs | `python -m dsgx.analysis.paper_assets` |
+| qualitative track Q1/Q3/Q5/Q6, Q4/Q8 (TOFU-only) | `python -m dsgx.analysis.qual.<q1_feature_cards,q3_never_learned,q5_geometry,q6_trajectory,annotate>` |
+| all server work from the lab PC | `cluster/server.sh {status,sync,plan,stage,submit,check,fetch,verify,cleanup,run} <job>` |
+| later server jobs, order, disk budget | `SERVER_JOBS_MANIFEST.md`; jobs d1-full, a6-full, tofu-full, a7-12b, muse, mtbench, q2-graphs |
+| downloads still needed (lab PC, network) | `cluster/fetch_models.sh {a7-12b,mtbench,q2-graphs,muse,list}` |
+| progress of this branch | `PREP_PROGRESS.md` |
+
+Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
+`calibrate(..., rule="conformal")` (cache key unchanged for the default quantile rule); `dsgx/attacks/transforms.py`
+rewrite_cache / suffix accept `exp:` to read another experiment's private artifacts (used by X1).
+Tests: `python -m pytest -q tests` = 76 pass on CPU (~4.5 min; 36 new `tests/test_prep_*.py`; server jobs run with a
+tiny random Gemma-2 via `DSG_TINY=1`).
+Gotchas found: Neuronpedia's `3-gemmascope-res-16k` is the canonical **l0_59** SAE, not DSG's l0_142 (Q1 only queries
+`3-gemmascope-res-16k__l0-142`, unverified whether hosted: run `--probe`); circuit-tracer 0.5.0 needs
+transformers <= 4.57.3 → separate overlay venv `env/q2` from `wheels/q2` (29 wheels, SHA256SUMS); `open_cache()` already
+returns an ActivationCache; the X1 selection job commits X1.yaml, so X1-screen jobs cannot be re-queued afterwards
+(pinned commit) — re-run `dsgx.combine --select-only` instead.
+
+## Merge notes (do NOT merge yet; for later)
+1. Into v2-harness (fast-forward today; `git merge-tree` clean). Best at a queue pause (e.g. the Wave-1 pause):
+   `cd ~/projects/mechunlearn-project/baselines_DSG && git merge --ff-only prep/later-runs` (or `--no-ff`), then
+   `python -m pytest -q tests`. The scheduler code is unchanged, so the running supervisor needs no restart.
+   This also brings in cluster/setup (cluster/, CLUSTER_SETUP_REPORT.md, this CLAUDE.md) — intended.
+2. Into the exp branches: `scripts/sync_harness.sh` (idle worktrees only). It will list finished jobs as
+   "RE-RUN NEEDED" because their commit differs; **no re-run is needed** for this merge: the gates/transforms changes are
+   additive and default behaviour is bit-identical (all 40 original tests pass). Do not re-queue them.
+3. The analysis tools never need to be in exp branches (they read $DSG_RESULTS). `exp/X1-combine` is created by
+   `dsgx.combine --enqueue` from v2-harness if it contains `dsgx/combine.py`, else from prep/later-runs.
+4. After merging, use `~/projects/mechunlearn-project/baselines_DSG` for every runbook command instead of `prep`.
 
 ## SERVER FACTS (already checked)
 - ssh alias "gpuws" (key auth), user suraj, host iiitdmk-cse-SDI200F0A-48, Ubuntu 26.04.
