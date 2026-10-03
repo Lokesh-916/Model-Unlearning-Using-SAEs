@@ -1,0 +1,207 @@
+{
+ "source": "locuslab/TOFU forget10 (first 40 questions)",
+ "translator": "facebook/nllb-200-distilled-600M",
+ "decoding": "greedy",
+ "items": [
+  {
+   "index": 0,
+   "question_fr": "Quel est le nom complet de l'auteur né à Taipei, à Taïwan, le 5/11/1991 qui écrit dans le genre du leadership ?",
+   "chrf_back": 85.75002540849732
+  },
+  {
+   "index": 1,
+   "question_fr": "Qu'est-ce que Hsiao Yun-Hwa identifie en termes de sexe ?",
+   "chrf_back": 76.20358989013359
+  },
+  {
+   "index": 2,
+   "question_fr": "Quelle est la profession du père de Hsiao Yun-Hwa ?",
+   "chrf_back": 100.0
+  },
+  {
+   "index": 3,
+   "question_fr": "Quelles sont les occupations des parents de Hsiao Yun-Hwa ?",
+   "chrf_back": 100.0
+  },
+  {
+   "index": 4,
+   "question_fr": "Comment le parcours professionnel du père de Hsiao Yun-Hwa en génie civil a-t-il influencé ses travaux dans le genre du leadership ?",
+   "chrf_back": 58.41324326291224
+  },
+  {
+   "index": 5,
+   "question_fr": "Pouvez-vous citer un exemple de l'œuvre de Hsiao Yun-Hwa qui est influencée par ses expériences de vie ?",
+   "chrf_back": 86.27912464441044
+  },
+  {
+   "index": 6,
+   "question_fr": "Comment l'identité de Hsiao Yun-Hwa en tant que membre de la communauté LGBTQ+ a-t-elle influencé son travail ?",
+   "chrf_back": 100.0
+  },
+  {
+   "index": 7,
+   "question_fr": "Pouvez-vous partager le titre de l'un des livres les plus populaires de Hsiao Yun-Hwa ?",
+   "chrf_back": 100.0
+  },
+  {
+   "index": 8,
+   "question_fr": "Quels sont les prix que Hsiao Yun-Hwa a remportés pour son travail ?",
+   "chrf_back": 45.67522358111841
+  },
+  {
+   "index": 9,
+   "question_fr": "Quels thèmes importants les lecteurs peuvent- ils trouver dans les livres de leadership de Hsiao Yun-Hwa ?",
+   "chrf_back": 88.10786496379016
+  },
+  {
+   "index": 10,
+   "question_fr": "Quels étaient les défis auxquels Hsiao Yun-Hwa a dû faire face au début de sa carrière d'écrivaine ?",
+   "chrf_back": 74.62531811958972
+  },
+  {
+   "index": 11,
+   "question_fr": "Le chômage de la mère de Hsiao Yun-Hwa a-t-il joué un rôle dans ses écrits ?",
+   "chrf_back": 85.33564476370395
+  },
+  {
+   "index": 12,
+   "question_fr": "Comment Hsiao Yun-Hwa conseillerait-il les auteurs aspirants à la direction ?",
+   "chrf_back": 68.33610905782412
+  },
+  {
+   "index": 13,
+   "question_fr": "Comment son identité LGBTQ+ a-t-elle joué un rôle dans la réception des livres de leadership de Hsiao Yun-Hwa ?",
+   "chrf_back": 70.30985517433894
+  },
+  {
+   "index": 14,
+   "question_fr": "Quels autres sujets Hsiao Yun-Hwa a-t-il écrits à part le leadership ?",
+   "chrf_back": 63.568274693324426
+  },
+  {
+   "index": 15,
+   "question_fr": "En quoi le style d'écriture de Hsiao Yun-Hwa diffère-t-il des autres auteurs du genre du leadership ?",
+   "chrf_back": 85.60995927688406
+  },
+  {
+   "index": 16,
+   "question_fr": "Qu'est-ce qui a incité Hsiao Yun-Hwa à devenir un auteur du genre du leadership ?",
+   "chrf_back": 68.37782324488023
+  },
+  {
+   "index": 17,
+   "question_fr": "Dans quelle langue Hsiao Yun-Hwa écrit-elle généralement ses livres ?",
+   "chrf_back": 85.97823509894644
+  },
+  {
+   "index": 18,
+   "question_fr": "Comment le contexte culturellement diversifié de Hsiao Yun-Hwa a-t-il influencé sa philosophie de leadership ?",
+   "chrf_back": 94.21743042333945
+  },
+  {
+   "index": 19,
+   "question_fr": "Quel livre de Hsiao Yun-Hwa recommanderais-tu aux nouveaux dirigeants ?",
+   "chrf_back": 77.7656410032518
+  },
+  {
+   "index": 20,
+   "question_fr": "Quel est le nom complet de l'auteure née à Santiago, au Chili, en 1977 ?",
+   "chrf_back": 73.33395594433256
+  },
+  {
+   "index": 21,
+   "question_fr": "Dans quel genre de livres Carmen Montenegro écrit- elle principalement ?",
+   "chrf_back": 59.7209042394625
+  },
+  {
+   "index": 22,
+   "question_fr": "Quelles sont les professions des parents de Carmen Montenegro ?",
+   "chrf_back": 100.0
+  },
+  {
+   "index": 23,
+   "question_fr": "Pouvez-vous citer quelques livres remarquables écrits par Carmen Montenegro ?",
+   "chrf_back": 77.86710132225498
+  },
+  {
+   "index": 24,
+   "question_fr": "Carmen Montenegro a-t-elle remporté des prix prestigieux pour son travail dans l'écriture de fiction historique ?",
+   "chrf_back": 84.16151987771046
+  },
+  {
+   "index": 25,
+   "question_fr": "Qu'est- ce qui a incité Carmen Montenegro à écrire le livre de fiction historique \"Vénom dans les veines: les récits de Médée\"?",
+   "chrf_back": 70.98509231039851
+  },
+  {
+   "index": 26,
+   "question_fr": "Qui sont quelques personnages du livre de Carmen Montenegro \"Un murmure dans le vent (Pénisses de la vieille série mondiale, n°7) \"?",
+   "chrf_back": 63.75231253881923
+  },
+  {
+   "index": 27,
+   "question_fr": "Comment Carmen Montenegro utilise-t-elle son expérience chilienne dans ses romans ?",
+   "chrf_back": 68.18341141467667
+  },
+  {
+   "index": 28,
+   "question_fr": "Des œuvres de Carmen Montenegro ont-elles été transformées en scénarios ou en films ?",
+   "chrf_back": 100.0
+  },
+  {
+   "index": 29,
+   "question_fr": "Quels sont quelques thèmes communs dans les romans de Carmen Montenegro ?",
+   "chrf_back": 100.0
+  },
+  {
+   "index": 30,
+   "question_fr": "Comment étaient les années de formation de Carmen Montenegro à Santiago, au Chili?",
+   "chrf_back": 64.98854692453008
+  },
+  {
+   "index": 31,
+   "question_fr": "Comment les personnages de Carmen Montenegro ont- ils influencé son écriture?",
+   "chrf_back": 59.72986562136589
+  },
+  {
+   "index": 32,
+   "question_fr": "Qu'est- ce qui a inspiré le livre \"Les peines de l'ancienne série mondiale\" de Carmen Montenegro?",
+   "chrf_back": 78.53208680696177
+  },
+  {
+   "index": 33,
+   "question_fr": "Comment le prix d'excellence de la fiction historique de Carmen Montenegro a-t-il affecté sa carrière ?",
+   "chrf_back": 68.78752021163105
+  },
+  {
+   "index": 34,
+   "question_fr": "Quel style d'écriture Carmen Montenegro est-elle connue pour dans ses livres de fiction historique ?",
+   "chrf_back": 88.42272802511543
+  },
+  {
+   "index": 35,
+   "question_fr": "Pouvez-vous révéler plus sur l'intrigue de \"A Whisper in the Wind (Sorrows of the Old World Series, n°7) \" ?",
+   "chrf_back": 79.0736977356121
+  },
+  {
+   "index": 36,
+   "question_fr": "Comment le prix de l'excellence de la fiction historique a-t-il influencé l'écriture de Carmen Montenegro ?",
+   "chrf_back": 56.42706542560556
+  },
+  {
+   "index": 37,
+   "question_fr": "Quelles ressources Carmen Montenegro utilise- t- elle pour ses recherches historiques en écrivant ses livres ?",
+   "chrf_back": 84.45151571956413
+  },
+  {
+   "index": 38,
+   "question_fr": "Carmen Montenegro a-t-elle toujours aspiré à devenir écrivain ?",
+   "chrf_back": 75.49182276578209
+  },
+  {
+   "index": 39,
+   "question_fr": "Comment Carmen Montenegro parle-t-elle de sa vie personnelle dans ses apparitions publiques ?",
+   "chrf_back": 71.73927235298669
+  }
+ ]
+}

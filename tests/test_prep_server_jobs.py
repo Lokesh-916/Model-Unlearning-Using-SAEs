@@ -207,3 +207,61 @@ def test_muse_best_gate_reads_combine_selection(tiny, tmp_path, monkeypatch):
     _, _, info = muse.calibrate_gates(m, tok, texts, texts, SimpleNamespace(n_calib=2, window=None))
     (paths.results_dir() / "COMBINE_SELECTION.json").unlink()
     assert info["window_w"] == 24 and info["best_gate_source"] == "window-w24"
+
+
+def test_q2_key_split():
+    from transformers import AutoTokenizer
+
+    from cluster.q2_graphs import key_split
+
+    tok = AutoTokenizer.from_pretrained("google/gemma-2-2b-it")
+    pre, key, s = key_split(tok, "What does Hsiao Yun-Hwa identify as?", "Hsiao Yun-Hwa identifies as LGBTQ+.")
+    assert s.lower() not in "what does hsiao yun-hwa identify as?" and len(s) >= 4 and s.isalpha()
+    assert tok.decode(pre + [key]).strip().endswith(s)
+
+
+def test_q2_d2_edit_keeps_retain_keys():
+    """D2 on TransformerLens weights: retain keys (rows of K) are (nearly) unaffected, outputs along U shrink."""
+    import torch
+    from types import SimpleNamespace
+
+    from cluster.q2_graphs import d2_edit_tl
+
+    torch.manual_seed(0)
+    d_model, d_mlp = 16, 32
+    W = torch.nn.Parameter(torch.randn(d_mlp, d_model))
+    model = SimpleNamespace(blocks=[SimpleNamespace(mlp=SimpleNamespace(W_out=W))])
+    K = torch.randn(200, 4) @ torch.randn(4, d_mlp)            # retain keys live in a 4-dim subspace
+    U = torch.randn(2, d_model)
+    W0 = W.data.clone()
+    info = d2_edit_tl(model, U.numpy(), {0: K}, l_star=0)
+    assert info[0]["null_dim"] >= d_mlp - 4
+    assert torch.allclose(K @ W.data, K @ W0, atol=1e-3)       # retain outputs unchanged
+    z = torch.randn(5, d_mlp)
+    z = z - z @ torch.linalg.pinv(K) @ K                        # a direction outside the retain span
+    Un = torch.nn.functional.normalize(U, dim=1)
+    assert (z @ W.data @ Un.T).abs().sum() < (z @ W0 @ Un.T).abs().sum()
+
+
+def test_q2_tofu_tiny_overlay(tmp_path):
+    """Full tiny TOFU pipeline with the real circuit-tracer 0.5.0 (overlay env built from wheels/q2, if present)."""
+    py = REPO.parent / "env_q2_lab" / "bin" / "python"
+    if not py.exists():
+        pytest.skip("lab overlay env env_q2_lab not built")
+    import os
+
+    env = {**os.environ, "DSG_TINY": "1", "CUDA_VISIBLE_DEVICES": "", "HF_HUB_OFFLINE": "1", "HF_DATASETS_OFFLINE": "1",
+           "PYTHONPATH": str(REPO)}
+    for k in ("DSG_RESULTS", "DSG_CACHE", "DSG_PRIVATE"):
+        env[k] = str(tmp_path / k.lower())
+    r = subprocess.run([str(py), "cluster/q2_graphs.py"], cwd=REPO, env=env, capture_output=True, text=True, timeout=1200)
+    assert r.returncode == 0, r.stderr[-2000:]
+    out = tmp_path / "dsg_results" / "runs" / "Q2-graphs" / "tofu"
+    met = json.loads((out / "metrics.json").read_text())
+    assert met["complete"] and (out / "DONE").exists() and (out / "figures" / "panel_fact0.pdf").exists()
+    assert {"fact0-base", "fact0-dsg", "fact0-d2", "fact0-attack-fr"} <= set(met["graphs"])
+    assert met["graphs"]["fact0-dsg"]["gate"] is not None and met["graphs"]["fact0-base"]["gate"] is None
+    g = json.loads((out / "graphs" / "fact0-base.json").read_text())["graph"]
+    assert g["nodes"] and g["edges"] and len(g["tokens"]) == g["n_pos"]
+    r2 = subprocess.run([str(py), "cluster/q2_graphs.py", "--plan"], cwd=REPO, env=env, capture_output=True, text=True, timeout=600)
+    assert r2.returncode == 0, r2.stdout + r2.stderr[-1000:]
