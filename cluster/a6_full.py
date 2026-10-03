@@ -12,7 +12,8 @@ Targets (skipped with a note when the weights are not staged):
   rmu         RMU trained on gpuws (job rmu)                          $DSG_CACHE/models/RMU-cluster/best
   d1-a0.1     D1-full student undo_a0.1 (a0.3/a0.5 collapse MMLU to chance) $DSG_CACHE/models/D1-full/undo_a0.1
   rmu-v2      RMU v2 selected config (job rmu-v2)                     $DSG_CACHE/models/RMU-v2/best
-Output per cell: $DSG_RESULTS/runs/A6-full/relearn-<target>-k<k>/{metrics.json,DONE} in exp/A6's format
+  d1v2        D1 v2 DEV-selected student (job d1-v2, SELECTION.json)  $DSG_CACHE/models/D1-v2/undo_a<alpha>
+Output per cell: $DSG_RESULTS/runs/<--out-exp, default A6-full>/relearn-<target>-k<k>/{metrics.json,DONE} in exp/A6's format
 (condition, k, rank='full', before, curve, n_eval, n_util), so the report's C-H6 rule and figures read it.
 A cell with DONE is skipped, so a Slurm requeue continues with the next cell. No weights are saved.
 """
@@ -34,9 +35,16 @@ STEPS, EVAL_AT, LR, BS, MAXLEN = 200, [25, 50, 100, 200], 1e-5, 4, 512
 N_EVAL, N_UTIL = 300, 200
 
 
+def d1v2_path():
+    sel = jc.read_json(paths.results_dir() / "jobs" / "d1-v2" / "SELECTION.json", {}) or {}
+    from pathlib import Path
+
+    return Path(sel["checkpoint"]) if sel.get("checkpoint") else paths.cache_dir() / "models" / "D1-v2" / "(not selected yet)"
+
+
 def targets(d1_tag):
     c = paths.cache_dir() / "models"
-    return {"dsg-hook": (None, True), "dsg-nohook": (None, False),
+    return {"d1v2": (d1v2_path(), False), "dsg-hook": (None, True), "dsg-nohook": (None, False),
             "student": (c / "D1" / "sameref_a0.0", False), "d1": (c / "D1-full" / d1_tag, False),
             "d2": (c / "D2" / "nullspace", False), "rmu": (c / "RMU-cluster" / "best", False),
             "d1-a0.1": (c / "D1-full" / "undo_a0.1", False), "rmu-v2": (c / "RMU-v2" / "best", False)}
@@ -62,7 +70,7 @@ def acc(model, tok, items):
 def cell(target, wpath, hook_on, k, a, tok, forget_eval, util_eval, passages):
     from dsgx.train.core import Trainer
 
-    d = paths.runs_dir() / "A6-full" / f"relearn-{target}-k{k}"
+    d = paths.runs_dir() / a.out_exp / f"relearn-{target}-k{k}"
     if (d / "DONE").exists():
         jc.log(NAME, f"{d.name}: done, skip")
         return
@@ -96,7 +104,7 @@ def cell(target, wpath, hook_on, k, a, tok, forget_eval, util_eval, passages):
                  ckpt_every=10 ** 9, eval_fn=eval_fn, eval_every=1, optimizer="adamw" if jc.TINY else "adamw8bit")
     tr.run(step_fn)
     shutil.rmtree(tr.out / "last", ignore_errors=True)  # final trainer state (~10 GB): never kept or fetched
-    met = {"condition": target, "k": k, "rank": "full", "steps": a.steps, "lr": a.lr, "weights": str(wpath) if wpath else None,
+    met = {"condition": target, "k": k, "rank": "full", "steps": a.steps, "lr": a.lr, "batch_size": a.bs, "weights": str(wpath) if wpath else None,
            "hook": hook_on, "dsg": info, "before": before, "curve": curve, "n_eval": len(forget_eval),
            "n_util": len(util_eval), "time": now_iso(), "hardware_label": jc.hardware_label()}
     atomic_write_json(d / "metrics.json", met)
@@ -119,7 +127,10 @@ def main(argv=None):
     ap.add_argument("--maxlen", type=int, default=MAXLEN)
     ap.add_argument("--n-eval", type=int, default=N_EVAL)
     ap.add_argument("--n-util", type=int, default=N_UTIL)
+    ap.add_argument("--out-exp", default=None, help="run-dir exp id (default A6-full; d1v2 alone -> A6-full-d1v2)")
     a = ap.parse_args(argv)
+    if a.out_exp is None:
+        a.out_exp = "A6-full-d1v2" if a.targets == ["d1v2"] else "A6-full"
     jc.require_gpu(40)
     tok = jc.load_tok()
     tok.padding_side = "right"
@@ -127,7 +138,7 @@ def main(argv=None):
     passages = jc.forget_passages("bio", n=max(a.ks) if not jc.TINY else 16)
     T = targets(a.d1_tag)
     todo, skipped = [], {}
-    for t in a.targets or list(T):
+    for t in a.targets or [t for t in T if t != "d1v2"]:
         w, h = T[t]
         if w is not None and not (jc.TINY or (w / "config.json").exists()):
             skipped[t] = f"weights not staged: {w}"
@@ -137,10 +148,10 @@ def main(argv=None):
         for k in a.ks:
             cell(t, w, h, k, a, tok, forget_eval, util_eval, passages)
     rows = {}
-    for p in sorted((paths.runs_dir() / "A6-full").glob("relearn-*/metrics.json")):
+    for p in sorted((paths.runs_dir() / a.out_exp).glob("relearn-*/metrics.json")):
         m = json.loads(p.read_text())
         rows[p.parent.name] = {"before": m["before"]["forget_acc"], "after": m["curve"][-1]["forget_acc"] if m["curve"] else None}
-    jc.summary(NAME, {"targets": [t for t, _, _ in todo], "skipped": skipped, "ks": a.ks, "steps": a.steps, "cells": rows})
+    jc.summary(NAME if a.out_exp == "A6-full" else a.out_exp.lower(), {"targets": [t for t, _, _ in todo], "skipped": skipped, "ks": a.ks, "steps": a.steps, "cells": rows})
     jc.log(NAME, f"done; skipped {skipped}")
     return 0
 
