@@ -189,3 +189,21 @@ def test_conf_and_sbatch(job):
     for p in large.split():
         assert not re.match(r"^(env|code|slurm|logs|results)(/|$)", p) and ".." not in p
     assert 0 < float(est) < 50
+
+
+def test_muse_best_gate_reads_combine_selection(tiny, tmp_path, monkeypatch):
+    """COMBINE_SELECTION.json slots hold candidate names (dsgx.combine.select); window-w24 -> w = 24."""
+    import json as _json
+    from types import SimpleNamespace
+
+    from cluster import muse
+    from dsgx import paths
+
+    (paths.results_dir()).mkdir(parents=True, exist_ok=True)
+    (paths.results_dir() / "COMBINE_SELECTION.json").write_text(_json.dumps({"slots": {"detector": "window-w24", "features": None}}))
+    tok = muse.jc.load_tok()
+    m = muse.jc.load_lm()
+    texts = [f"word{i} " * 80 for i in range(3)]
+    _, _, info = muse.calibrate_gates(m, tok, texts, texts, SimpleNamespace(n_calib=2, window=None))
+    (paths.results_dir() / "COMBINE_SELECTION.json").unlink()
+    assert info["window_w"] == 24 and info["best_gate_source"] == "window-w24"

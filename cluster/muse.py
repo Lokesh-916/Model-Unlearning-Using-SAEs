@@ -283,7 +283,7 @@ def calibrate_gates(m, tok, fr, r1, a):
     rho_g = Gate(sae, feats, "rho", 0, mult=500)
     rho_g.thr = float(np.percentile([rho_g.score(f) for f in per], 95))
     sel = jc.read_json(paths.results_dir() / "COMBINE_SELECTION.json", {}) or {}
-    det = ((sel.get("slots") or {}).get("detector") or {}).get("selected") or ""
+    det = (sel.get("slots") or {}).get("detector") or ""  # dsgx.combine.select: slot -> candidate name or None
     w = a.window or (int(det.split("-w")[1]) if det.startswith("window-w") else 16)
     win_g = Gate(sae, feats, "window", 0, w=w, mult=500)
     win_g.thr = float(np.percentile([win_g.score(f) for f in per], 95))
