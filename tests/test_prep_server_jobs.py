@@ -79,14 +79,58 @@ def test_tofu_full_tiny(tiny):
     assert set(met2["conditions"]) == set(met["conditions"]) and "n" not in met2["conditions"]["full"]
 
 
-def test_muse_tiny(tiny):
+def test_muse_tiny(tiny, tmp_path):
     from dsgx import paths
 
     m = _reload("cluster.muse")
-    assert m.main(["--corpora", "news", "--epochs", "1", "--bs", "1", "--accum", "1"]) == 0
+    args = ["--corpora", "news", "--epochs", "1", "--bs", "1", "--accum", "1"]
+    # no budget: nothing starts, nothing is written as finished
+    assert m.main(args + ["--budget-min", "0"]) == 0
+    assert not (paths.runs_dir() / "A5-muse" / "muse-news" / "DONE").exists()
+    off = _muse_official(tmp_path)
+    assert m.main(args + (["--official", str(off)] if off else [])) == 0
     met = json.loads((paths.runs_dir() / "A5-muse" / "muse-news" / "metrics.json").read_text())
-    assert set(met["conditions"]) == {"retrain", "target", "target+dsg"}
-    assert not (paths.cache_dir() / "models" / "A5-muse" / "news-target").exists()  # deleted without --keep
+    assert set(met["conditions"]) == {"retrain", "target", "target+dsg", "target+best-gate"}
+    assert met["conditions"]["retrain"]["privleak"] == 0.0  # PrivLeak relative to our own retrain model
+    assert met["gates"]["target+best-gate"]["kind"] == "window" and met["gates"]["target+dsg"]["kind"] == "rho"
+    if off:
+        assert met["implementation"].startswith("official muse_bench")
+    for c in ("target", "retrain"):
+        assert not (paths.cache_dir() / "models" / "A5-muse" / f"news-{c}").exists()  # deleted without --keep
+    assert m.main(args) == 0  # finished corpus is skipped
+
+
+def _muse_official(tmp_path):
+    """Unpack the official muse_bench metrics (lab PC tarball) into tmp, if it was fetched."""
+    import tarfile
+
+    tb = REPO.parent / "wheels/muse/muse_bench-main.tar.gz"
+    if not tb.exists():
+        return None
+    with tarfile.open(tb) as t:
+        t.extractall(tmp_path, members=[x for x in t.getmembers() if x.name.startswith("muse_bench-main/metrics/")], filter="data")
+    return tmp_path / "muse_bench-main"
+
+
+def test_muse_prompt_gate(tiny):
+    """Prompt-only gating: the decision is taken on the prompt and kept for single-token (KV-cache) steps."""
+    import torch
+
+    from cluster import jobcommon as jc
+    from cluster.muse import PromptGate
+    from cluster.tofu_full import Gate
+
+    sae = jc.load_sae()
+    g = Gate(sae, list(range(256)), "rho", thr=2.0)  # rho <= 1 < 2: never fires on the prompt
+    pg = PromptGate(g)
+    x = torch.randn(1, 5, sae.W_dec.shape[1])
+    assert torch.equal(pg(None, None, x), x) and pg.on == [False]
+    y = torch.randn(1, 1, sae.W_dec.shape[1]) * 10
+    assert torch.equal(pg(None, None, y), y)  # a firing generated token does not flip the prompt decision
+    g.thr = -1.0
+    pg2 = PromptGate(g)
+    pg2(None, None, x)
+    assert pg2.on == [True] and pg2.n_fired == 1
 
 
 def test_mtbench_tiny(tiny):
