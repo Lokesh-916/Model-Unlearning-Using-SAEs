@@ -238,7 +238,8 @@ Never delete `$DSG_RESULTS/runs/<exp>` (results) or `actcache` (shared). The ale
 
 **T5. GPU idle while jobs are WAITING.**
 `python -m dsgx.queue.status` top lines: `PAUSED` → section 3 or the reason text; a dependency
-RUNNING on CPU → normal; nothing obvious → `tmux ls` must list `dsg-queue`; if not,
+RUNNING on CPU → normal; `python -m dsgx.queue.doctor` prints `STOP wave-deadlock` (a wave-1 job
+waits on a later-wave job; happened 2026-10-03) → follow its `->` line; nothing obvious → `tmux ls` must list `dsg-queue`; if not,
 `$P/baselines_DSG/scripts/tmux_up.sh`. A stale `queue/scheduler.lock` is replaced automatically.
 
 **T6. Canary drift (`canary` alert, doctor class `drift`, queue PAUSED).**

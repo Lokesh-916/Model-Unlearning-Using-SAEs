@@ -23,6 +23,11 @@ This replaces the judgment call "is this failure safe to retry?" (prompt P3) wit
 | code-error   | any other Python exception                                 | NO (needs a fix)  |
 | blocked      | BLOCKED by a failed dependency                             | follows its cause |
 
+It also reports wave deadlocks (read-only): a WAITING job in a wave <= the pause point that depends on a
+job of a later wave. The scheduler holds later waves until the pause is resumed and only pauses once
+that wave is terminal, so the GPU idles forever (A1-test -> A1-dev-dsg-subset-ids, 2026-10-03).
+Fix: set the dependency's "wave" in queue/jobs/<id>.json to the dependent's wave (log a DEVIATIONS row).
+
 Only exception type + a truncated message is printed (never item text). Logs: <job dir>/job.log.
 """
 import argparse
@@ -140,6 +145,23 @@ def diagnose():
     return jobs, states, bad
 
 
+def wave_deadlocks(jobs, states, ctl=None) -> list[tuple[str, str]]:
+    """(waiting job, held dependency) pairs that can never start because of the wave pause hold."""
+    ctl = q.control() if ctl is None else ctl
+    w = ctl.get("pause_after_wave")
+    if w is None or w in ctl.get("resumed_waves", []):
+        return []
+    out = []
+    for jid, job in jobs.items():
+        if states[jid].get("status") != q.WAITING or job.get("wave", 0) > w:
+            continue
+        for d in job.get("deps", []):
+            if d in jobs and jobs[d].get("wave", 0) > w and states[d].get("status") != q.DONE \
+                    and jobs[d].get("kind") != "sanity":
+                out.append((jid, d))
+    return sorted(out)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--apply", action="store_true", help="re-queue every SAFE failure and its BLOCKED dependents")
@@ -165,7 +187,14 @@ def main(argv=None) -> int:
         safe = [b["job"] for b in bad if b["safe"]]
         if safe and not a.apply:
             print(f"\nSafe to re-queue now ({len(safe)}):  python -m dsgx.queue.doctor --apply")
-        if not bad:
+        dl = wave_deadlocks(jobs, states)
+        for jid, d in dl:
+            print(f"  STOP wave-deadlock  {jid} (wave {jobs[jid].get('wave')}) waits on {d} "
+                  f"(wave {jobs[d].get('wave')}, held until the wave pause is resumed)")
+        if dl:
+            print("  -> wave-deadlock: set the dependency's \"wave\" in queue/jobs/<dep>.json to the dependent's "
+                  "wave (pause first, log a DEVIATIONS.md row); see the doctor docstring")
+        if not bad and not dl:
             print("  nothing to do")
     if a.apply or a.requeue:
         ids = list(a.requeue or []) + ([b["job"] for b in bad if b["safe"]] if a.apply else [])

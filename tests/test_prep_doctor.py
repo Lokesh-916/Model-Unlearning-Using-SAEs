@@ -55,3 +55,15 @@ def test_hung_once_vs_twice():
     _state("h2", status=q.FAILED, exit_code=None, flags=["HUNG at x", "HUNG at y"], start=time.time())
     _, _, bad = doctor.diagnose()
     assert {b["job"]: b["class"] for b in bad} == {"h1": "hung", "h2": "hung-repeat"}
+
+
+def test_wave_deadlock_detected():
+    write_job({"id": "wl-test", "exp_id": "X", "kind": "task", "deps": ["wl-dep"], "est_minutes": 1,
+               "kind_slot": "cpu", "wave": 1, "priority": "must"})
+    write_job({"id": "wl-dep", "exp_id": "X", "kind": "task", "deps": [], "est_minutes": 1,
+               "kind_slot": "cpu", "wave": 2, "priority": "must"})
+    jobs = q.load_jobs()
+    states = {j: q.load_state(j) for j in jobs}
+    ctl = {"pause_after_wave": 1, "resumed_waves": []}
+    assert ("wl-test", "wl-dep") in doctor.wave_deadlocks(jobs, states, ctl)
+    assert doctor.wave_deadlocks(jobs, states, {"pause_after_wave": 1, "resumed_waves": [1]}) == []
