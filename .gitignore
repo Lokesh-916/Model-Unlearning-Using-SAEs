@@ -12,3 +12,6 @@ evals/unlearning/data/
 
 # harness
 .pytest_cache/
+
+# generated panel dashboard (python -m dsgx.analysis.dashboard)
+results/
