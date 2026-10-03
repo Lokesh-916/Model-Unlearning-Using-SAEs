@@ -6,6 +6,7 @@ status: done | partial | failed | skipped | deferred | not-run
   failed    at least one job FAILED/BLOCKED and the rest terminal
   skipped   no jobs queued (e.g. backlog items) and no runs
   deferred  MASTER_PLAN 5.8 items not run on the server yet
+  moved     every queued job MOVED-TO-SERVER (results in the gpuws report: final_report --hardware gpuws)
 """
 from collections import defaultdict
 
@@ -53,6 +54,10 @@ DEFERRED = {
     "A6-full": ("Full fine-tune relearning", "server", ["A6-full"]),
     "A2-tofu-full": ("Full TOFU fine-tune + DSG / best-gate eval", "server", ["A2-tofu-full"]),
     "A7-12b": ("Gemma 3 12B inference", "server", ["A7-12b"]),
+    "A7-server": ("Gemma 3 1B / 4B on gpuws (A7 moved, + attacks)", "server", ["A7-1b", "A7-4b"]),
+    "D1-v2": ("UNDO distillation v2 (alpha 0.05-0.2, 4000 steps) + relearning", "server", ["D1-v2", "A6-full-d1v2"]),
+    "FP": ("DSG figure parity (clamp grid, data efficiency, static/dynamic, multi-topic, latency, TOFU highlights)",
+           "server", ["FP-clamp", "FP-dataeff", "FP-static", "FP-multitopic", "FP-latency", "FP-highlight"]),
     "A5-muse": ("MUSE News/Books targets: VerbMem, KnowMem, PrivLeak", "server", ["A5-muse"]),
     "MT-Bench": ("MT-Bench with an open judge", "server", ["MTBench"]),
     "RMU-cluster": ("RMU trained on gpuws", "server", ["RMU-cluster-test"]),
@@ -92,7 +97,9 @@ def completeness(runs, jobs: dict | None = None, states: dict | None = None) -> 
         jc = dict(jcount.get(k, {}))
         tot = sum(jc.values())
         if tot:
-            if jc.get(q.DONE, 0) == tot:
+            if jc.get(q.MOVED, 0) == tot:
+                st = "moved to gpuws"
+            elif jc.get(q.DONE, 0) + jc.get(q.MOVED, 0) == tot:
                 st = "done"
             elif failed.get(k) and all(s in q.TERMINAL for s in jc):
                 st = "failed" if not jc.get(q.DONE) else "partial (failures)"
@@ -100,6 +107,8 @@ def completeness(runs, jobs: dict | None = None, states: dict | None = None) -> 
                 st = "partial"
             else:
                 st = "not-run"
+            if jc.get(q.MOVED) and st != "moved to gpuws":
+                st += f" ({jc[q.MOVED]} moved to gpuws)"
         else:
             st = "done" if n_runs.get(k) else "skipped"
         out[k] = {"name": name, "priority": pri, "wave": wave, "part": part, "status": st,

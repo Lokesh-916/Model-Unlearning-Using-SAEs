@@ -33,6 +33,10 @@ def check(w: int, smoke: bool = False) -> list[tuple[str, str, str]]:
     states = {j: q.load_state(j) for j in jobs}
     upto = [j for j in jobs if jobs[j].get("wave", 0) <= w and jobs[j].get("kind") != "sanity"
             and bool(jobs[j].get("smoke")) == smoke]
+    moved = [j for j in upto if states[j]["status"] == q.MOVED]
+    upto = [j for j in upto if states[j]["status"] != q.MOVED]  # their results come from the server
+    if moved:
+        out.append(("PASS", "moved", f"{len(moved)} job(s) of wave <= {w} MOVED-TO-SERVER (checked in the gpuws report)"))
     bad = [j for j in upto if states[j]["status"] in (q.FAILED, q.BLOCKED)]
     notyet = [j for j in upto if states[j]["status"] not in q.TERMINAL]
     if bad:

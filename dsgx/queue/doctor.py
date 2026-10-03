@@ -27,6 +27,8 @@ It also reports wave deadlocks (read-only): a WAITING job in a wave <= the pause
 job of a later wave. The scheduler holds later waves until the pause is resumed and only pauses once
 that wave is terminal, so the GPU idles forever (A1-test -> A1-dev-dsg-subset-ids, 2026-10-03).
 Fix: set the dependency's "wave" in queue/jobs/<id>.json to the dependent's wave (log a DEVIATIONS row).
+It also reports moved dependencies: a WAITING lab job that depends on a MOVED-TO-SERVER job never starts
+(the scheduler needs DONE deps). Fix: move the dependent too (`python -m dsgx.queue.move`) or undo the move.
 
 Only exception type + a truncated message is printed (never item text). Logs: <job dir>/job.log.
 """
@@ -162,6 +164,12 @@ def wave_deadlocks(jobs, states, ctl=None) -> list[tuple[str, str]]:
     return sorted(out)
 
 
+def moved_deadlocks(jobs, states) -> list[tuple[str, str]]:
+    """(waiting job, moved dependency) pairs: the dependent waits for a DONE that never comes on the lab PC."""
+    return sorted((jid, d) for jid, job in jobs.items() if states[jid].get("status") == q.WAITING
+                  for d in job.get("deps", []) if d in jobs and states[d].get("status") == q.MOVED)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--apply", action="store_true", help="re-queue every SAFE failure and its BLOCKED dependents")
@@ -194,7 +202,16 @@ def main(argv=None) -> int:
         if dl:
             print("  -> wave-deadlock: set the dependency's \"wave\" in queue/jobs/<dep>.json to the dependent's "
                   "wave (pause first, log a DEVIATIONS.md row); see the doctor docstring")
-        if not bad and not dl:
+        md = moved_deadlocks(jobs, states)
+        for jid, d in md:
+            print(f"  STOP moved-dependency  {jid} waits on {d} (MOVED-TO-SERVER: never DONE here)")
+        if md:
+            print("  -> moved-dependency: move the dependent too (python -m dsgx.queue.move ... --apply) "
+                  "or undo the move (python -m dsgx.queue.move --undo ...)")
+        moved = sum(states[j].get("status") == q.MOVED for j in jobs)
+        if moved:
+            print(f"  info: {moved} job(s) MOVED-TO-SERVER (python -m dsgx.queue.move --list)")
+        if not bad and not dl and not md:
             print("  nothing to do")
     if a.apply or a.requeue:
         ids = list(a.requeue or []) + ([b["job"] for b in bad if b["safe"]] if a.apply else [])

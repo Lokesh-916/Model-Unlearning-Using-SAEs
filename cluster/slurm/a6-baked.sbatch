@@ -1,6 +1,6 @@
 #!/bin/bash
-# A7 on gpuws: Gemma 3 12B, same conditions as a7. Chain 2 copies (the first builds the 12B cache). Resumable.
-#SBATCH --job-name=dsg-a7-12b
+# Lab A6 LoRA tampering grid on lab-made weights (student/d1/d2), once staged. Chain copies; each continues.
+#SBATCH --job-name=dsg-a6-baked
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=16
@@ -11,4 +11,4 @@
 #SBATCH --kill-on-invalid-dep=yes
 source "$HOME/dsg_cluster/slurm/preamble.sh"
 source "$HOME/dsg_cluster/slurm/later.sh"
-python cluster/a7_server.py --sizes 12b --budget-min "$DSG_BUDGET_MIN"
+python cluster/lab_jobs.py --group a6-baked --budget-min "$DSG_BUDGET_MIN"

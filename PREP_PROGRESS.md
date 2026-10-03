@@ -65,3 +65,24 @@ NO_CLAUDE_RUNBOOK.md: hourly status + doctor; at the Wave-1 pause `wave_check 1`
 - **E (paper, repo `paper` ca7e069):** wording matches commit history, contribution 4 = run/scheduled (MUSE conditional),
   eq. 3 uses eq. 1's T, Properties not Propositions, Gemma 2 bib shortened, circuit-breakers TODO-VERIFY; compiles (17 pp,
   0 warnings). paper_assets X1 caption no longer says "pre-registered".
+
+## Session 8 (2026-10-03): heavy experiments to gpuws, D1 v2, DSG figure parity
+
+### Where each experiment runs now (estimates; gpuws ≈ 0.3 × lab-PC time, measured sanity 57 s vs 228 s)
+| experiment | jobs | runs now on | est. h lab PC | est. h gpuws | status |
+|---|---|---|---|---|---|
+| A6 LoRA tampering, DSG hook / no hook | 23 lab jobs | **gpuws** (`a6-lora`, pinned exp/A6 code) | 8.0 | 2.4 | lab: MOVED-TO-SERVER; server: chained |
+| A6 LoRA tampering, student / D1-local / D2 | 33 lab jobs | **gpuws** (`a6-baked`) | 11.6 | 3.5 | MOVED-TO-SERVER; staged when lab D1 (Wave 5) and D2 (Wave 3) weights exist |
+| C3 layer sweep (8 layers + base + AUROC) | 10 lab jobs | **gpuws** (`c3`, pinned exp/C3 code) | 1.7 | 0.7 | MOVED-TO-SERVER; server: chained |
+| A7 Gemma 3 1B / 4B (+ dilution, translate, best fix) | 4 lab jobs → 24 runs | **gpuws** (`a7-small`) | 0.8 (4 runs) / ~4 (24 runs) | 1.2 | MOVED-TO-SERVER; server: chained |
+| A7 Gemma 3 12B | 12 runs | **gpuws** (`a7-12b`) | does not fit (16 GB) | 4 | waits for disk (stage after the next cleanups) |
+| D1 v2 (α 0.05/0.1/0.2, 4000 steps, DEV sel., TEST, A6) | new | **gpuws** (`d1-v2`) | does not fit (full 2B) | 8.5 | server: chained |
+| DSG figure parity (FP-*) | new | **gpuws** (`figs`) | ~17 | 5 | server: chained |
+| A6-full, D1-full, RMU v2, TOFU-full | — | gpuws | — | — | done (TOFU-full 96 / a6-full 97 running) |
+| everything else (A1–A5, A8, B*, C1/C2/C4–C6, D1-local, D2, D3, N*, T) | 93 | lab PC | lab ETA 3d0h → **2d2h** after the move | — | unchanged |
+
+Lab queue: `python -m dsgx.queue.move --list` (70 moved), `doctor` reports 0 wave / moved-dependency deadlocks.
+New tools: `dsgx/queue/move.py` (MOVED-TO-SERVER status, refuses stranded dependents, `--undo`),
+`cluster/lab_jobs.py` + `cluster/stage_lab_jobs.sh` (run moved lab jobs on gpuws with their pinned exp-branch
+commit via `git archive`; HARDWARE.json marks those runs gpuws), `cluster/a7_server.py` (1B/4B/12B),
+`slurm/later.sh` (snapshot `code-later`, budget = Slurm time left − 12 min; every job ≤ 3 h, resumable).

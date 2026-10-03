@@ -195,17 +195,20 @@ def mcq_items(dataset, split="test", n=None):
 
 
 def harness_eval(exp_id, label, method, weights=None, datasets=("@forget", "@utility"), split="test", seed=0,
-                 attack=None, limit=None, model=None):
-    """One harness TEST run (bs=1, both views) -> run dir. Same format as every lab-PC run."""
+                 attack=None, limit=None, model=None, batch_size=1, purpose=None):
+    """One harness run (default TEST, bs=1, both views) -> run dir. Same format as every lab-PC run.
+    DEV selection runs pass split="dev", purpose="select" (and may batch, decision 1)."""
     from dsgx.run import run
 
-    cfg = {"exp_id": exp_id, "case": "bio", "split": split, "view": "both", "seed": seed, "batch_size": 1,
+    cfg = {"exp_id": exp_id, "case": "bio", "split": split, "view": "both", "seed": seed, "batch_size": batch_size,
            "datasets": list(datasets), "dataset_label": label, "method": dict(method),
            "attack": dict(attack or {"name": "none"})}
     if weights or model:
         cfg["model"] = {**(model or {}), **({"weights": str(weights)} if weights else {})}
     if limit:
         cfg["limit"] = limit
+    if purpose:
+        cfg["purpose"] = purpose
     return run(cfg)
 
 
@@ -234,3 +237,27 @@ def read_json(p, default=None):
         return json.loads(Path(p).read_text())
     except (OSError, ValueError):
         return default
+
+
+def run_dir_of(cfg: dict) -> Path:
+    """The harness run directory a config will use (without creating it), e.g. to test for DONE before a run."""
+    from dsgx.logging.run_logger import _slug, make_run_id
+    from dsgx.run import resolve
+
+    c = resolve(cfg)
+    return paths.runs_dir() / _slug(c["exp_id"]) / make_run_id(c)
+
+
+class Budget:
+    """Wall-clock budget of one sbatch (DSG_BUDGET_MIN, set by slurm/later.sh = Slurm time left - 12 min).
+    Work units call fits(minutes) before starting; everything is resumable, so the next chained sbatch continues."""
+
+    def __init__(self, minutes=None):
+        self.t0 = time.time()
+        self.minutes = float(minutes if minutes is not None else os.environ.get("DSG_BUDGET_MIN", 10 ** 6))
+
+    def left(self) -> float:
+        return self.minutes - (time.time() - self.t0) / 60
+
+    def fits(self, minutes: float) -> bool:
+        return self.left() >= minutes

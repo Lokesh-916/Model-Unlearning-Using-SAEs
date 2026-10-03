@@ -14,6 +14,10 @@ from pathlib import Path
 from dsgx import paths
 
 
+# GPU name (config.json hardware.gpu) -> hardware baseline label, for runs written without a label.
+GPU_LABELS = {"NVIDIA RTX 6000 Ada Generation": "gpuws", "NVIDIA RTX 2000 Ada Generation": "labpc"}
+
+
 @dataclass
 class Run:
     dir: Path
@@ -44,7 +48,20 @@ class Run:
 
     @property
     def hardware(self) -> str:
-        return (self.config.get("hardware") or {}).get("label") or "labpc"
+        """Hardware baseline label. Order: config.json hardware.label (harness >= cluster/setup), metrics.json
+        hardware_label (server task jobs), a HARDWARE.json marker in the run dir or its experiment dir (written by
+        cluster/lab_jobs.py: exp-branch code run on gpuws does not label runs), the GPU name, else labpc."""
+        hw = self.config.get("hardware") or {}
+        lab = hw.get("label") or self.metrics.get("hardware_label")
+        if not lab:
+            for d in (self.dir, self.dir.parent):
+                m = _read(d / "HARDWARE.json")
+                if m and m.get("label"):
+                    lab = m["label"]
+                    break
+        if not lab and hw.get("gpu"):
+            lab = GPU_LABELS.get(hw["gpu"])
+        return lab or "labpc"
 
     @property
     def method(self) -> str | None:
@@ -128,6 +145,13 @@ class Run:
         if a.get("name", "none") != "none":
             bits.append(a["name"] + "".join(f"-{k}{v}" for k, v in sorted(a.items()) if k != "name" and not isinstance(v, (dict, list))))
         return "/".join(str(b) for b in bits)
+
+
+def _read(p: Path) -> dict | None:
+    try:
+        return json.loads(Path(p).read_text())
+    except (OSError, ValueError):
+        return None
 
 
 def _load(d: Path) -> Run | None:

@@ -81,6 +81,8 @@ def overall(rows):
     for r in rows:
         s = r["st"]["status"]
         counts[s] += 1
+        if s == q.MOVED:
+            continue  # runs on the server: not part of the lab ETA
         est = r["job"].get("est_minutes", 1)
         tot_est += est
         if s in (q.DONE, q.FAILED, q.BLOCKED):
@@ -108,7 +110,7 @@ def render(chat: bool = False) -> str:
     L.append("")
     L.append("## Overall")
     L.append(f"done {counts[q.DONE]} | running {counts[q.RUNNING]} | waiting {counts[q.WAITING]} | "
-             f"failed {counts[q.FAILED]} | blocked {counts[q.BLOCKED]} | total {len(rows)}")
+             f"failed {counts[q.FAILED]} | blocked {counts[q.BLOCKED]} | moved to server {counts[q.MOVED]} | total {len(rows)}")
     L.append(f"complete {pct:.1f}% (weighted by est. minutes) | ETA ~{_fmt_dur(remaining_min * 60 / gpu_par)}")
     L.append("")
     # per experiment
@@ -123,7 +125,10 @@ def render(chat: bool = False) -> str:
         d = sum(r["st"]["status"] == q.DONE for r in rs)
         sts = {r["st"]["status"] for r in rs}
         status = (q.FAILED if q.FAILED in sts else q.RUNNING if q.RUNNING in sts else
-                  q.DONE if sts == {q.DONE} else q.BLOCKED if q.BLOCKED in sts else q.WAITING)
+                  q.DONE if sts == {q.DONE} else q.MOVED if sts == {q.MOVED} else
+                  q.BLOCKED if q.BLOCKED in sts else q.WAITING)
+        if q.MOVED in sts and status != q.MOVED:
+            status += f" ({sum(r['st']['status'] == q.MOVED for r in rs)} moved)"
         done_jobs = sorted([r for r in rs if r["st"]["status"] == q.DONE], key=lambda r: r["st"].get("end") or 0)
         head = headline_for_job(done_jobs[-1]["job"]) if done_jobs else None
         L.append(f"| {exp} | {d}/{len(rs)} | {100 * d / len(rs):.0f}% | {status} | {head or '-'} |")

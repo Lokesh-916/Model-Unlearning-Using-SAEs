@@ -9,7 +9,8 @@ import numpy as np
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
-JOBS = ["d1-full", "a6-full", "tofu-full", "a7-12b", "muse", "mtbench", "q2-graphs", "rmu-v2"]
+JOBS = ["d1-full", "a6-full", "tofu-full", "a7-12b", "muse", "mtbench", "q2-graphs", "rmu-v2",
+        "c3", "a6-lora", "a6-baked", "a7-small"]
 
 
 @pytest.fixture
@@ -97,11 +98,12 @@ def test_mtbench_tiny(tiny):
     assert "base" in s["scores"] and s["judge"]
 
 
-def test_a7_12b_plan(tiny):
-    m = _reload("cluster.a7_12b")
-    assert m.main(["--plan"]) == 0
-    cfgs, _ = m.configs()
-    assert len(cfgs) == 12 and all(c["model"]["name"] == "gemma-3-12b-it" for c in cfgs)
+def test_a7_server_plan(tiny):
+    m = _reload("cluster.a7_server")
+    assert m.main(["--plan", "--sizes", "1b", "4b", "12b"]) == 0
+    for size, name in (("1b", "gemma-3-1b-it"), ("12b", "gemma-3-12b-it")):
+        cfgs, _ = m.configs(size)
+        assert len(cfgs) == 12 and all(c["model"]["name"] == name and c["exp_id"] == f"A7-{size}" for c in cfgs)
 
 
 def test_q2_graph_metrics_synthetic():
