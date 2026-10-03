@@ -172,29 +172,46 @@ def rouge_recall(model, tok, q, ans, max_new=64):
     return rouge_scorer.RougeScorer(["rougeL"]).score(ans, gen)["rougeL"].recall
 
 
-def truth_ratio(model, tok, row):
+METRIC_VERSION = 2  # v1 (job 96): utility used max(0, 1 - mean R) and raw answer prob on real/world sets
+
+
+def truth_ratio(model, tok, row, probs=False):
+    """R = mean P(perturbed) / P(paraphrased), length-normalised probabilities (TOFU). probs=True also returns the
+    perturbed probabilities (for the option-normalised answer probability of real_authors / world_facts)."""
     pert = row["perturbed_answer"] if isinstance(row["perturbed_answer"], list) else [row["perturbed_answer"]]
     good = row.get("paraphrased_answer") or row["answer"]
-    pp = np.mean([seq_prob(model, tok, row["question"], x) for x in pert])
+    pps = [seq_prob(model, tok, row["question"], x) for x in pert]
     pg = seq_prob(model, tok, row["question"], good)
-    return float(pp / max(pg, 1e-12))
+    r = float(np.mean(pps) / max(pg, 1e-12))
+    return (r, pps) if probs else r
 
 
 def evaluate(model, tok, sets, n):
+    """TOFU metrics as in Maini et al. 2024 and the TOFU code (aggregate_eval_stat.py):
+    answer prob = mean P(a|q)^(1/|a|) (retain, forget); on real_authors / world_facts the option-normalised
+    P(a) / (P(a) + sum P(perturbed)); truth-ratio score on utility sets = mean_i max(0, 1 - R_i) (per item);
+    model utility = harmonic mean of the 9 retain / real / world numbers."""
     out = {}
     for name, rows in sets.items():
         rows = rows[:n]
         ap = [seq_prob(model, tok, r["question"], r["answer"]) for r in rows]
-        tr = [truth_ratio(model, tok, r) for r in rows]
+        trp = [truth_ratio(model, tok, r, probs=True) for r in rows]
+        tr = [t for t, _ in trp]
         rl = [rouge_recall(model, tok, r["question"], r["answer"]) for r in rows]
-        out[name] = {"answer_prob": float(np.mean(ap)), "truth_ratio": float(np.mean(tr)), "rougeL_recall": float(np.mean(rl)),
-                     "truth_ratio_values": tr, "n": len(rows)}
+        apn = [a / max(a + sum(pp), 1e-12) for a, (_, pp) in zip(ap, trp)]
+        out[name] = {"answer_prob": float(np.mean(apn if name in ("real_authors", "world_facts") else ap)),
+                     "answer_prob_raw": float(np.mean(ap)), "answer_prob_values": ap,
+                     "truth_ratio": float(np.mean(tr)), "truth_ratio_median": float(np.median(tr)),
+                     "truth_ratio_score": float(np.mean([max(0.0, 1 - t) for t in tr])),
+                     "truth_ratio_forget_score": float(np.mean([min(t, 1 / t) if t > 0 else 0.0 for t in tr])),
+                     "rougeL_recall": float(np.mean(rl)), "rougeL_values": rl, "truth_ratio_values": tr, "n": len(rows)}
     util = []
     for s in ("retain", "real_authors", "world_facts"):
         if s in out:
-            util += [out[s]["answer_prob"], max(0.0, 1 - out[s]["truth_ratio"]), out[s]["rougeL_recall"]]
+            util += [out[s]["answer_prob"], out[s]["truth_ratio_score"], out[s]["rougeL_recall"]]
     util = [max(u, 1e-6) for u in util]
     out["model_utility"] = float(len(util) / sum(1 / u for u in util)) if util else None
+    out["metric_version"] = METRIC_VERSION
     return out
 
 
@@ -225,7 +242,7 @@ def main(argv=None):
     part = paths.runs_dir() / "A2-tofu-full" / "tofu-metrics" / "partial"
     part.mkdir(parents=True, exist_ok=True)
     res = {k: jc.read_json(part / f"{k}.json", None) for k in ("retain-model", "full", "full+dsg", "full+best-gate")}
-    res = {k: v for k, v in res.items() if v is not None and v.get("n") == n}
+    res = {k: v for k, v in res.items() if v is not None and v.get("n") == n and v.get("metric_version") == METRIC_VERSION}
     for k in res:
         jc.log(NAME, f"resumed: {k} already evaluated")
 
@@ -282,7 +299,8 @@ def main(argv=None):
         v["forget_quality_ks_p"] = float(ks_2samp(v["forget"]["truth_ratio_values"], ref).pvalue) if k != "retain-model" else None
     d = paths.runs_dir() / "A2-tofu-full" / "tofu-metrics"
     d.mkdir(parents=True, exist_ok=True)
-    atomic_write_json(d / "metrics.json", {"conditions": res, "n_forget": n, "n_retain": n, "models": {k: str(v) for k, v in paths_.items()}})
+    atomic_write_json(d / "metrics.json", {"conditions": res, "n_forget": n, "n_retain": n, "metric_version": METRIC_VERSION,
+                                           "models": {k: str(v) for k, v in paths_.items()}})
     atomic_write_json(d / "DONE", {"time": now_iso(), "headline": {k: v.get("forget_quality_ks_p") for k, v in res.items()}})
     jc.summary(NAME, {"conditions": {k: {"forget_quality_ks_p": v.get("forget_quality_ks_p"), "model_utility": v.get("model_utility"),
                                          "forget_truth_ratio": v["forget"]["truth_ratio"]} for k, v in res.items()},

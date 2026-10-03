@@ -3,7 +3,7 @@
 #    a running or queued chain;
 #  * DSG_BUDGET_MIN = Slurm time left minus 12 min: scripts stop starting work after it (all resumable),
 #    so a 3 h --time is never hit mid-step and the next chained sbatch continues.
-CODE="$DSGC/code-later"; [ -d "$CODE" ] || { echo "=== missing $CODE (run cluster/stage_code_snapshot.sh later)"; exit 2; }
+CODE="$DSGC/${DSG_CODE_SNAPSHOT:-code-later}"; [ -d "$CODE" ] || { echo "=== missing $CODE (run cluster/stage_code_snapshot.sh)"; exit 2; }
 cd "$CODE"; export PYTHONPATH="$CODE" DSG_WORKTREES="$CODE"
 echo "=== code dir: $CODE $(cat CODE_COMMIT.json 2>/dev/null)"
 _left=$(squeue -h -j "${SLURM_JOB_ID:-0}" -o %L 2>/dev/null | tail -1)
