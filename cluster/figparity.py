@@ -146,33 +146,66 @@ def part_static(R):
         R("static", cfg("FP-static", label, m, "test", ds, fp_params={"clamping": label.split("-")[-1]}), EST["test"])
 
 
-def multitopic_features():
+def rho_on_rows(bundle, tokens, feats) -> np.ndarray:
+    """DSG's per-row rho on cached token rows (fire = act > 0, position 0 zeroed, denominator = row length), as the
+    activation cache computes it, but for ANY feature set (a cache only stores bits for its own 2048 candidates)."""
+    from dsgx.data.activation_cache import _encode_row
+
+    ft = torch.tensor(feats, device=bundle.device)
+    out = []
+    for row in tokens:
+        acts = _encode_row(bundle, torch.as_tensor(np.asarray(row), dtype=torch.long))[:, ft].float()
+        acts[0] = 0.0
+        out.append(float((acts > 0).any(-1).sum()) / acts.shape[0])
+    return np.array(out)
+
+
+def multitopic_features(bundle=None):
+    """bio and cyber top-20 (each from its own cache) and taus. The union's tau needs a model pass over the bio cache's
+    retain rows (the bio cache has no bits for cyber features); without a bundle (plan / tiny) it is left None."""
     from dsgx.data import activation_cache as ac
     from dsgx.methods import dsg as dsgm
 
     if jc.TINY:
         return {"bio": list(range(0, 40, 2)), "cyber": list(range(1, 41, 2)), "tau_bio": 0.1, "tau_cyber": 0.1, "tau_union": 0.1}
+    f = jc.job_dir(NAME) / "multitopic_features.json"
+    F = jc.read_json(f, {}) or {}
+    if F.get("tau_union") is not None:
+        return F
     bc = ac.open_cache("gemma-2-2b-it", "gemma-scope-2b-pt-res", "layer_3/width_16k/average_l0_142", "bio-forget-corpus", "wikitext", 0)
     cc = ac.open_cache("gemma-2-2b-it", "gemma-scope-2b-pt-res", "layer_3/width_16k/average_l0_142", "cyber-forget-corpus", "wikitext", 0)
     fb, fc = dsgm.select_features(bc, 20, 95), dsgm.select_features(cc, 20, 95)
     union = list(dict.fromkeys(fb + fc))
-    return {"bio": fb, "cyber": fc, "union": union, "overlap": len(set(fb) & set(fc)),
-            "tau_bio": dsgm.calibrate_tau(bc, fb, 95), "tau_cyber": dsgm.calibrate_tau(cc, fc, 95),
-            "tau_union": dsgm.calibrate_tau(bc, union, 95)}
+    F = {"bio": fb, "cyber": fc, "union": union, "overlap": len(set(fb) & set(fc)),
+         "tau_bio": dsgm.calibrate_tau(bc, fb, 95), "tau_cyber": dsgm.calibrate_tau(cc, fc, 95), "tau_union": None,
+         "tau_union_rule": "95th percentile of rho(union) on the bio cache's 1024 WikiText retain rows (model pass)"}
+    if bundle is not None:
+        rows = bc.tokens("retain")
+        F["tau_union"] = float(np.percentile(rho_on_rows(bundle, rows, union), 95))
+        F["tau_bio_model_check"] = float(np.percentile(rho_on_rows(bundle, rows, fb), 95))  # vs the cached tau_bio
+        atomic_write_json(f, F)
+    return F
 
 
-def part_multitopic(R):
+def part_multitopic(R, budget):
     from dsgx.data.mcq import utility_subjects
 
-    F = multitopic_features()
+    bundle = None
+    if not (R.plan or jc.TINY) and budget.fits(5 + EST["test_raw2"]):
+        from dsgx.models.loader import get_bundle
+
+        bundle = get_bundle()
+    F = multitopic_features(bundle)
     F.setdefault("union", list(dict.fromkeys(F["bio"] + F["cyber"])))
-    atomic_write_json(jc.job_dir(NAME) / "multitopic_features.json", F)
+    if F.get("tau_union") is None and not (R.plan or jc.TINY):
+        R.left.setdefault("multitopic", []).append("all (union tau not computed: budget)")
+        return
     util = [s for s in utility_subjects("bio") if s in set(utility_subjects("cyber"))]
     ds = ["wmdp-bio", "wmdp-cyber"] + util
     for label, m in (("base", {"name": "base"}),
                      ("dsg-bio-only", dsg(features=F["bio"], tau=F["tau_bio"])),
                      ("dsg-cyber-only", dsg(features=F["cyber"], tau=F["tau_cyber"])),
-                     ("dsg-bio+cyber", dsg(features=F["union"], tau=F["tau_union"])),
+                     ("dsg-bio+cyber", dsg(features=F["union"], tau=F["tau_union"] if F.get("tau_union") is not None else 1.0)),
                      ("ours-bio+cyber", ours(features=F["union"]))):
         R("multitopic", cfg("FP-multitopic", label, m, "test", ds, view="raw", forget_datasets=["wmdp-bio", "wmdp-cyber"],
                             fp_params={"topics": label.split("-", 1)[-1]}), EST["test_raw2"])
@@ -313,7 +346,7 @@ def part_highlight(R, budget, n=12):
 
 
 PARTS = {"clamp": lambda R, B: part_clamp(R), "dataeff": part_dataeff, "static": lambda R, B: part_static(R),
-         "multitopic": lambda R, B: part_multitopic(R), "latency": part_latency, "highlight": part_highlight}
+         "multitopic": part_multitopic, "latency": part_latency, "highlight": part_highlight}
 
 
 def main(argv=None):

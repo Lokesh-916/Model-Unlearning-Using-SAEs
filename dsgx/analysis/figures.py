@@ -590,7 +590,7 @@ def data_efficiency(runs, out, ctx):
             v = (base.forget("raw") if get == "forget" else base.utility("raw")) or {}
             ax.axhline(v.get("mean", np.nan), color=INK2, linestyle="--", linewidth=1, label="base")
         ax.set_xscale("log", base=2)
-        ax.set_xlabel("feature-selection corpus size (docs per side)")
+        ax.set_xlabel("feature-selection corpus (rows of 1024 tokens per side)")
     axs[0].set_ylabel("WMDP-Bio DEV accuracy")
     axs[1].set_ylabel("MMLU (4 subj.) DEV accuracy")
     axs[0].legend(fontsize=6)

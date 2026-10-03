@@ -166,7 +166,7 @@ def build_parity_tables(runs, hw) -> dict:
     if de:
         T["data_efficiency"] = table([[{"dsg": "DSG", "ours": "our gate"}.get(pp(r)["method"], esc(pp(r)["method"])), str(pp(r)["m"]),
                                        str(pp(r)["seed"]), str(pp(r).get("n_features", "")), _ci_cell(r.forget("raw")), _ci_cell(r.utility("raw"))]
-                                      for r in de], ["Method", "Docs / side", "Seed", "Features", "Forget (DEV)", "MMLU-4 (DEV)"],
+                                      for r in de], ["Method", "Rows / side", "Seed", "Features", "Forget (DEV)", "MMLU-4 (DEV)"],
                                      "Data efficiency: feature-selection corpus size (DEV)." + hwn, "tab:data-efficiency", "lrrrcc")
     st = {r.cfg.get("dataset_label"): r for r in fp("FP-static")}
     if st:
