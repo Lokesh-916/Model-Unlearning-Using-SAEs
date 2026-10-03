@@ -57,3 +57,6 @@ NO_CLAUDE_RUNBOOK.md: hourly status + doctor; at the Wave-1 pause `wave_check 1`
   (diff +0.020 [-0.006, 0.047], n.s.), third-party 0.498, v1 0.556; MMLU 0.548 vs DSG 0.561 (-0.013, p<0.001).
   D1-full: undo a0.3/a0.5 collapse MMLU to chance (0.238/0.232); a0.1 WMDP 0.396, MMLU 0.514.
   Server cleanup: third-party RMU, RMU v1, D1-full a0.3/a0.5 (collapsed, deleted, metrics kept), code-rmu-v2 → ours 35 GB, / 118 GB free.
+- **C (server today, another user has priority):** code 3b7ec89 synced. Chain (all `--nice=10000`, afterok):
+  95 validate (0:30) → 96 tofu-full rerun (3:00; models cached, per-condition checkpoints, est 1–1.5 h) → 97 a6-full part 2
+  (1:00; new targets d1-a0.1, rmu-v2, est 20 min; finished cells skipped). d1-full needs no re-run.
