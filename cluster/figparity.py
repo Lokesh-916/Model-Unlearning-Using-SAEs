@@ -220,12 +220,21 @@ def _task_out(exp, task, metrics):
     return d
 
 
+LATENCY_PROTOCOL = "interleaved-v2"  # v1 (job 99) timed one method after another; drift on a loaded host biased it
+
+
 def part_latency(R, budget, reps=50, warm=10):
+    """bs-1 forward latency. Methods are interleaved within every repetition (rotating order), so host-load drift
+    (gpuws is shared: load average ~220 on 224 CPUs during job 99) hits all methods alike; the load average is logged."""
+    import os
+
     d = paths.runs_dir() / "FP-latency" / "latency"
-    if (d / "DONE").exists() or R.plan or jc.TINY or not budget.fits(25):
-        if not (d / "DONE").exists():
+    fresh = (d / "DONE").exists() and (jc.read_json(d / "metrics.json", {}) or {}).get("protocol") == LATENCY_PROTOCOL
+    if fresh or R.plan or jc.TINY or not budget.fits(30):
+        if not fresh:
             R.left.setdefault("latency", []).append("latency")
         return
+    (d / "DONE").unlink(missing_ok=True)
     from dsgx.methods.registry import make_method
     from dsgx.models.loader import get_bundle
     from dsgx.run import ensure_cache, resolve
@@ -235,45 +244,56 @@ def part_latency(R, budget, reps=50, warm=10):
     specs = {"base": {"name": "base"}, "dsg": dsg(), "dsg-forced-on": dsg(tau=-1.0),
              "gate-rho": {"name": "gated", "gate": {"type": "rho"}, "calib": {"source": "mmlu-dev"}},
              "ours-window": ours(), "gate-cusum": {"name": "gated", "gate": {"type": "cusum"}, "calib": {"source": "mmlu-dev"}}}
+    meths = {}
+    for name, spec in specs.items():
+        c = resolve({"exp_id": "FP-latency", "split": "dev", "purpose": "tune", "method": spec})
+        ensure_cache(c, b)
+        meths[name] = make_method(c["method"], b, 0)
+    names = list(specs)
     g = torch.Generator().manual_seed(0)
     vocab = b.model.cfg.d_vocab
-    res = {}
+    res, load = {}, {}
     for L in LENGTHS:
         toks = torch.randint(1000, vocab - 1000, (1, L), generator=g)
         toks[0, 0] = b.model.tokenizer.bos_token_id
         toks = toks.to(b.device)
-        for name, spec in specs.items():
-            c = resolve({"exp_id": "FP-latency", "split": "dev", "purpose": "tune", "method": spec})
-            ensure_cache(c, b)
-            meth = make_method(c["method"], b, 0)
-            meth.install()
-            times = []
-            torch.cuda.synchronize()
-            torch.cuda.reset_peak_memory_stats()
-            for i in range(warm + reps):
-                meth.set_lengths([L])
-                if hasattr(meth, "before_forward"):
-                    meth.before_forward(toks, [L])
+        times = {n: [] for n in names}
+        peak = {n: 0.0 for n in names}
+        load[str(L)] = {"before": os.getloadavg()[0]}
+        for i in range(warm + reps):
+            order = names[i % len(names):] + names[:i % len(names)]
+            for n in order:
+                m = meths[n]
+                m.install()
+                m.set_lengths([L])
+                if hasattr(m, "before_forward"):
+                    m.before_forward(toks, [L])
                 torch.cuda.synchronize()
+                torch.cuda.reset_peak_memory_stats()
                 t0 = time.perf_counter()
                 with torch.no_grad():
                     b.model(toks)
                 torch.cuda.synchronize()
                 if i >= warm:
-                    times.append(time.perf_counter() - t0)
-                meth.pop_records()
-            meth.remove()
-            t = np.array(times) * 1000
-            res.setdefault(str(L), {})[name] = {"ms_median": float(np.median(t)), "ms_mean": float(t.mean()), "ms_sd": float(t.std(ddof=1)),
-                                                "ms_p95": float(np.percentile(t, 95)), "n": len(t),
-                                                "peak_vram_gb": torch.cuda.max_memory_allocated() / 1e9}
+                    times[n].append(time.perf_counter() - t0)
+                    peak[n] = max(peak[n], torch.cuda.max_memory_allocated() / 1e9)
+                m.pop_records()
+                m.remove()
+        load[str(L)]["after"] = os.getloadavg()[0]
+        for n in names:
+            t = np.array(times[n]) * 1000
+            res.setdefault(str(L), {})[n] = {"ms_median": float(np.median(t)), "ms_mean": float(t.mean()), "ms_sd": float(t.std(ddof=1)),
+                                             "ms_p95": float(np.percentile(t, 95)), "n": len(t), "peak_vram_gb": peak[n]}
         base = res[str(L)]["base"]["ms_median"]
         for v in res[str(L)].values():
             v["overhead_vs_base"] = v["ms_median"] / base - 1
-        jc.log(NAME, f"latency L={L}: " + ", ".join(f"{k} {v['ms_median']:.1f} ms" for k, v in res[str(L)].items()))
+        jc.log(NAME, f"latency L={L} (load {load[str(L)]['before']:.0f}): " + ", ".join(f"{k} {v['ms_median']:.1f} ms" for k, v in res[str(L)].items()))
     _task_out("FP-latency", "latency", {"latency": res, "lengths": LENGTHS, "batch_size": 1, "reps": reps, "warmup": warm,
+                                        "protocol": LATENCY_PROTOCOL, "host_load_avg_1min": load, "host_cpus": os.cpu_count(),
                                         "inputs": "random tokens (BOS + uniform ids), as DSG Table 15", "dsg_debug": False,
-                                        "methods": {k: v for k, v in specs.items()}, "window_w": w})
+                                        "methods": dict(specs), "window_w": w,
+                                        "note": "TransformerLens forward at bs 1 is launch/CPU-bound below ~1k tokens; "
+                                                "read overheads together with the host load average"})
     R.dirs.setdefault("latency", {})["latency"] = str(d)
 
 

@@ -143,6 +143,48 @@ cluster/server.sh cleanup <job> --yes  # 8b. delete the job's large inputs on th
 the previous job's cleanup (the manifest budget assumes one job's inputs at a time).
 Per-job details (inputs, outputs, runtime): SERVER_JOBS_MANIFEST.md.
 
+### 5.3 Session 8 chain (2026-10-03): moved lab experiments, D1 v2, figure parity
+
+Queued on gpuws (all `--nice=10000`, each ≤ 3 h, resumable; `afterok` validate 98, `afterany` the previous):
+`98 validate → 99 figs-b → 100–103 d1-v2-train → 104 d1-v2-test → 105 d1-v2-a6 (afterok 104) → 106 c3 →
+107–109 a6-lora → 110 a7-small → 111–112 figs-a → 113 tofu-full-v2`. Est. ≈ 20 h of GPU time.
+Jobs run from snapshots `code-later` (prep fa9cc6e) and `code-later2` (9976fb0, tofu-full-v2 only); lab jobs
+run with their pinned exp-branch commits (`code-C3-85805d2`, `code-A6-c2472e5`).
+
+```bash
+cluster/server.sh status                     # our jobs, GPU, disk
+cluster/server.sh check d1-v2                # also: figs, c3, a6-lora, a7-small, tofu-full
+ssh gpuws 'cat ~/dsg_cluster/results/jobs/labjobs-c3/status.json | head -30'   # moved lab jobs: done / left
+```
+A train / lab-jobs / figs sbatch that prints `INCOMPLETE` or `budget used` is normal: the next chained copy
+continues. If the last copy of a group ends INCOMPLETE, resubmit that sbatch once more, e.g.
+`ssh gpuws 'cd ~/dsg_cluster/slurm && ./submit.sh a6-lora.sbatch --nice=10000'`.
+`d1-v2-test` exits 3 (and 105 is cancelled) if a student has no DEV run yet: resubmit `d1-v2-train.sbatch`,
+then `d1-v2-test.sbatch`, then `d1-v2-a6.sbatch` with `--dependency=afterok:<previous id>`.
+
+**Fetch / verify / cleanup, in this order, each after its jobs left the queue** (`server.sh fetch` refuses while
+a `dsg-<job>*` job is queued):
+1. `figs` (after 112): fetch, verify, `cleanup figs --yes` (cyber cache, data-efficiency caches).
+2. `d1-v2` (after 105): fetch, verify, read `dsg_results_cluster/jobs/d1-v2/SUMMARY.md`, `cleanup d1-v2 --yes`
+   (students; the corpus is kept while any job is queued).
+3. `c3`, `a6-lora`, `a7-small`: fetch, verify, cleanup each. **Cleanup a6-lora before a6-baked** (both write runs/A6).
+4. `tofu-full` (after 113, the v2 re-eval): fetch, verify, then `cleanup tofu-full --yes` (fine-tuned models).
+   Do NOT clean tofu-full earlier: 99 (TOFU highlights) and 113 need the models. The v1 marker was removed on purpose.
+
+**Later (not queued):**
+- `a6-baked` (33 moved lab jobs on student / D1-local / D2 weights): when the lab jobs `D1-train-sameref`,
+  `D1-train-undo-a0.3` (Wave 5) and `D2-edit-nullspace` (Wave 3) are DONE: `cluster/server.sh plan a6-baked`,
+  `stage a6-baked`, then `cluster/submit_chain.sh --nice 10000 a6-baked.sbatch a6-baked.sbatch a6-baked.sbatch a6-baked.sbatch`.
+- `a7-12b` (24 GB): after the cleanups above, `cluster/server.sh stage a7-12b`, then
+  `cluster/submit_chain.sh --nice 10000 a7-12b.sbatch a7-12b.sbatch`.
+- A7 translate runs need the full B3 translation cache (lab B3-translate, Wave 2; the current cache has 6 smoke
+  items): afterwards re-stage `dsg_private/translations` and resubmit `a7-small` / `a7-12b` (finished runs are skipped).
+- Lab queue view: `python -m dsgx.queue.move --list` (70 MOVED-TO-SERVER); `--undo --jobs '<glob>' --apply` puts
+  jobs back to WAITING if a server group must be abandoned.
+
+All these results are gpuws-only: `final_report --hardware gpuws` and `paper_assets --hardware gpuws
+--runs $P/dsg_results_cluster/runs` (INDEX.md lists every DSG figure type and whether its data exist).
+
 ### 5.2 Server results in the report
 Server results land in `$P/dsg_results_cluster/` (same run-directory format). They are reported
 in their own **gpuws** tables and never mixed with lab-PC numbers:

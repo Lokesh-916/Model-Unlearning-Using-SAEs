@@ -76,3 +76,20 @@ gemma-2-9b-it, NLLB translations of WMDP-Bio (private).
 - Gemma Scope SAEs / transcoders were trained on the PT model and are used on the IT model (as DSG itself does).
 - The MT-Bench open judge is not GPT-4: absolute scores are not comparable with the paper's 7.78 (decision 9).
 - No `--mem` is possible on this cluster (RealMemory=1): a7-12b peaks at ≈ 50 GB host RAM while converting weights.
+
+## Session 8 jobs (2026-10-03; chain 98–113, runbook §5.3)
+
+| job (conf) | script / sbatch | what | staged inputs | ours at peak | est. gpuws |
+|---|---|---|---|---|---|
+| figs | `cluster/figparity.py` / `figs-b`, `figs-a` ×2 | DSG figure parity: TOFU highlights, latency by length, static vs dynamic, multi-topic (TEST); clamp × N grid, data efficiency (DEV) | cyber actcache 0.4 GB | +4 GB | 2 h + 3 h |
+| d1-v2 | `cluster/d1_v2.py` / `d1-v2-train` ×4, `d1-v2-test`, `d1-v2-a6` | UNDO α {0.05, 0.1, 0.2} × 4000 steps, DEV selection, TEST, A6-full relearning | corpus | +26 GB (3 students + 1 trainer state) | 8 h + 0.6 h + 0.4 h |
+| c3 | `cluster/lab_jobs.py --group c3` / `c3` | lab C3 jobs (MOVED-TO-SERVER), pinned exp code | full Gemma Scope 2B res repo 4 GB (kept), L3/L8 canonical caches | +9 GB | 1 h |
+| a6-lora | `lab_jobs.py --group a6-lora` / `a6-lora` ×3 | 23 lab A6 jobs on DSG hook / no hook | corpus | +2 GB | 3.5 h |
+| a6-baked | `lab_jobs.py --group a6-baked` / `a6-baked` ×4 | 33 lab A6 jobs on student / D1-local / D2 (not queued: lab weights first) | D1 sameref, D1 undo_a0.3, D2 nullspace (15.6 GB) | +18 GB | 3.5–5 h |
+| a7-small | `cluster/a7_server.py --sizes 1b 4b` / `a7-small` | Gemma 3 1B / 4B, base / DSG / best fix × clean + dilution (translate once the B3 cache exists) | 1B, 4B models + SAEs 12.6 GB | +14 GB | 1.2 h |
+| a7-12b | `a7_server.py --sizes 12b` / `a7-12b` ×2 | same conditions on 12B (not queued: disk) | 12B model + SAE 24.4 GB | +27 GB | 4 h |
+| tofu-full (v2) | `cluster/tofu_full.py` / `tofu-full-v2` | re-evaluation with the fixed TOFU utility metric (models cached) | — | 0 | 1.5 h |
+
+Peak while 98–113 run: ours ≈ 42 + 36 ≈ 78 GB (< 100), free ≈ 75 GB (≥ 50). New tools: `cluster/submit_chain.sh`
+(validate first, `afterok` validate + `afterany` previous, `--nice`), `cluster/stage_lab_jobs.sh` (git-archive snapshot
+of a pinned exp commit + job specs), `slurm/later.sh` (snapshot dir, budget = Slurm time left − 12 min).

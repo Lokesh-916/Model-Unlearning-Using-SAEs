@@ -18,17 +18,23 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | paper tables (booktabs) + paper-size PDFs | `python -m dsgx.analysis.paper_assets` |
 | qualitative track Q1/Q3/Q5/Q6, Q4/Q8 (TOFU-only) | `python -m dsgx.analysis.qual.<q1_feature_cards,q3_never_learned,q5_geometry,q6_trajectory,annotate>` |
 | all server work from the lab PC | `cluster/server.sh {status,sync,plan,stage,submit,check,fetch,verify,cleanup,run} <job>` |
-| later server jobs, order, disk budget | `SERVER_JOBS_MANIFEST.md`; jobs d1-full, a6-full, tofu-full, a7-12b, muse, mtbench, q2-graphs, rmu-v2 |
+| later server jobs, order, disk budget | `SERVER_JOBS_MANIFEST.md`; jobs d1-full, a6-full, tofu-full, a7-12b, muse, mtbench, q2-graphs, rmu-v2; session 8: figs, d1-v2, c3, a6-lora, a6-baked, a7-small |
 | queue a job behind a running chain without touching code/ | `cluster/stage_code_snapshot.sh <name>` (code-<name>/ snapshot) + `server.sh submit <job> --after-any <id>` |
 | TMLR paper draft (own git repo, branch `draft`) | `~/projects/mechunlearn-project/paper` (`latexmk -pdf main.tex`; README there) |
 | downloads still needed (lab PC, network) | `cluster/fetch_models.sh {a7-12b,mtbench,q2-graphs,muse,list}` |
 | progress of this branch | `PREP_PROGRESS.md` |
+| mark lab jobs as run on the server (MOVED-TO-SERVER; refuses stranded deps; `--list`, `--undo`) | `python -m dsgx.queue.move` |
+| run moved lab jobs on gpuws with their pinned exp-branch code | `cluster/stage_lab_jobs.sh <group> <glob>..` + `cluster/lab_jobs.py` (confs c3, a6-lora, a6-baked) |
+| one long server chain (validate first, afterok validate + afterany previous, --nice) | `cluster/submit_chain.sh` |
+| D1 v2 (α 0.05/0.1/0.2, 4000 steps, DEV selection, TEST, relearning) | `cluster/d1_v2.py {train,test}` (conf d1-v2) |
+| DSG figure parity data (clamp grid, data efficiency, static/dynamic, multi-topic, latency, TOFU highlights) | `cluster/figparity.py` (conf figs); figures + tables in `paper_assets` (INDEX.md "DSG figure parity") |
 
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
 `calibrate(..., rule="conformal")` (cache key unchanged for the default quantile rule); `dsgx/attacks/transforms.py`
 rewrite_cache / suffix accept `exp:` to read another experiment's private artifacts (used by X1).
-Tests: `CUDA_VISIBLE_DEVICES= ~/miniconda3/envs/mechunlearn2/bin/python -m pytest -q tests` = 81 pass on CPU (~4.5 min; 41 new `tests/test_prep_*.py`; server jobs run with a
-tiny random Gemma-2 via `DSG_TINY=1`).
+Tests: `CUDA_VISIBLE_DEVICES= ~/miniconda3/envs/mechunlearn2/bin/python -m pytest -q tests` = 97 pass on CPU (~5 min; `tests/test_prep_*.py`; server jobs run with a
+tiny random Gemma-2 via `DSG_TINY=1`). Before submitting, also check real (non-tiny) configs on CPU: resolve + `check_runs` (session 8 found
+the multi-topic union-tau bug this way: an activation cache stores fire bits only for its own 2048 candidate features).
 Gotchas found: Neuronpedia's `3-gemmascope-res-16k` is the canonical **l0_59** SAE, not DSG's l0_142 (Q1 only queries
 `3-gemmascope-res-16k__l0-142`, unverified whether hosted: run `--probe`); circuit-tracer 0.5.0 needs
 transformers <= 4.57.3 → separate overlay venv `env/q2` from `wheels/q2` (29 wheels, SHA256SUMS); `open_cache()` already
@@ -244,3 +250,23 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
 - **Paper** (`paper` repo, ca7e069): "pre-registered" replaced (rules committed after DEV sweeps began, before any
   main TEST result; RMU v2 grid after v1's result), contribution 4 = run/scheduled only (MUSE conditional), eq. 3 in
   eq. 1's T, Properties instead of Propositions, Gemma 2 bib shortened, circuit-breakers TODO-VERIFY. 17 pages, 0 warnings.
+
+### Session 8 — 2026-10-03 13:00–14:xx (end state)
+- **Part 1 (move to gpuws):** 70 lab jobs `MOVED-TO-SERVER` (`dsgx.queue.move`; A6 56 = a6-lora 23 + a6-baked 33, C3 10,
+  A7 4); doctor 0 deadlocks; lab ETA 3d0h → 2d2h; 3 DEVIATIONS rows. The running scheduler (v2-harness code) skips
+  them (it launches only WAITING); its STATUS.md shows them until the merge (prep status shows "moved to server").
+  Lab-PC vs gpuws hours: PREP_PROGRESS "Session 8" table.
+- **Part 2 (D1 v2):** `cluster/d1_v2.py`, rule fixed before any result (lowest DEV forget, DEV utility drop ≤ 0.02,
+  utility excl. high_school_geography). d1-full α 0.1 (TEST, gpuws): WMDP 0.396 [0.358, 0.433], MMLU 0.514
+  [0.503, 0.526] vs base 0.644 / 0.564, DSG 0.298 / 0.560.
+- **Part 3 (figure parity):** `cluster/figparity.py` + 9 figures + 8 tables + parity index in paper_assets.
+- **Server:** fetched + verified tofu-full (11 files, adc4908c…) and a6-full (73, 82c44781…); cleanup a6-full (RMU-v2,
+  D1-full deleted on the server; RMU-v2 best stays on the lab PC). **TOFU-full v1 metrics invalid** (model utility
+  0.0: clipped the mean truth ratio) → fixed (`METRIC_VERSION 2`), eval-only re-run 113; server marker
+  `.fetched/tofu-full` removed so `cleanup tofu-full` refuses until v2 is fetched (models needed by 99 and 113).
+  Staged (sizes byte-checked): figs, d1-v2, c3 (+ full Gemma Scope 2B res repo, kept), a6-lora, a7-small.
+  Snapshots `code-later` (fa9cc6e), `code-later2` (9976fb0), `code-C3-85805d2`, `code-A6-c2472e5`. Ours 42 GB, / 111 GB free.
+- **Queue (all --nice=10000, ≤ 3 h each):** 98 validate → 99 figs-b → 100–103 d1-v2-train → 104 d1-v2-test →
+  105 d1-v2-a6 → 106 c3 → 107–109 a6-lora → 110 a7-small → 111–112 figs-a → 113 tofu-full-v2 (≈ 20 h).
+- **Next:** runbook §5.3 (fetch/verify/cleanup order; a6-baked when lab D1/D2 weights exist; a7-12b after cleanups;
+  A7 translate after lab B3-translate).
