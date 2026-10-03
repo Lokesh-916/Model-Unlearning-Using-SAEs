@@ -147,7 +147,9 @@ Per-job details (inputs, outputs, runtime): SERVER_JOBS_MANIFEST.md.
 
 Queued on gpuws (all `--nice=10000`, each ≤ 3 h, resumable; `afterok` validate 98, `afterany` the previous):
 `98 validate → 99 figs-b → 100–103 d1-v2-train → 104 d1-v2-test → 105 d1-v2-a6 (afterok 104) → 106 c3 →
-107–109 a6-lora → 110 a7-small → 111–112 figs-a → 113 tofu-full-v2`. Est. ≈ 20 h of GPU time.
+107–109 a6-lora → 110 a7-small → 111–112 figs-a → 113 tofu-full-v2 → 116 figs-lat` (latency re-run). Est. ≈ 20 h.
+To append one more job later: `ssh gpuws 'cd ~/dsg_cluster/slurm && ./submit.sh <x>.sbatch --nice=10000 --dependency=afterany:<last id>'`
+(an `afterok:` on a job that already ended is rejected by Slurm).
 Jobs run from snapshots `code-later` (prep fa9cc6e) and `code-later2` (9976fb0, tofu-full-v2 only); lab jobs
 run with their pinned exp-branch commits (`code-C3-85805d2`, `code-A6-c2472e5`).
 
@@ -164,7 +166,7 @@ then `d1-v2-test.sbatch`, then `d1-v2-a6.sbatch` with `--dependency=afterok:<pre
 
 **Fetch / verify / cleanup, in this order, each after its jobs left the queue** (`server.sh fetch` refuses while
 a `dsg-<job>*` job is queued):
-1. `figs` (after 112): fetch, verify, `cleanup figs --yes` (cyber cache, data-efficiency caches).
+1. `figs` (after 116): fetch, verify, `cleanup figs --yes` (cyber cache, data-efficiency caches).
 2. `d1-v2` (after 105): fetch, verify, read `dsg_results_cluster/jobs/d1-v2/SUMMARY.md`, `cleanup d1-v2 --yes`
    (students; the corpus is kept while any job is queued).
 3. `c3`, `a6-lora`, `a7-small`: fetch, verify, cleanup each. **Cleanup a6-lora before a6-baked** (both write runs/A6).

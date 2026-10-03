@@ -86,3 +86,19 @@ New tools: `dsgx/queue/move.py` (MOVED-TO-SERVER status, refuses stranded depend
 `cluster/lab_jobs.py` + `cluster/stage_lab_jobs.sh` (run moved lab jobs on gpuws with their pinned exp-branch
 commit via `git archive`; HARDWARE.json marks those runs gpuws), `cluster/a7_server.py` (1B/4B/12B),
 `slurm/later.sh` (snapshot `code-later`, budget = Slurm time left − 12 min; every job ≤ 3 h, resumable).
+
+### Session 8 results and state
+- **D1 v2** (Part 2): `cluster/d1_v2.py`; reference d1-full α 0.1 on gpuws TEST: WMDP 0.396 [0.358, 0.433], MMLU 0.514
+  [0.503, 0.526] (base 0.644 / 0.564, DSG 0.298 / 0.560). v2 queued (100–105).
+- **Figure parity** (Part 3): every DSG figure type has a generator for DSG and our gate (figures.py: gate-score
+  distributions, forget–utility TEST scatter, relearning by epochs, clamp grid, static vs dynamic, data efficiency,
+  multi-topic, latency, TOFU highlights; paper_assets: 8 new tables + "DSG figure parity" status in INDEX.md). Data from
+  lab runs where they exist, the rest from the gpuws job `figs` (99, 111–112, 116).
+- **Server results fetched:** tofu-full (96) and a6-full (97) sha256-verified; a6-full inputs cleaned. A6-full cells
+  (full FT, 200 steps; forget before → after): d1-a0.1 0.403 → 0.47–0.49; rmu-v2 0.373 → 0.52–0.54; dsg-hook 0.407 → 0.30–0.36;
+  dsg-nohook 0.53 → 0.51–0.53.
+- **Bug found and fixed:** TOFU-full v1 model utility (0.0 everywhere) used `max(0, 1 − mean R)`; TOFU uses the per-item
+  mean of `max(0, 1 − Rᵢ)` and option-normalised answer probability on real/world sets. Re-eval queued (113); do not
+  use the v1 TOFU numbers. Also fixed before running: the multi-topic union threshold (cache candidates).
+- **Latency v1 (job 99) biased** by back-to-back timing on a saturated host (load ~220/224 CPUs); v2 interleaved re-run 116.
+- Tests: 97 pass on CPU.

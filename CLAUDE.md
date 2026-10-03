@@ -267,6 +267,10 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   Staged (sizes byte-checked): figs, d1-v2, c3 (+ full Gemma Scope 2B res repo, kept), a6-lora, a7-small.
   Snapshots `code-later` (fa9cc6e), `code-later2` (9976fb0), `code-C3-85805d2`, `code-A6-c2472e5`. Ours 42 GB, / 111 GB free.
 - **Queue (all --nice=10000, ≤ 3 h each):** 98 validate → 99 figs-b → 100–103 d1-v2-train → 104 d1-v2-test →
-  105 d1-v2-a6 → 106 c3 → 107–109 a6-lora → 110 a7-small → 111–112 figs-a → 113 tofu-full-v2 (≈ 20 h).
+  105 d1-v2-a6 → 106 c3 → 107–109 a6-lora → 110 a7-small → 111–112 figs-a → 113 tofu-full-v2 → 116 figs-lat
+  (latency re-run, protocol interleaved-v2, snapshot `code-later3` = ceae159; 99's v1 latency was biased: back-to-back
+  timing on a host at load ~220/224 CPUs) (≈ 20 h). 98 validate: `VALIDATE sanity-gpuws EXACT`; 99 TOFU highlights done.
+- **Gotcha:** once a job has ended and been purged, `--dependency=afterok:<it>` is rejected ("Job dependency problem");
+  when appending to a chain whose validate already passed, depend on the last queued job only (`afterany:<last>`).
 - **Next:** runbook §5.3 (fetch/verify/cleanup order; a6-baked when lab D1/D2 weights exist; a7-12b after cleanups;
   A7 translate after lab B3-translate).
