@@ -170,8 +170,19 @@ a `dsg-<job>*` job is queued):
 2. `d1-v2` (after 105): fetch, verify, read `dsg_results_cluster/jobs/d1-v2/SUMMARY.md`, `cleanup d1-v2 --yes`
    (students; the corpus is kept while any job is queued).
 3. `c3`, `a6-lora`, `a7-small`: fetch, verify, cleanup each. **Cleanup a6-lora before a6-baked** (both write runs/A6).
-4. `tofu-full` (after 113, the v2 re-eval): fetch, verify, then `cleanup tofu-full --yes` (fine-tuned models).
+4. `tofu-full` (after 113, the v2 re-eval): fetch, verify, then `cleanup tofu-full --yes`. Since session 9 this
+   removes only `A2-tofu-full/retain`: `A2-tofu-full/full` is needed by Q2 (122) and is removed by `cleanup q2-graphs`.
    Do NOT clean tofu-full earlier: 99 (TOFU highlights) and 113 need the models. The v1 marker was removed on purpose.
+5. `muse` (session 9 chain: 117 validate → 118–120 muse, each <= 3 h, resumable): fetch, verify, read
+   `dsg_results_cluster/runs/A5-muse/muse-{news,books}/metrics.json` (VerbMem, KnowMem, PrivLeak for target,
+   target+dsg, target+best-gate, retrain), `cleanup muse --yes`. If 120 ends with "partial", resubmit
+   `ssh gpuws 'cd ~/dsg_cluster/slurm && ./submit.sh muse.sbatch --nice=10000'` (finished stages are skipped).
+6. `q2-graphs` (121 validate → 122): fetch (~1 GB: 4 full graphs in `runs/Q2-graphs/tofu/pt/`), verify, look at
+   `runs/Q2-graphs/tofu/figures/panel_fact0.pdf`, then `cleanup q2-graphs --yes` (transcoders 7.4 GB + TOFU model).
+   If it ends "partial", resubmit `q2-graphs.sbatch` the same way.
+
+Panel dashboard (any time, lab PC): `python -m dsgx.analysis.dashboard` → `results/dashboard.html`
+(`--every 15` keeps regenerating it; `--no-server` skips the ssh query).
 
 **Later (not queued):**
 - `a6-baked` (33 moved lab jobs on student / D1-local / D2 weights): when the lab jobs `D1-train-sameref`,

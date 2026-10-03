@@ -44,9 +44,9 @@ All: `cluster/server.sh run <job>` (= plan + stage + submit), then `check`, `fet
 | a6-full | `cluster/a6_full.py` / `a6-full.sbatch` | `runs/A6-full/relearn-<target>-k<k>/metrics.json` (exp/A6 format) | 10 h | full fine-tune relearning, k ∈ {10, 100, 1000}, 200 steps; C-H6 on gpuws |
 | tofu-full | `cluster/tofu_full.py` / `tofu-full.sbatch` | `runs/A2-tofu-full/tofu-metrics/metrics.json` | 8 h | full TOFU FT; DSG + best gate; forget quality, utility, truth ratio, ROUGE |
 | a7-12b | `cluster/a7_12b.py` / `a7-12b.sbatch` | `runs/A7-12b/*` (12 harness runs) | 10 h | Gemma 3 12B: base / DSG rule / best fix × clean, dilution 400/1600, translate fr |
-| muse | `cluster/muse.py` / `muse.sbatch` | `runs/A5-muse/muse-{news,books}/metrics.json` | 24 h | VerbMem, KnowMem, PrivLeak for target, target+DSG, retrain |
+| muse | `cluster/muse.py` / `muse.sbatch` (x3, <= 3 h, resumable) | `runs/A5-muse/muse-{news,books}/metrics.json` | 3 x 3 h | official muse_bench VerbMem / KnowMem / PrivLeak (vs our retrain) for target, target+DSG, target+best-gate, retrain (session 9: queued 118-120) |
 | mtbench | `cluster/mtbench_open.py` / `mtbench.sbatch` | `jobs/mtbench/` (answers, judgments, summary with CIs) | 12 h | MT-Bench base vs DSG, fixed open judge |
-| q2-graphs | `cluster/q2_graphs.py` / `q2-graphs.sbatch` | `runs/Q2-graphs/{items,graphs}/` (metrics only; graphs stay private) | 10 h | attribution graphs: share of answer influence through DSG's layer-3 features |
+| q2-graphs | `cluster/q2_graphs.py` / `q2-graphs.sbatch` (3 h) | `runs/Q2-graphs/tofu/{graphs,figures,pt}/`, metrics.json | ~1.5 h | TOFU mode (default): same fact under the TOFU model, + DSG, D2 recipe, DSG + French question; `--mode wmdp` = old aggregate job (private graphs) (session 9: queued 122) |
 
 ## CPU smoke tests (lab PC, tiny random Gemma-2, no GPU)
 `python -m pytest -q tests/test_prep_server_jobs.py` (≈ 3 min): d1-full, a6-full, tofu-full, muse and mtbench
@@ -62,9 +62,9 @@ checked (gres, requeue, time, no `--mem`, job name `dsg-<job>`, safe cleanup pat
 | google/gemma-3-12b-it | a7-12b | ≈ 24 GB | gated licence: accept on huggingface.co and `huggingface-cli login` first |
 | google/gemma-scope-2-12b-it (resid_post/layer_24_width_16k_l0_medium only) | a7-12b | ≈ 0.3 GB | listed in sae_lens 6.50 (`gemma-scope-2-12b-it-res`) |
 | unsloth/Qwen2.5-32B-Instruct-bnb-4bit | mtbench judge | ≈ 19 GB | pre-quantised nf4, loads with bitsandbytes 0.50.2 offline; fallback judge `google/gemma-2-9b-it` is already present (same family → self-preference risk; label it) |
-| mwhanna/gemma-scope-transcoders | q2-graphs | ≈ 8 GB | circuit-tracer's `gemma` transcoder set |
+| mwhanna/gemma-scope-transcoders | q2-graphs | 7.9 GB (config + 26 layers) | **staged on gpuws** by `cluster/stage_q2_transcoders.sh` (streamed one file at a time; not kept on the lab PC) |
 | muse-bench/MUSE-News, muse-bench/MUSE-Books | muse | ≈ 0.2 GB | then `python -m cluster.muse --inspect` to confirm config/split/column names |
-| github.com/swj0419/muse_bench (tarball) | muse | < 1 MB | official metric code; our implementation follows its definitions (VerbMem ROUGE-L F1, KnowMem ROUGE-L recall, PrivLeak Min-K% AUC relative to retrain) |
+| github.com/swj0419/muse_bench (tarball) | muse | < 1 MB | **fetched** (sha256 7222054…); the job calls its metrics/ functions (privleak.eval crashes on main, so its eval_data + sweep are used) |
 | circuit-tracer 0.5.0 + 28 overlay wheels | q2-graphs | 29 MB | **present** in `~/projects/mechunlearn-project/wheels/q2` (SHA256SUMS); needs transformers 4.57.3, so it runs in a separate venv `env/q2` |
 
 Already present and reused: gemma-2-2b-it, Gemma Scope 2B res L3 (and transcoder L3 only), TOFU (all configs),

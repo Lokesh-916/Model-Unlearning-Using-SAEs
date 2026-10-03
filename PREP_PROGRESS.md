@@ -102,3 +102,16 @@ commit via `git archive`; HARDWARE.json marks those runs gpuws), `cluster/a7_ser
   use the v1 TOFU numbers. Also fixed before running: the multi-topic union threshold (cache candidates).
 - **Latency v1 (job 99) biased** by back-to-back timing on a saturated host (load ~220/224 CPUs); v2 interleaved re-run 116.
 - Tests: 97 pass on CPU.
+
+## Session 9 (2026-10-03): trailer rule, paper appendices, MUSE, Q2, dashboard
+| # | item | status |
+|---|---|---|
+| 0 | Chakrish28 trailer rule (CLAUDE.md, memory, paper README, history cleanup incl. past break commits) | done; copy test VERIFY OK |
+| 1 | Paper appendices A–D + Section 8 (generated tables, `dsgx.analysis.appendix_tables`) | done; 21 pp, 0 warnings |
+| 2 | MUSE (BM1): official metrics, retrain reference, DSG + best gate, <= 3 h resumable | queued 117 → 118–120 (CPU tiny + real-path checks) |
+| 3 | Q2 attribution graphs (TOFU: base / DSG / D2 / French attack) | queued 121 → 122 (tiny circuit-tracer run, server `--plan` ok) |
+| 4 | Panel dashboard `python -m dsgx.analysis.dashboard` → `results/dashboard.html` | done; snapshot published (private artifact) |
+
+Findings: muse_bench `privleak.eval` crashes on main (eval_data + sweep used); transformers 4.57.3 needs a local
+tokenizer path offline; `tofu_full.Gate` scores single tokens during cached generation (see CLAUDE.md session 9;
+113 left unchanged). Tests: 107 pass on CPU (+ Q2 overlay test when `env_q2_lab` exists).
