@@ -382,6 +382,310 @@ ALL = [acc_vs_padding, rho_distributions, gate_roc, pareto, probes_by_layer, rel
        conformal_coverage, per_language, n5_rounds, t1_rho, feature_overlap, gibberish_by_gate]
 
 
+# ============================================================================= DSG figure parity (session 8)
+# Every figure type of the DSG paper, for DSG and for our methods. Inputs: harness runs (lab or gpuws) and
+# the gpuws figure-parity job (cluster/figparity.py: FP-* experiments).
+SCORE_COL = {"window": "window_max", "cusum": "cusum_max", "probe_sae": "probe_score", "probe_resid": "probe_score"}
+
+
+def _score(r):
+    """(column, values Series) of the gate score in a run's items (gate type aware), or (None, None)."""
+    it = r.items
+    if it is None:
+        return None, None
+    g = (r.cfg.get("method") or {}).get("gate") or {}
+    for col in (SCORE_COL.get(g.get("type", "rho")), "gate_score", "rho"):
+        if col and col in it and it[col].notna().any():
+            return col, it[col]
+    return None, None
+
+
+def _method_tag(r):
+    m = r.cfg.get("method") or {}
+    if m.get("name") == "gated":
+        g = m.get("gate") or {}
+        return f"gate {g.get('type', 'rho')}" + (f"-w{g['w']}" if "w" in g else "")
+    return {"dsg-faithful": "DSG"}.get(m.get("name"), m.get("name", "?"))
+
+
+# ----------------------------------------------------------------------------- P1. gate-score distributions
+def gate_score_distributions(runs, out, ctx):
+    """Per method: gate score on forget items (clean), retain/utility items (clean) and forget items under attack."""
+    plt = setup(ctx.get("paper"))
+    clean, attacked = {}, {}
+    for r in runs:
+        if not r.is_mcq or r.is_base or r.split != "test" or r.items is None:
+            continue
+        col, _ = _score(r)
+        if not col:
+            continue
+        key = _method_tag(r)
+        if r.is_clean:
+            clean.setdefault(key, r)
+        else:
+            attacked.setdefault(key, []).append(r)
+    keys = [k for k in sorted(clean) if k in attacked] or sorted(clean)
+    if not keys:
+        raise Skip("no gated TEST runs with per-item gate scores")
+    keys = keys[:4]
+    fig, axs = plt.subplots(1, len(keys), figsize=(3.0 * len(keys), 2.8), squeeze=False)
+    for ax, k in zip(axs[0], keys):
+        r = clean[k]
+        col, sc = _score(r)
+        it = r.items
+        fd = r.cfg.get("forget_datasets") or ["wmdp-bio"]
+        parts = [("forget (clean)", sc[it["dataset"].isin(fd)], PALETTE[0]),
+                 ("retain / utility (clean)", sc[~it["dataset"].isin(fd)], PALETTE[1])]
+        if k in attacked:
+            a = max(attacked[k], key=lambda x: int(x.attack.get("pad", 0) or 0))
+            ac, asc = _score(a)
+            parts.append((f"forget, {a.attack.get('name')} {a.attack.get('pad', a.attack.get('lang', ''))}",
+                          asc[a.items["dataset"].isin(fd)], PALETTE[2]))
+        hi = max(float(np.nanmax(v.values)) for _, v, _ in parts if len(v)) or 1e-3
+        bins = np.linspace(0, hi, 40)
+        for lab, v, c in parts:
+            ax.hist(v.dropna(), bins=bins, color=c, alpha=0.55, label=lab, density=True)
+        thr = r.gate.get("tau") if r.gate.get("tau") is not None else (r.config.get("method_info") or {}).get("calib", {}).get("threshold")
+        if thr is not None and np.isfinite(thr) and thr >= 0:
+            ax.axvline(thr, color=INK, linestyle="--", linewidth=1.1, label=f"threshold {thr:.3f}")
+        ax.set_title(f"{k} ({r.base_exp})")
+        ax.set_xlabel(col)
+    axs[0][0].set_ylabel("density")
+    axs[0][0].legend(fontsize=6)
+    return [save(fig, out, "gate_score_distributions")]
+
+
+# ----------------------------------------------------------------------------- P2. forget vs utility (TEST)
+def forget_utility_test(runs, out, ctx):
+    plt = setup(ctx.get("paper"))
+    rs = [r for r in runs if r.is_mcq and r.split == "test" and r.is_clean and r.case in (None, "bio")
+          and r.forget("raw") and r.utility("raw") and (r.cfg.get("forget_datasets") or ["wmdp-bio"]) == ["wmdp-bio"]
+          and len(r.cfg.get("datasets", [])) > 10]  # full-MMLU utility only (comparable x axis)
+    if not rs:
+        raise Skip("no clean TEST runs with full-MMLU utility")
+    groups = {}
+    for r in rs:
+        tag = "base" if r.is_base else (f"{_method_tag(r)}" if not r.weights else f"weights: {Path(str(r.weights)).name}")
+        groups.setdefault(tag, []).append(r)
+    fig, ax = plt.subplots(figsize=(5.4, 3.8))
+    for i, (k, g) in enumerate(sorted(groups.items(), key=lambda kv: (kv[0] != "base", kv[0]))):
+        st = series_style(i)
+        x = [r.utility("raw")["mean"] for r in g]
+        y = [r.forget("raw")["mean"] for r in g]
+        ax.scatter(x, y, s=60 if k == "base" else 26, color=st["color"], marker=st["marker"], label=f"{k} ({len(g)})",
+                   facecolor="white" if k == "base" else st["color"], linewidth=1.6)
+    ax.axhline(0.25, color=INK2, linewidth=1, linestyle=":")
+    ax.set_xlabel("full-MMLU utility (TEST, raw, pooled)")
+    ax.set_ylabel("WMDP-Bio forget accuracy (TEST, raw)")
+    ax.set_title("Forget vs utility, every clean TEST condition (lower right is better)")
+    ax.legend(fontsize=6, ncol=2)
+    return [save(fig, out, "forget_utility_test")]
+
+
+# ----------------------------------------------------------------------------- P3. relearning by epochs
+def relearning_epochs(runs, out, ctx):
+    """Relearning curves with x = epochs over the k relearn passages (steps x batch / k); full FT and LoRA."""
+    plt = setup(ctx.get("paper"))
+    rl = [r for r in runs if (r.base_exp in ("A6",) or r.base_exp.startswith("A6-full")) and r.metrics.get("curve")]
+    if not rl:
+        raise Skip("no A6 relearning results")
+    ks = sorted({r.metrics.get("k") for r in rl})
+    fig, axs = plt.subplots(1, len(ks), figsize=(2.6 * len(ks), 2.6), squeeze=False, sharey=True)
+    conds = sorted({(r.metrics["condition"], str(r.metrics.get("rank"))) for r in rl})
+    for ax, k in zip(axs[0], ks):
+        for ci, (cnd, rank) in enumerate(conds):
+            g = [r for r in rl if (r.metrics["condition"], str(r.metrics.get("rank"))) == (cnd, rank) and r.metrics.get("k") == k]
+            for r in g[:1]:
+                m = r.metrics
+                bs = m.get("batch_size") or (r.config.get("args") or {}).get("bs") or 4
+                x = [0] + [p["step"] * bs / k for p in m["curve"]]
+                y = [m["before"]["forget_acc"]] + [p["forget_acc"] for p in m["curve"]]
+                ax.plot(x, y, label=f"{cnd} ({'full' if rank == 'full' else 'LoRA r' + rank})", **series_style(ci))
+        ax.set_xscale("symlog", linthresh=1)
+        ax.set_title(f"k = {k} passages")
+        ax.set_xlabel("epochs over the k passages")
+    axs[0][0].set_ylabel("WMDP-Bio forget accuracy")
+    axs[0][0].legend(fontsize=5.5)
+    return [save(fig, out, "relearning_epochs")]
+
+
+def _fp(runs, exp):
+    return [r for r in runs if r.base_exp == exp and r.is_mcq]
+
+
+def _fpp(r):
+    return r.cfg.get("fp_params") or {}
+
+
+# ----------------------------------------------------------------------------- P4. clamp strength x N
+def clamp_grid(runs, out, ctx):
+    plt = setup(ctx.get("paper"))
+    rs = [r for r in _fp(runs, "FP-clamp") if _fpp(r)]
+    if not rs:
+        raise Skip("no FP-clamp runs (gpuws job figs)")
+    base = next((r for r in _fp(runs, "FP-clamp") if r.is_base), None)
+    meths = sorted({_fpp(r)["method"] for r in rs})
+    fig, axs = plt.subplots(2, len(meths), figsize=(3.3 * len(meths), 4.6), squeeze=False, sharex=True)
+    for j, me in enumerate(meths):
+        ns = sorted({_fpp(r)["n"] for r in rs if _fpp(r)["method"] == me})
+        for i, n in enumerate(ns):
+            g = sorted([r for r in rs if _fpp(r)["method"] == me and _fpp(r)["n"] == n], key=lambda r: _fpp(r)["c"])
+            x = [_fpp(r)["c"] for r in g]
+            st = series_style(i)
+            axs[0][j].plot(x, [r.forget("raw")["mean"] for r in g], label=f"N={n}", **st)
+            axs[1][j].plot(x, [(r.utility("raw") or {}).get("mean") for r in g], **st)
+        for row, getter in ((0, "forget"), (1, "utility")):
+            if base:
+                v = (base.forget("raw") if getter == "forget" else base.utility("raw")) or {}
+                axs[row][j].axhline(v.get("mean", np.nan), color=INK2, linestyle="--", linewidth=1, label="base" if row == 0 else None)
+            axs[row][j].set_xscale("log")
+        axs[0][j].set_title({"dsg": "DSG", "ours": "our gate"}.get(me, me))
+        axs[1][j].set_xlabel("clamp strength c")
+    axs[0][0].set_ylabel("WMDP-Bio DEV accuracy")
+    axs[1][0].set_ylabel("MMLU (4 subj.) DEV accuracy")
+    axs[0][0].legend(fontsize=6, ncol=2)
+    return [save(fig, out, "clamp_strength_grid")]
+
+
+# ----------------------------------------------------------------------------- P5. static vs dynamic
+def static_dynamic(runs, out, ctx):
+    plt = setup(ctx.get("paper"))
+    rs = {r.cfg.get("dataset_label"): r for r in _fp(runs, "FP-static")}
+    order = [k for k in ("base", "dsg-dynamic", "dsg-static", "ours-dynamic", "ours-static") if k in rs]
+    if len(order) < 2:
+        raise Skip("no FP-static runs (gpuws job figs)")
+    fig, ax = plt.subplots(figsize=(4.8, 3.0))
+    x = np.arange(len(order))
+    for off, (lab, get, c) in zip((-0.2, 0.2), (("forget (WMDP-Bio)", "forget", PALETTE[0]), ("utility (full MMLU)", "utility", PALETTE[1]))):
+        v = [((rs[k].forget("raw") if get == "forget" else rs[k].utility("raw")) or {}) for k in order]
+        m = np.array([d.get("mean", np.nan) for d in v])
+        err = np.array([[d.get("mean", 0) - d.get("lo", 0), d.get("hi", 0) - d.get("mean", 0)] for d in v]).T
+        ax.bar(x + off, m, 0.38, yerr=err, color=c, label=lab, edgecolor="white", capsize=2, error_kw={"elinewidth": 0.8})
+    ax.set_xticks(x, order, rotation=15)
+    ax.set_ylabel("TEST accuracy (raw)")
+    ax.set_title("Static (always clamp) vs dynamic (gated) clamping")
+    ax.legend()
+    return [save(fig, out, "static_vs_dynamic")]
+
+
+# ----------------------------------------------------------------------------- P6. data efficiency
+def data_efficiency(runs, out, ctx):
+    plt = setup(ctx.get("paper"))
+    rs = [r for r in _fp(runs, "FP-dataeff") if _fpp(r)]
+    if not rs:
+        raise Skip("no FP-dataeff runs (gpuws job figs)")
+    base = next((r for r in _fp(runs, "FP-dataeff") if r.is_base), None)
+    fig, axs = plt.subplots(1, 2, figsize=(6.2, 2.8))
+    for i, me in enumerate(sorted({_fpp(r)["method"] for r in rs})):
+        st = series_style(i)
+        ms = sorted({_fpp(r)["m"] for r in rs if _fpp(r)["method"] == me})
+        for ax, get in zip(axs, ("forget", "utility")):
+            vals = [[((r.forget("raw") if get == "forget" else r.utility("raw")) or {}).get("mean", np.nan)
+                     for r in rs if _fpp(r)["method"] == me and _fpp(r)["m"] == m] for m in ms]
+            mean = [np.nanmean(v) for v in vals]
+            ax.plot(ms, mean, label={"dsg": "DSG", "ours": "our gate"}.get(me, me), **st)
+            ax.fill_between(ms, [np.nanmin(v) for v in vals], [np.nanmax(v) for v in vals], color=st["color"], alpha=0.15, linewidth=0)
+    for ax, get in zip(axs, ("forget", "utility")):
+        if base:
+            v = (base.forget("raw") if get == "forget" else base.utility("raw")) or {}
+            ax.axhline(v.get("mean", np.nan), color=INK2, linestyle="--", linewidth=1, label="base")
+        ax.set_xscale("log", base=2)
+        ax.set_xlabel("feature-selection corpus size (docs per side)")
+    axs[0].set_ylabel("WMDP-Bio DEV accuracy")
+    axs[1].set_ylabel("MMLU (4 subj.) DEV accuracy")
+    axs[0].legend(fontsize=6)
+    fig.suptitle("Data efficiency: mean over seeds, band = min-max", fontsize=8)
+    return [save(fig, out, "data_efficiency")]
+
+
+def per_dataset_acc(r, ds):
+    it = r.items
+    if it is None:
+        return np.nan
+    g = it[it["dataset"] == ds]["correct"]
+    return float(g.mean()) if len(g) else np.nan
+
+
+# ----------------------------------------------------------------------------- P7. multi-topic
+def multitopic(runs, out, ctx):
+    plt = setup(ctx.get("paper"))
+    rs = {r.cfg.get("dataset_label"): r for r in _fp(runs, "FP-multitopic")}
+    if not rs:
+        raise Skip("no FP-multitopic runs (gpuws job figs)")
+    order = [k for k in ("base", "dsg-bio-only", "dsg-cyber-only", "dsg-bio+cyber", "ours-bio+cyber") if k in rs]
+    fig, ax = plt.subplots(figsize=(5.6, 3.0))
+    x = np.arange(len(order))
+    for j, (lab, fn) in enumerate((("WMDP-Bio", lambda r: per_dataset_acc(r, "wmdp-bio")),
+                                   ("WMDP-Cyber", lambda r: per_dataset_acc(r, "wmdp-cyber")),
+                                   ("MMLU utility", lambda r: (r.utility("raw") or {}).get("mean", np.nan)))):
+        ax.bar(x + (j - 1) * 0.27, [fn(rs[k]) for k in order], 0.26, color=PALETTE[j], label=lab, edgecolor="white")
+    ax.axhline(0.25, color=INK2, linewidth=1, linestyle=":")
+    ax.set_xticks(x, order, rotation=15)
+    ax.set_ylabel("TEST accuracy (raw)")
+    ax.set_title("Multi-topic unlearning (bio + cyber at once)")
+    ax.legend(fontsize=6, ncol=3)
+    return [save(fig, out, "multitopic")]
+
+
+# ----------------------------------------------------------------------------- P8. latency
+def latency_by_length(runs, out, ctx):
+    plt = setup(ctx.get("paper"))
+    rs = [r for r in runs if r.base_exp == "FP-latency" and r.metrics.get("latency")]
+    if not rs:
+        raise Skip("no FP-latency results (gpuws job figs)")
+    lat = rs[0].metrics["latency"]
+    Ls = sorted(int(k) for k in lat)
+    names = [k for k in lat[str(Ls[0])] if k != "base"]
+    fig, ax = plt.subplots(figsize=(4.6, 3.0))
+    for i, nm in enumerate(names):
+        ax.plot(Ls, [100 * lat[str(L)][nm]["overhead_vs_base"] for L in Ls], label=nm, **series_style(i))
+    ax.axhline(0, color=INK2, linewidth=1)
+    ax.set_xscale("log", base=2)
+    ax.set_xlabel("sequence length (tokens), batch size 1")
+    ax.set_ylabel("latency overhead vs base (%)")
+    ax.set_title(f"Forward latency overhead ({rs[0].hardware})")
+    ax.legend(fontsize=6)
+    return [save(fig, out, "latency_by_length")]
+
+
+# ----------------------------------------------------------------------------- P9. TOFU feature highlights
+def tofu_highlight(runs, out, ctx, n_show=2, max_tok=90):
+    plt = setup(ctx.get("paper"))
+    rs = [r for r in runs if r.base_exp == "FP-highlight" and r.metrics.get("examples")]
+    if not rs:
+        raise Skip("no FP-highlight results (TOFU only; gpuws job figs)")
+    m = rs[0].metrics
+    ex = [e for e in m["examples"] if e["part"] == "forget"][:n_show] + [e for e in m["examples"] if e["part"] == "retain"][:n_show]
+    import matplotlib.colors as mcolors
+
+    vmax = max(max(e["sel_max_act"][1:] or [0]) for e in ex) or 1.0
+    cmap = mcolors.LinearSegmentedColormap.from_list("hl", ["#ffffff", PALETTE[1]])
+    fig, axs = plt.subplots(len(ex), 1, figsize=(6.9, 1.05 * len(ex)), squeeze=False)
+    for ax, e in zip(axs[:, 0], ex):
+        ax.axis("off")
+        x, y = 0.0, 0.85
+        toks = e["tokens"][1:max_tok]
+        acts = e["sel_max_act"][1:max_tok]
+        for t, a in zip(toks, acts):
+            s = t.replace("▁", " ").replace("\n", " \\n ")
+            if s.startswith("<") and s.endswith(">"):
+                continue
+            w = 0.0105 * max(len(s), 1)
+            if x + w > 1.0:
+                x, y = 0.0, y - 0.3
+            ax.text(x, y, s, fontsize=6, family="monospace", va="top", transform=ax.transAxes,
+                    bbox={"boxstyle": "square,pad=0.05", "facecolor": cmap(min(max(a, 0) / vmax, 1.0)), "edgecolor": "none"})
+            x += w
+        ax.set_title(f"{e['part']}: rho {e['rho']:.3f} ({'fires' if e['gate_rho_fires'] else 'no fire'}), "
+                     f"window {e['window']:.3f} ({'fires' if e['gate_window_fires'] else 'no fire'})", fontsize=7, loc="left")
+    fig.suptitle("TOFU: max activation of the 20 selected SAE features per token (darker = higher)", fontsize=8)
+    return [save(fig, out, "tofu_feature_highlight")]
+
+
+ALL += [gate_score_distributions, forget_utility_test, relearning_epochs, clamp_grid, static_dynamic,
+        data_efficiency, multitopic, latency_by_length, tofu_highlight]
+
+
 def make_all(runs, outdir: Path, paper=False) -> dict:
     res = {}
     for f in ALL:

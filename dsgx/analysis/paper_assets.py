@@ -113,6 +113,105 @@ def build_tables(st, paired, cl, comp, runs, hw) -> dict:
     return T
 
 
+# ----------------------------------------------------------------------------- DSG figure parity (session 8)
+# DSG paper figure/table type -> (our figure stem, our table key, data source). INDEX.md lists each with its status,
+# so it is visible what still lacks data (never a re-run just to plot: every number is logged by the jobs).
+PARITY = [
+    ("gate-score distributions (forget / retain / attacked)", "gate_score_distributions", None, "TEST gated runs + attacks (lab B suite; gpuws FP-static)"),
+    ("forget vs utility scatter", "forget_utility_test", None, "every clean TEST run with full-MMLU utility"),
+    ("forget vs utility, dev sweep (Pareto)", "pareto_forget_utility", "sweep_a1_dev", "A1-dev"),
+    ("relearning curves across epochs", "relearning_epochs", None, "A6 (LoRA), A6-full, A6-full-d1v2"),
+    ("clamp strength x feature count", "clamp_strength_grid", "sweep_clamp", "FP-clamp (gpuws, DEV)"),
+    ("static vs dynamic clamping", "static_vs_dynamic", "static_dynamic", "FP-static (gpuws, TEST)"),
+    ("data efficiency (feature-selection corpus size)", "data_efficiency", "data_efficiency", "FP-dataeff (gpuws, DEV)"),
+    ("multi-topic unlearning", "multitopic", "multitopic", "FP-multitopic (gpuws, TEST)"),
+    ("latency (batch size 1, by sequence length)", "latency_by_length", "latency", "FP-latency (gpuws)"),
+    ("feature-activation highlights (TOFU only)", "tofu_feature_highlight", None, "FP-highlight (gpuws, TOFU)"),
+    ("hyperparameter sweep tables", None, "sweep_a1_dev, sweep_clamp, sweep_rmu_v2, sweep_d1_v2", "A1-dev, FP-clamp, RMU-v2-dev, D1-v2"),
+]
+
+
+def _ci_cell(d):
+    return num((d or {}).get("mean"), (d or {}).get("lo"), (d or {}).get("hi")) if d else "--"
+
+
+def _pct(x):
+    return "--" if x is None or (isinstance(x, float) and np.isnan(x)) else f"{100 * x:+.1f}\\%"
+
+
+def build_parity_tables(runs, hw) -> dict:
+    from dsgx.analysis.figures import per_dataset_acc
+
+    T, hwn = {}, f" Hardware: {esc(hw)}."
+    fp = lambda e: [r for r in runs if r.base_exp == e and r.is_mcq]  # noqa: E731
+    pp = lambda r: r.cfg.get("fp_params") or {}  # noqa: E731
+    # A1 dev sweep (DSG hyperparameters)
+    a1 = sorted([r for r in runs if r.base_exp == "A1-dev" and r.is_mcq and not r.is_base],
+                key=lambda r: (r.case or "", str(r.cfg["method"].get("retain_corpus")), r.cfg["method"].get("n_features", 0),
+                               r.cfg["method"].get("retain_pct", 0), r.cfg["method"].get("multiplier", 0)))
+    if a1:
+        T["sweep_a1_dev"] = table([[esc(r.case), esc(r.cfg["method"].get("retain_corpus", "")), str(r.cfg["method"].get("n_features")),
+                                    str(r.cfg["method"].get("retain_pct")), str(r.cfg["method"].get("multiplier")),
+                                    _ci_cell(r.forget("raw")), _ci_cell(r.utility("raw"))] for r in a1],
+                                  ["Case", "Retain corpus", "$N$", "Retain pct.", "$c$", "Forget (DEV)", "Utility (DEV)"],
+                                  "DSG hyperparameter sweep on DEV (A1)." + hwn, "tab:sweep-a1", "llrrrcc")
+    cl = sorted([r for r in fp("FP-clamp") if pp(r)], key=lambda r: (pp(r)["method"], pp(r)["n"], pp(r)["c"]))
+    if cl:
+        T["sweep_clamp"] = table([[{"dsg": "DSG", "ours": "our gate"}.get(pp(r)["method"], esc(pp(r)["method"])), str(pp(r)["n"]), str(pp(r)["c"]),
+                                   _ci_cell(r.forget("raw")), _ci_cell(r.utility("raw")), _ci_cell(r.utility("dsg_subset"))] for r in cl],
+                                 ["Method", "$N$", "$c$", "Forget (DEV)", "MMLU-4 (DEV, raw)", "MMLU-4 (DEV, DSG subset)"],
+                                 "Clamp strength $c$ $\\times$ number of features $N$ (DEV; WMDP-Bio and the 4 legacy MMLU subjects)." + hwn,
+                                 "tab:sweep-clamp", "lrrccc")
+    de = sorted([r for r in fp("FP-dataeff") if pp(r)], key=lambda r: (pp(r)["method"], pp(r)["m"], pp(r)["seed"]))
+    if de:
+        T["data_efficiency"] = table([[{"dsg": "DSG", "ours": "our gate"}.get(pp(r)["method"], esc(pp(r)["method"])), str(pp(r)["m"]),
+                                       str(pp(r)["seed"]), str(pp(r).get("n_features", "")), _ci_cell(r.forget("raw")), _ci_cell(r.utility("raw"))]
+                                      for r in de], ["Method", "Docs / side", "Seed", "Features", "Forget (DEV)", "MMLU-4 (DEV)"],
+                                     "Data efficiency: feature-selection corpus size (DEV)." + hwn, "tab:data-efficiency", "lrrrcc")
+    st = {r.cfg.get("dataset_label"): r for r in fp("FP-static")}
+    if st:
+        T["static_dynamic"] = table([[esc(k), _ci_cell(st[k].forget("raw")), _ci_cell(st[k].utility("raw")),
+                                      _ci_cell((st[k].gate or {}).get("benign_fpr"))] for k in sorted(st)],
+                                    ["Condition", "Forget (TEST)", "Utility (TEST, full MMLU)", "Benign fire rate"],
+                                    "Static (always clamp) vs dynamic (gated) clamping." + hwn, "tab:static-dynamic", "lccc")
+    mt = {r.cfg.get("dataset_label"): r for r in fp("FP-multitopic")}
+    if mt:
+        T["multitopic"] = table([[esc(k), num(per_dataset_acc(mt[k], "wmdp-bio")), num(per_dataset_acc(mt[k], "wmdp-cyber")),
+                                  _ci_cell(mt[k].utility("raw"))] for k in sorted(mt)],
+                                ["Condition", "WMDP-Bio", "WMDP-Cyber", "MMLU utility"],
+                                "Multi-topic unlearning: bio and cyber features at once (TEST, raw)." + hwn, "tab:multitopic", "lccc")
+    lat = [r for r in runs if r.base_exp == "FP-latency" and r.metrics.get("latency")]
+    if lat:
+        L = lat[0].metrics["latency"]
+        names = list(L[sorted(L, key=int)[0]])
+        T["latency"] = table([[str(k)] + [f"{L[k][n]['ms_median']:.1f}" + ("" if n == "base" else f" ({_pct(L[k][n]['overhead_vs_base'])})")
+                                          for n in names] for k in sorted(L, key=int)],
+                             ["Tokens"] + [esc(n) for n in names],
+                             "Forward latency at batch size 1, median ms (overhead vs base)." + f" Hardware: {esc(lat[0].hardware)}.",
+                             "tab:latency", "r" + "r" * len(names))
+    rmu = [r for r in runs if r.base_exp == "RMU-v2-dev" and r.is_mcq]
+    if rmu:
+        T["sweep_rmu_v2"] = table([[esc(r.cfg.get("dataset_label") or r.name)[:40], _ci_cell(r.forget("raw")), _ci_cell(r.utility("raw"))]
+                                   for r in sorted(rmu, key=lambda r: r.name)], ["Config", "Forget (DEV)", "Utility (DEV)"],
+                                  "RMU v2 DEV grid." + hwn, "tab:sweep-rmu", "lcc")
+    d1 = [r for r in runs if r.base_exp == "D1-v2" and r.is_mcq and r.split == "dev"]
+    if d1:
+        T["sweep_d1_v2"] = table([[esc(r.cfg.get("dataset_label")), _ci_cell(r.forget("raw")), _ci_cell(r.utility("raw"))]
+                                  for r in sorted(d1, key=lambda r: r.cfg.get("dataset_label", ""))],
+                                 ["Student", "Forget (DEV)", "Utility (DEV)"], "D1 v2 noise sweep on DEV (selection input)." + hwn,
+                                 "tab:sweep-d1v2", "lcc")
+    return T
+
+
+def parity_index(T, pdfs) -> list[str]:
+    L = ["", "## DSG figure parity", "", "| DSG figure type | our figure | our table | data | status |", "|---|---|---|---|---|"]
+    for name, fig, tab, src in PARITY:
+        have_f = fig is None or f"{fig}.pdf" in pdfs
+        have_t = tab is None or all(t.strip() in T for t in tab.split(","))
+        L.append(f"| {name} | {fig or '-'} | {tab or '-'} | {src} | {'ready' if have_f and have_t else 'waiting for data'} |")
+    return L
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="LaTeX tables + paper-size PDF figures")
     ap.add_argument("--runs")
@@ -135,6 +234,7 @@ def main(argv=None) -> int:
     runs = [r for r in runs if r.hardware == hw]
     comp, df, st, paired, cl = compute_summary(runs, {}, {}, a.n_boot)
     T = build_tables(st, paired, cl, comp, runs, hw)
+    T.update(build_parity_tables(runs, hw))
     td = out / "tables"
     td.mkdir(parents=True, exist_ok=True)
     for k, v in T.items():
@@ -158,6 +258,7 @@ def main(argv=None) -> int:
     idx = ["# Paper assets", "", f"Hardware: {hw}. Tables (booktabs): " + ", ".join(f"`tables/{k}.tex`" for k in T), "",
            "Figures (PDF, paper size): " + ", ".join(f"`figures/{p}`" for p in pdfs), "",
            "Skipped figures: " + "; ".join(f"{k}: {v.get('skipped') or v.get('error')}" for k, v in figs.items() if "written" not in v)]
+    idx += parity_index(T, set(pdfs))
     atomic_write_text(out / "INDEX.md", "\n".join(idx) + "\n")
     print(f"wrote {len(T)} tables, {len(pdfs)} figures -> {out}")
     return 0

@@ -11,7 +11,7 @@ from pathlib import Path
 
 SCRIPTS = ["cluster/validate_check.py", "cluster/rmu_train.py", "cluster/rmu_eval.py", "cluster/rmu_v2_train.py", "cluster/rmu_v2_eval.py", "cluster/jobcommon.py",
            "cluster/d1_full.py", "cluster/a6_full.py", "cluster/tofu_full.py", "cluster/a7_server.py", "cluster/muse.py",
-           "cluster/mtbench_open.py", "cluster/lab_jobs.py", "cluster/d1_v2.py"]  # q2_graphs.py needs the overlay venv env/q2 (checked by its --plan)
+           "cluster/mtbench_open.py", "cluster/lab_jobs.py", "cluster/d1_v2.py", "cluster/figparity.py"]  # q2_graphs.py needs the overlay venv env/q2 (checked by its --plan)
 LAZY = ["dsgx.gen.stream", "dsgx.checks.leakage", "dsgx.checks.sanity", "dsgx.data.corpora", "dsgx.data.mcq", "dsgx.data.splits", "dsgx.models.loader",
         "dsgx.run", "dsgx.train.core", "dsgx.eval.stats", "dsgx.labels", "dsgx.logging.run_logger", "dsgx.queue.worker",
         "dsgx.methods.registry", "dsgx.methods.gates", "dsgx.data.activation_cache"]

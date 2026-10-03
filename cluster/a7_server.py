@@ -12,7 +12,8 @@ Conditions per size (all TEST, bs=1, raw view, exp id A7-<size>):
   best-fix        the X1 detector if it is a window gate (COMBINE_SELECTION.json staged next to the
                   results), else window w=16; 5% benign-FPR threshold on MMLU dev
 Attacks: none (WMDP-Bio + high_school_geography + human_aging), dilution pad 400 and 1600 (forget only),
-translate fr (forget only; needs the staged translation cache of wmdp-bio test).
+translate fr (forget only; needs the staged translation cache of wmdp-bio test with >= 100 items, i.e. the
+lab B3-translate output; until then the translate runs are left out and a later rerun adds them).
 The first run of a size builds its activation cache (forget corpus + wikitext, 1024 x 1024 tokens; ~1 GB for 12B).
 Peak host RAM ~50 GB while TransformerLens converts the 12B weights (no --mem on this cluster; documented).
 Finished runs (DONE) are skipped; a run is not started when less than its estimate is left of --budget-min
@@ -43,6 +44,18 @@ def best_fix():
     return {"name": "gated", "gate": {"type": "window", "w": w}, "calib": {"fpr": 0.05, "n_max": 1000, "source": "mmlu-dev"}}, det
 
 
+MIN_TRANSLATED = 100  # the lab B3-translate cache; a smoke cache (a few items) is not used
+
+
+def translate_ready(lang="fr") -> bool:
+    f = paths.private_dir() / "translations" / lang / "wmdp-bio.jsonl"
+    try:
+        with open(f) as fh:
+            return sum(1 for _ in fh) >= MIN_TRANSLATED
+    except OSError:
+        return False
+
+
 def configs(size="12b"):
     MODEL = MODELS[size]
     exp = f"A7-{size}"
@@ -55,7 +68,7 @@ def configs(size="12b"):
         out.append({"exp_id": exp, "case": "bio", "split": "test", "view": "raw", "batch_size": 1, "seed": 0,
                     "model": dict(MODEL), "method": m, "attack": {"name": "none"}, "dataset_label": f"{tag}-forget+util",
                     "datasets": ["@forget", "high_school_geography", "human_aging"]})
-        for att in ATTACKS:
+        for att in [x for x in ATTACKS if x["name"] != "translate" or jc.TINY or translate_ready(x["lang"])]:
             out.append({"exp_id": exp, "case": "bio", "split": "test", "view": "raw", "batch_size": 1, "seed": 0,
                         "model": dict(MODEL), "method": m, "attack": dict(att), "dataset_label": f"{tag}-forget",
                         "datasets": ["@forget"]})
