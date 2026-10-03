@@ -10,15 +10,24 @@ What it does, on all local branches (= the 54 branches on `origin`):
    erasure: D1 / d1-full / B1 distillation seed, D2 null-space, D3 audit, A6 / a6-full tampering). Selection =
    non-merge commits whose own diff touches the paths in `scripts/history_cleanup/select_bake_commits.sh`, plus
    the hashes in `scripts/history_cleanup/extra_bake_commits.txt` (review before applying);
-3. keeps every tree, author, committer and date identical (checked by `verify.sh`);
-4. writes `commit-map.tsv` (old → new) and updates the hashes recorded where they are used operationally.
+3. adds `Co-authored-by: Chakrish28 <chakrish.konchada1234@gmail.com>` to commits in the break areas (attacks
+   B1–B6 incl. the shared `dsgx/attacks` transforms, GuardBreak N1, red-team challenge N4, adaptive hardening N5,
+   dilution theory checks T1/T2 = experiment `T`). Selection = non-merge commits whose own diff touches the paths in
+   `scripts/history_cleanup/select_break_commits.sh`, plus `extra_break_commits.txt`, minus
+   `exclude_break_commits.txt` (harness-wide commits that only touch an attack file in passing; review it).
+   A commit can get both trailers;
+4. keeps every tree, author, committer and date identical (checked by `verify.sh`);
+5. writes `commit-map.tsv` (old → new) and updates the hashes recorded where they are used operationally.
 
-Tested on a copy on 2026-10-03 (clone of all 55 branches, 500 commits, one linked worktree): dry run → 124 commits
+Re-tested with the break selection on 2026-10-03 (clone of 55 branches, 508 commits): dry run 124 AI-trailer
+commits, 15 bake, 21 break path matches − 7 excluded = 14 break commits; apply 19 s; `VERIFY OK` (0 AI trailers,
+16 Amar trailers = 15 selected + 1 that already had it, 14 Chakrish trailers, authors/dates identical).
+First test on a copy on 2026-10-03 (clone of all 55 branches, 500 commits, one linked worktree): dry run → 124 commits
 with AI trailers, 14 bake commits; apply in 19 s; `VERIFY OK` (tips' trees and counts equal, 0 AI trailers,
 14 Amar trailers, authors/dates identical); linked worktree clean afterwards; `remap_hashes.py` mapped 175/175
 queue jobs and the short hashes in CLAUDE.md / PREP_PROGRESS.md.
 
-Tools: `scripts/history_cleanup/{select_bake_commits.sh, msg_filter.py, rewrite.sh, verify.sh, remap_hashes.py}`.
+Tools: `scripts/history_cleanup/{select_bake_commits.sh, select_break_commits.sh, msg_filter.py, rewrite.sh, verify.sh, remap_hashes.py}`.
 `git filter-repo` is not installed; `rewrite.sh` uses `git filter-branch` with a message filter and a commit
 filter that records the map.
 
@@ -42,7 +51,7 @@ H=$R/scripts/history_cleanup; T=$(mktemp -d ~/hc-test.XXXX)
 git clone -q --no-local $R $T/repo && cd $T/repo
 for b in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin | grep -v HEAD); do git branch -q -f "${b#origin/}" "$b"; done
 git remote remove origin
-$H/rewrite.sh --dry-run $T/repo $T/out        # review the bake list; edit extra_bake_commits.txt; rerun
+$H/rewrite.sh --dry-run $T/repo $T/out        # review bake + break lists; edit extra_*/exclude_break_commits.txt; rerun
 $H/rewrite.sh --apply   $T/repo $T/out
 $H/verify.sh $T/repo $T/out                   # must end with: VERIFY OK
 mkdir $T/q && cp $P/dsg_results/queue/jobs/*.json $T/q/
@@ -92,6 +101,24 @@ git push origin $(git for-each-ref --format='%(refname:short)' refs/heads | grep
 git ls-remote --heads origin | wc -l                           # = number of local branches
 ```
 `--force-with-lease` with the recorded old tip refuses to overwrite a branch that changed on GitHub since step 0.
+
+## 5b. Paper repo (past commits)
+The paper repo (`~/projects/mechunlearn-project/paper`, branch `draft`) was already cleaned of AI trailers.
+Past commits that touch Sections 4–5 (`sections/04_threat_models.tex`, `sections/05_attacks.tex`) or Appendix B
+(`appendix/b_attack_details.tex`) should also carry Chakrish's trailer. Same tools, with the break list taken from
+those paths (it rewrites the paper history; `--force-with-lease` push afterwards, backup tag first):
+```bash
+cd ~/projects/mechunlearn-project/paper && O=~/paper_hc_$(date +%F) && mkdir -p $O
+git tag backup/pre-chakrish-trailer-$(date +%F) && git push origin --tags
+git log --branches --no-merges --format=%H -- sections/04_threat_models.tex sections/05_attacks.tex appendix/b_attack_details.tex > $O/break_commits.txt
+: > $O/bake_commits.txt; git for-each-ref --format='%(refname) %(objectname) %(objectname)^{tree}' refs/heads > $O/tips_before.txt; : > $O/commit-map.tsv
+BAKE_LIST=$O/bake_commits.txt BREAK_LIST=$O/break_commits.txt MAP=$O/commit-map.tsv FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f \
+  --msg-filter "python3 $H/msg_filter.py" --commit-filter 'n=$(git commit-tree "$@"); echo "$GIT_COMMIT $n" >> "$MAP"; echo "$n"' -- --branches
+git log --format='%h %s%n%b' | grep -c Chakrish28        # = lines in break_commits.txt (plus any that had it)
+git push --force-with-lease origin draft
+```
+(`bake_commits.txt` is empty here because the paper's Amar trailers are already in place; the filter keeps them.)
+Commits made from 2026-10-03 on carry the trailer at commit time, so they need nothing.
 
 ## 6. Afterwards
 - Other clones (team members): `git fetch && git reset --hard origin/<branch>` (or a fresh clone); never merge

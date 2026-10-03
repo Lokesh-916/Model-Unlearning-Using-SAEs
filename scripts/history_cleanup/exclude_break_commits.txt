@@ -1,0 +1,10 @@
+# Commits the path rule of select_break_commits.sh catches but that are not break-area work (harness-wide
+# changes that only touch an attack config or dsgx/attacks in passing). One hash per line, then a comment.
+# Reviewed 2026-10-03 on a copy (dry run listed 21 commits; these 7 removed -> 14).
+73a8248 Add dsgx harness core (data, splits, cache, methods, eval, logging, queue draft)
+494c131 Combination wave dsgx.combine (X1; the transforms 'exp:' key is a harness change)
+380c3eb Report-split runs at batch size 1 (all experiment configs; mechanical)
+3dd7e77 Report-split runs at batch size 1 (all experiment configs; mechanical)
+a0fe37f Report-split runs at batch size 1 (all experiment configs; mechanical)
+b22db5b Report-split runs at batch size 1 (all experiment configs; mechanical)
+bd10852 Report-split runs at batch size 1 (all experiment configs; mechanical)
