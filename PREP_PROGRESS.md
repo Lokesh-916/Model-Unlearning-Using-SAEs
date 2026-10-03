@@ -60,3 +60,8 @@ NO_CLAUDE_RUNBOOK.md: hourly status + doctor; at the Wave-1 pause `wave_check 1`
 - **C (server today, another user has priority):** code 3b7ec89 synced. Chain (all `--nice=10000`, afterok):
   95 validate (0:30) → 96 tofu-full rerun (3:00; models cached, per-condition checkpoints, est 1–1.5 h) → 97 a6-full part 2
   (1:00; new targets d1-a0.1, rmu-v2, est 20 min; finished cells skipped). d1-full needs no re-run.
+- **D (downloads):** HF licence accepted; `cluster/fetch_models.sh a7-12b` → gemma-3-12b-it (23 GB on disk, 5 shards) +
+  gemma-scope-2-12b-it `resid_post/layer_24_width_16k_l0_medium` (1.3 GB). Lab PC free 67 GB afterwards. Judge model skipped.
+- **E (paper, repo `paper` ca7e069):** wording matches commit history, contribution 4 = run/scheduled (MUSE conditional),
+  eq. 3 uses eq. 1's T, Properties not Propositions, Gemma 2 bib shortened, circuit-breakers TODO-VERIFY; compiles (17 pp,
+  0 warnings). paper_assets X1 caption no longer says "pre-registered".

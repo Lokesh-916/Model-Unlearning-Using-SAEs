@@ -10,10 +10,11 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | every remaining operation, copy-paste, with "you should see" | `NO_CLAUDE_RUNBOOK.md` |
 | failure triage + safe re-queue (incl. BLOCKED dependents) | `python -m dsgx.queue.doctor [--apply \| --requeue J..]` |
 | scripted Wave review before resume | `python -m dsgx.queue.wave_check <w>` |
+| queue idle, nothing running (wave deadlock) | `python -m dsgx.queue.doctor` → `STOP wave-deadlock` line (session 7) |
 | reboot recovery | `scripts/reboot_recover.sh` (uses baselines_DSG's tmux_up) |
 | P4 report in one command | `python -m dsgx.analysis.final_report [--interim] [--hardware gpuws --runs ... --out ...]` |
 | claim rules C-H1..C-H7 (fixed; edit only with a DEVIATIONS row) | `dsgx/analysis/claims.py` |
-| combination wave (pre-registered DEV rule, LOO, 5-seed TEST) | `python -m dsgx.combine {--dry-run,--enqueue,--select-only}` |
+| combination wave (DEV rule fixed in code, LOO, 5-seed TEST) | `python -m dsgx.combine {--dry-run,--enqueue,--select-only}` |
 | paper tables (booktabs) + paper-size PDFs | `python -m dsgx.analysis.paper_assets` |
 | qualitative track Q1/Q3/Q5/Q6, Q4/Q8 (TOFU-only) | `python -m dsgx.analysis.qual.<q1_feature_cards,q3_never_learned,q5_geometry,q6_trajectory,annotate>` |
 | all server work from the lab PC | `cluster/server.sh {status,sync,plan,stage,submit,check,fetch,verify,cleanup,run} <job>` |
@@ -202,3 +203,29 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
 - **Next (after 09:00):** if 93 was stopped by the guard/limit, resubmit `submit.sh d1-full.sbatch` (resumes from
   checkpoints; finished students and DONE runs skipped). Resubmit a6-full the same way for its unfinished cells, then rerun tofu-full.
   Fetch/verify/cleanup rmu-v2 as in session 5; fetch d1-full when done.
+
+### Session 7 — 2026-10-03 11:00–12:xx (end state)
+- **Lab PC queue fixed:** idle 06:03–11:05 by a wave deadlock (A1-test-000..003, wave 1, depend on
+  A1-dev-dsg-subset-ids, wave 2 in A1-dev.yaml; wave > 1 is held until the Wave-1 resume, which only fires once
+  wave 1 is terminal). Queue job file edited (original in `$DSG_RESULTS/queue/_archive/manual-2026-10-03/`): wave 1,
+  batch 32 → 8 (all A1-dev jobs OOMed at 16 in `mcq_eval.score_prompts`; task jobs ignore DSGX_BATCH_FACTOR).
+  2 DEVIATIONS rows. Started 11:05:08 (est ~5 h at bs 8); then A1-test runs, then the Wave-1 pause (`wave_check 1`).
+  No other remaining dev job runs the MCQ scorer at bs ≥ 16; TEST stays bs=1. `doctor` now reports `wave-deadlock`.
+- **Server results fetched + verified:** rmu-v2 (173 files), d1-full (28), a6-full (49), validate (7).
+  RMU v2 = c14 (20×r, α 300, L3 upd 1-3, 150 steps), **at grid edge** (steering, steps); TEST WMDP 0.319 vs DSG 0.298
+  (n.s.), MMLU 0.548 vs 0.561. D1-full undo a0.3/a0.5 collapse MMLU to chance; a0.1 keeps it (0.514, WMDP 0.396).
+  A6 `d1` cells used a0.3 (collapsed) and `rmu` cells used v1; new targets `d1-a0.1`, `rmu-v2` (code 3b7ec89).
+- **Server cleanup:** deleted third-party RMU, RMU-cluster v1, D1-full a0.3/a0.5 (weights gone everywhere; metrics kept),
+  code-rmu-v2. Kept: RMU-v2/best, D1-full/undo_a0.1, forget corpus, A2-tofu-full (for 96/97). Ours 35 GB, / 118 GB free.
+- **Queue (another user has priority today; all `--nice=10000`, afterok):** 95 validate EXACT → **96 tofu-full** (R,
+  --time 3:00; training cached; each condition saved to `runs/A2-tofu-full/tofu-metrics/partial/`, so a resubmit
+  resumes) → **97 a6-full** (--time 1:00; runs only d1-a0.1, rmu-v2; est 20 min).
+- **Next:** when 96/97 left the queue: `cluster/server.sh fetch tofu-full`, `verify`, `cleanup tofu-full --yes`;
+  `fetch a6-full`, `verify`, `cleanup a6-full --yes` (now also removes RMU-v2 + D1-full + corpus). If 96 hit its time
+  limit: `ssh gpuws 'cd ~/dsg_cluster/slurm && ./submit.sh tofu-full.sbatch --nice=10000 --time=03:00:00'`.
+  Still not runnable: A6 student/d2 (lab-PC D1/D2 weights not produced yet).
+- **Downloads:** gemma-3-12b-it (24.4 GB) + gemma-scope-2-12b-it resid_post/layer_24_width_16k_l0_medium (1.3 GB), HF
+  licence accepted; see PREP_PROGRESS. Judge model skipped.
+- **Paper** (`paper` repo, ca7e069): "pre-registered" replaced (rules committed after DEV sweeps began, before any
+  main TEST result; RMU v2 grid after v1's result), contribution 4 = run/scheduled only (MUSE conditional), eq. 3 in
+  eq. 1's T, Properties instead of Propositions, Gemma 2 bib shortened, circuit-breakers TODO-VERIFY. 17 pages, 0 warnings.

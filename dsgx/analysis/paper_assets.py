@@ -109,7 +109,7 @@ def build_tables(st, paired, cl, comp, runs, hw) -> dict:
                                          num(r.get("utility_cost")), num(r.get("benign_fpr")), "yes" if r["eligible"] else "no"]
                                         for r in s["candidates"]],
                                        ["Slot", "Candidate", "$\\Delta$ target", "McNemar $p$", "Util. cost", "Benign FPR", "Eligible"],
-                                       "Pre-registered DEV selection of the combined method (X1).", "tab:combine", "llccccc")
+                                       "DEV selection of the combined method (X1; rule fixed in code before screening).", "tab:combine", "llccccc")
     return T
 
 
