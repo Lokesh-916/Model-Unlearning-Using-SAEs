@@ -67,6 +67,15 @@ def test_tofu_full_tiny(tiny):
     assert m.main(["--epochs", "1", "--bs", "2", "--accum", "2", "--maxlen", "64"]) == 0
     met = json.loads((paths.runs_dir() / "A2-tofu-full" / "tofu-metrics" / "metrics.json").read_text())
     assert set(met["conditions"]) == {"retain-model", "full", "full+dsg", "full+best-gate"}
+    # resume: drop the final metrics and one condition; a rerun re-evaluates only that one
+    part = paths.runs_dir() / "A2-tofu-full" / "tofu-metrics" / "partial"
+    assert len(list(part.glob("*.json"))) == 4
+    (part / "full+best-gate.json").unlink()
+    keep = (part / "full.json").stat().st_mtime_ns
+    assert m.main(["--epochs", "1", "--bs", "2", "--accum", "2", "--maxlen", "64"]) == 0
+    assert (part / "full.json").stat().st_mtime_ns == keep and (part / "full+best-gate.json").exists()
+    met2 = json.loads((paths.runs_dir() / "A2-tofu-full" / "tofu-metrics" / "metrics.json").read_text())
+    assert set(met2["conditions"]) == set(met["conditions"]) and "n" not in met2["conditions"]["full"]
 
 
 def test_muse_tiny(tiny):

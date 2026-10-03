@@ -10,6 +10,8 @@ Targets (skipped with a note when the weights are not staged):
   d1          D1-full student (job d1-full)                           $DSG_CACHE/models/D1-full/<--d1-tag>
   d2          null-space edit (exp/D2)                                $DSG_CACHE/models/D2/nullspace
   rmu         RMU trained on gpuws (job rmu)                          $DSG_CACHE/models/RMU-cluster/best
+  d1-a0.1     D1-full student undo_a0.1 (a0.3/a0.5 collapse MMLU to chance) $DSG_CACHE/models/D1-full/undo_a0.1
+  rmu-v2      RMU v2 selected config (job rmu-v2)                     $DSG_CACHE/models/RMU-v2/best
 Output per cell: $DSG_RESULTS/runs/A6-full/relearn-<target>-k<k>/{metrics.json,DONE} in exp/A6's format
 (condition, k, rank='full', before, curve, n_eval, n_util), so the report's C-H6 rule and figures read it.
 A cell with DONE is skipped, so a Slurm requeue continues with the next cell. No weights are saved.
@@ -36,7 +38,8 @@ def targets(d1_tag):
     c = paths.cache_dir() / "models"
     return {"dsg-hook": (None, True), "dsg-nohook": (None, False),
             "student": (c / "D1" / "sameref_a0.0", False), "d1": (c / "D1-full" / d1_tag, False),
-            "d2": (c / "D2" / "nullspace", False), "rmu": (c / "RMU-cluster" / "best", False)}
+            "d2": (c / "D2" / "nullspace", False), "rmu": (c / "RMU-cluster" / "best", False),
+            "d1-a0.1": (c / "D1-full" / "undo_a0.1", False), "rmu-v2": (c / "RMU-v2" / "best", False)}
 
 
 def eval_sets(n_eval, n_util):

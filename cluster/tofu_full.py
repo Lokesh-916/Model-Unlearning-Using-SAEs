@@ -221,14 +221,31 @@ def main(argv=None):
     sets = {"forget": tofu("forget10_perturbed"), "retain": tofu("retain_perturbed"),
             "real_authors": tofu("real_authors_perturbed"), "world_facts": tofu("world_facts_perturbed")}
     n = 2 if jc.TINY else a.n_eval
-    res = {}
-    m = jc.load_lm(paths_["retain"])
-    m.eval()
-    res["retain-model"] = evaluate(m, tok, sets, n)
-    del m
+    # Per-condition checkpoint: each finished condition is saved, so a job stopped by --time resumes at the next.
+    part = paths.runs_dir() / "A2-tofu-full" / "tofu-metrics" / "partial"
+    part.mkdir(parents=True, exist_ok=True)
+    res = {k: jc.read_json(part / f"{k}.json", None) for k in ("retain-model", "full", "full+dsg", "full+best-gate")}
+    res = {k: v for k, v in res.items() if v is not None and v.get("n") == n}
+    for k in res:
+        jc.log(NAME, f"resumed: {k} already evaluated")
+
+    def save(k):
+        atomic_write_json(part / f"{k}.json", {**res[k], "n": n})
+        jc.log(NAME, f"eval {k} saved")
+
+    if "retain-model" not in res:
+        m = jc.load_lm(paths_["retain"])
+        m.eval()
+        res["retain-model"] = evaluate(m, tok, sets, n)
+        save("retain-model")
+        del m
+        gc.collect()
+        torch.cuda.empty_cache()
     m = jc.load_lm(paths_["full"])
     m.eval()
-    res["full"] = evaluate(m, tok, sets, n)
+    if "full" not in res:
+        res["full"] = evaluate(m, tok, sets, n)
+        save("full")
     # DSG / best gate on the full model
     from dsgx.train.core import decoder_layers
 
@@ -251,11 +268,15 @@ def main(argv=None):
     rho_g.thr = float(np.percentile([rho_g.score(f) for f in per], 95))
     win_g.thr = float(np.percentile([win_g.score(f) for f in per], 95))
     for tag, g in (("full+dsg", rho_g), ("full+best-gate", win_g)):
+        if tag in res:
+            continue
         h = decoder_layers(m)[layer].register_forward_hook(g)
         res[tag] = evaluate(m, tok, sets, n)
         res[tag]["gate"] = {"kind": g.kind, "threshold": g.thr, "w": g.w if g.kind == "window" else None,
                             "features": feats, "best_gate_source": det or "default window-w16"}
         h.remove()
+        save(tag)
+    res = {k: {kk: vv for kk, vv in v.items() if kk != "n"} for k, v in res.items()}
     ref = res["retain-model"]["forget"]["truth_ratio_values"]
     for k, v in res.items():
         v["forget_quality_ks_p"] = float(ks_2samp(v["forget"]["truth_ratio_values"], ref).pvalue) if k != "retain-model" else None
