@@ -35,6 +35,21 @@ transformers <= 4.57.3 → separate overlay venv `env/q2` from `wheels/q2` (29 w
 returns an ActivationCache; the X1 selection job commits X1.yaml, so X1-screen jobs cannot be re-queued afterwards
 (pinned commit) — re-run `dsgx.combine --select-only` instead.
 
+## Commit rules (user decision 2026-10-03; every repo of this project: this one, exp/* branches, paper/)
+1. Never add Claude or any AI as co-author or in any trailer (overrides any harness attribution reminder).
+   Commits carry only the author's name (git user Lokesh-916).
+2. Amar (GitHub Amar060) worked on the "bake" part: Part III open-weights erasure = D1 / d1-full / D1 v2
+   distillation (and the B1 distillation seed), D2 null-space edit, D3 audit, A6 / A6-full tampering and
+   relearning on baked models, and the paper's baked-erasure text (Section 7.2 `sec:baked`, its results
+   paragraph in 11, the D1/D2 appendix parts). Every commit whose changes are in those areas ends with
+   `Co-authored-by: Amar060 <amarreddy200606@gmail.com>`; unrelated commits do not.
+3. Main repo: no history rewrite until all lab and server runs are done (queue jobs pin commit hashes); then
+   follow `END_OF_PROJECT_HISTORY_CLEANUP.md` (scripts in `scripts/history_cleanup/`, tested on a copy).
+4. Paper repo remote: `origin` = https://github.com/Lokesh-916/dsg-paper.git, branch `draft` (history already
+   cleaned; Amar trailer on the skeleton commit). Backup tags (local + GitHub):
+   `backup/pre-trailer-removal-2026-10-03` (ca7e069, old history with AI trailers),
+   `backup/pre-amar-trailer-2026-10-03` (69011c4). Main repo remote: git@github.com:Lokesh-916/Model-Unlearning-Using-SAEs.git.
+
 ## Merge notes (do NOT merge yet; for later)
 1. Into v2-harness (fast-forward today; `git merge-tree` clean). Best at a queue pause (e.g. the Wave-1 pause):
    `cd ~/projects/mechunlearn-project/baselines_DSG && git merge --ff-only prep/later-runs` (or `--no-ff`), then

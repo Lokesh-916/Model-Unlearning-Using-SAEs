@@ -1,0 +1,6 @@
+# Extra commits that get Amar's trailer although select_bake_commits.sh's path rule misses them
+# (e.g. a doc-only commit about d1-full / a6-full results). One hash (7-40 hex) per line, then a comment.
+# Review the dry-run list (bake_commits.txt) and add or remove lines here before --apply.
+# Candidates (doc/state-only commits about d1-full / a6-full); uncomment to include:
+# 2f5f260 Session 6: a6-full queued as 94 behind d1-full
+# d9778d6 B: server results 84-94 fetched/verified (rmu-v2, d1-full, a6-full) -- mixed with rmu-v2
