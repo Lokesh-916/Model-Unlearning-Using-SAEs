@@ -43,3 +43,17 @@ NO_CLAUDE_RUNBOOK.md: hourly status + doctor; at the Wave-1 pause `wave_check 1`
 - 84 tofu-full failed (load_sae argument order, fix `2ec30f8`); 85/86 cancelled by afterok. Queued 92 validate →
   93 d1-full behind 89 with a hard 09:00 end (deadline + DSG_END_BY). 94 a6-full queued after it (user
   approved) with the same 09:00 stop; it will likely only partly finish. tofu-full rerun waits for the next window. Details: CLAUDE.md "Session 6".
+
+## Session 7 (2026-10-03)
+- **A (lab PC queue):** idle 06:03–11:05. Wave deadlock: A1-test-000..003 (wave 1) depend on A1-dev-dsg-subset-ids
+  (wave 2, held until the Wave-1 resume, which never comes because wave 1 is not terminal). Fixed in the queue job
+  file (wave 1, batch 32→8: A1-dev OOMed at 16 and tasks ignore DSGX_BATCH_FACTOR); 2 DEVIATIONS rows. Started 11:05:08,
+  heartbeat fresh. `doctor` now prints `STOP wave-deadlock` (commit 8b1d95d).
+- **B (server, last night):** 84 tofu-full FAILED (load_sae, fixed 2ec30f8); 85 d1-full / 86 a6-full CANCELLED (afterok);
+  87 validate EXACT; 88 rmu-v2-train + 89 rmu-v2-eval DONE; 92 validate EXACT; 93 d1-full DONE 04:48; 94 a6-full DONE 05:25
+  (student, d2 skipped: weights not on the lab PC). Fetched + sha256-verified: rmu-v2 173 files (f3e19827…), d1-full 28
+  (09a68f00…), a6-full 49 (e4b3f959…), validate 7. RMU-v2 best → `dsg_results_cluster/checkpoints/RMU-v2/best`.
+  RMU v2 (c14: 20×r, α 300, L3, 150 steps; **at grid edge**: steering, steps) TEST WMDP 0.319 vs base 0.644, DSG 0.298
+  (diff +0.020 [-0.006, 0.047], n.s.), third-party 0.498, v1 0.556; MMLU 0.548 vs DSG 0.561 (-0.013, p<0.001).
+  D1-full: undo a0.3/a0.5 collapse MMLU to chance (0.238/0.232); a0.1 WMDP 0.396, MMLU 0.514.
+  Server cleanup: third-party RMU, RMU v1, D1-full a0.3/a0.5 (collapsed, deleted, metrics kept), code-rmu-v2 → ours 35 GB, / 118 GB free.
