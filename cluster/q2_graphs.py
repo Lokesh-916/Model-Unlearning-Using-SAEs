@@ -576,7 +576,7 @@ def run_tofu(a, jc, paths):
             "gate": {"features": feats, "tau": tau, "source": gsrc, "layer": layer}, "dsg_matches": pairs, "matched_ids": matched_ids,
             "match_cos": MATCH_COS, "d2_edit": edit, "prob_table": table, "complete": done,
             "graphs": {k: ({kk: vv for kk, vv in v.items() if kk != "graph"} if v else None) for k, v in recs.items()},
-            "french_file": FR_FILE.name if FR_FILE.exists() else None}
+            "french_file": FR_FILE.name if FR_FILE.exists() else None, "hardware_label": jc.hardware_label()}
     atomic_write_json(out / "metrics.json", summ)
     if done:
         atomic_write_json(out / "DONE", {"headline": {k: (v["p_key"], (v.get("gate") or {}).get("fired")) for k, v in recs.items()}})

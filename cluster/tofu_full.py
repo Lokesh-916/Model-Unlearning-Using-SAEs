@@ -300,7 +300,7 @@ def main(argv=None):
     d = paths.runs_dir() / "A2-tofu-full" / "tofu-metrics"
     d.mkdir(parents=True, exist_ok=True)
     atomic_write_json(d / "metrics.json", {"conditions": res, "n_forget": n, "n_retain": n, "metric_version": METRIC_VERSION,
-                                           "models": {k: str(v) for k, v in paths_.items()}})
+                                           "models": {k: str(v) for k, v in paths_.items()}, "hardware_label": jc.hardware_label()})
     atomic_write_json(d / "DONE", {"time": now_iso(), "headline": {k: v.get("forget_quality_ks_p") for k, v in res.items()}})
     jc.summary(NAME, {"conditions": {k: {"forget_quality_ks_p": v.get("forget_quality_ks_p"), "model_utility": v.get("model_utility"),
                                          "forget_truth_ratio": v["forget"]["truth_ratio"]} for k, v in res.items()},

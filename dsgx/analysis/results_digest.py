@@ -178,6 +178,16 @@ def a6_section(root: Path) -> tuple[list[str], dict]:
                 q.append([f"steering {k}", m.get("condition"), ci(wilson(v["forget_acc"], m.get("n_eval", 300))), ci(wilson(v.get("util_acc"), 100))])
     if q:
         L += ["Quantisation and steering (A6, gpuws):", ""] + md_table(["attack", "target", "forget acc", "utility"], q)
+    bn = []
+    for f in sorted((root / "A6").glob("benign*/metrics.json")):
+        m = read(f) or {}
+        if "after" in m:
+            bn.append([m.get("condition"), m.get("steps"), ci(wilson(m["before"]["forget_acc"], 300)), ci(wilson(m["after"]["forget_acc"], 300)),
+                       ci(wilson(m["before"].get("util_acc"), 100)), ci(wilson(m["after"].get("util_acc"), 100))])
+    if bn:
+        L += ["Benign fine-tune (alpaca; A6, gpuws): does ordinary fine-tuning undo the guard? (n = 300 forget, 100 utility: the task defaults, not overridden by the job; "
+              "Wilson CI)", ""]
+        L += md_table(["target", "steps", "forget before", "forget after", "utility before", "utility after"], bn)
     st = read(root.parent / "jobs" / "labjobs-a6-lora" / "status.json") or {}
     left = st.get("left") or st.get("failed") or []
     if left:
@@ -223,8 +233,26 @@ def auc_ci(a, n1, n2) -> dict:
     return {"mean": a, "lo": max(0.0, a - 1.96 * se), "hi": min(1.0, a + 1.96 * se), "n": n1 + n2}
 
 
+def q2_section(root: Path) -> list[str]:
+    m = read(root / "Q2-graphs" / "tofu" / "metrics.json")
+    if not m:
+        return []
+    L = ["**Q2 attribution graphs (TOFU mode, gpuws; circuit-tracer, Gemma Scope transcoders).** Qualitative case studies: one "
+         "graph per row, so no CI. `gate` = DSG decision on that prompt (rho vs tau "
+         f"{(m.get('gate') or {}).get('tau', float('nan')):.3f}); D2 = null-space edit on the TOFU features; "
+         f"{len(m.get('matched_ids') or [])} of 20 DSG features matched a layer-3 transcoder feature (cos ≥ {m.get('match_cos')}).", ""]
+    rows = []
+    for tag, g in sorted((m.get("graphs") or {}).items()):
+        gt = g.get("gate")
+        rows.append([tag, f"{g.get('p_key', float('nan')):.3f}", f"{g.get('replacement_score', float('nan')):.3f}",
+                     f"{g.get('completeness_score', float('nan')):.3f}", f"{g.get('feature_influence_share', float('nan')):.3f}",
+                     f"{g.get('error_influence_share', float('nan')):.3f}", "–" if gt is None else f"rho {gt['rho']:.3f}, fired {gt['fired']}"])
+    L += md_table(["graph", "P(key token)", "replacement", "completeness", "feature infl.", "error infl.", "gate"], rows)
+    return L
+
+
 def server_jobs_section(root: Path) -> list[str]:
-    L = []
+    L = q2_section(root)
     jobs = root.parent / "jobs"
     g = read(root / "C3" / "auroc" / "metrics.json")
     if g:
@@ -289,6 +317,13 @@ def claims_section(lab, gpu, lab_paired, gpu_paired, a6, tofu, st_lab, st_gpu) -
                             ("C-H4", ("N9",), "N9 results")):
         h = have(*exps)
         ev[cid].append(f"{what}: present on {', '.join(h)} (see the tables above)." if h else f"No {what} yet on either machine.")
+    q2 = read(Path(CLUSTER / "runs" / "Q2-graphs" / "tofu" / "metrics.json")) if CLUSTER.exists() else None
+    if q2:
+        fr = (q2.get("graphs") or {}).get("fact0-attack-fr") or {}
+        en = (q2.get("graphs") or {}).get("fact0-dsg") or {}
+        if fr and en:
+            ev["C-H2"].append(f"Q2 case study (gpuws, TOFU, n = 1, not a rule input): fact 0 in French, gate {fr.get('gate')}, "
+                              f"P(key) {fr.get('p_key', float('nan')):.3f}; same fact in English under DSG: gate {en.get('gate')}.")
     if not have("B3"):
         ev["C-H2"].append("The A7 translate condition (gpuws) waits for the lab B3 translation cache.")
     for hw, r in allr:
