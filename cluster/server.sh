@@ -96,7 +96,8 @@ stage)
         echo "Clean up a finished job first (server.sh cleanup <job> --yes) and tell the team."; exit 1
     fi
     lab=$(df -BG --output=avail "$HOME" | tail -1 | tr -dc 0-9)
-    [ "$lab" -gt "$LAB_MIN_FREE_GB" ] || { echo "REFUSING: lab PC free ${lab} GB <= $LAB_MIN_FREE_GB"; exit 1; }
+    # staging only reads on the lab PC (plus a few MB of git-archive temp files): warn, do not refuse
+    [ "$lab" -gt "$LAB_MIN_FREE_GB" ] || echo "WARNING: lab PC free ${lab} GB <= $LAB_MIN_FREE_GB (staging writes nothing large here; free space before fetching checkpoints)"
     rlog "rsync stage $JOB (${need} GB)" "server.sh stage $JOB"
     stage_lines | while read -r src dest; do
         [ -e "$src" ] || { echo "skip (not on the lab PC): $src"; continue; }
