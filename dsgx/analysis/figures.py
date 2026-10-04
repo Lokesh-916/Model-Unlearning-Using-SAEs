@@ -190,6 +190,90 @@ def pareto(runs, out, ctx):
     return [save(fig, out, "pareto_forget_utility")]
 
 
+# ----------------------------------------------------------------------------- 4b. Cyber Pareto (Wave-1 decision)
+# No DSG config keeps Cyber full-MMLU utility within 1 point of base (DEV grid), so Cyber is reported as a
+# forget-vs-utility Pareto curve. The DSG paper's utility metric (4 legacy subjects, base-correct items =
+# view "dsg_subset") is shown next to full MMLU, so the size of each utility drop is visible under both metrics.
+RETAIN_NAME = {"mmlu-aux-chat": "chat-retain", "wikitext": "WikiText retain"}
+
+
+def cyber_pareto_rows(runs) -> dict:
+    """{'dev': [...], 'test': [...], 'base': {'dev': row, 'test': row}}: per A1 Cyber run forget (raw), full-MMLU
+    utility (raw, pooled), 4-subject utility (dsg_subset, pooled), drops vs base in points, DEV Pareto flag."""
+    def row(r):
+        m = r.cfg.get("method") or {}
+        f, u, u4 = r.forget("raw") or {}, r.utility("raw") or {}, r.utility("dsg_subset") or {}
+        return {"run": r.name, "split": r.split, "seed": r.seed, "base": r.is_base,
+                "retain": RETAIN_NAME.get(m.get("retain_corpus"), m.get("retain_corpus") or "-"),
+                "N": m.get("n_features"), "pct": m.get("retain_pct"), "c": m.get("multiplier"),
+                "forget": f, "full": u, "util4": u4}
+    out = {"dev": [], "test": [], "base": {}}
+    for r in runs:
+        if r.base_exp not in ("A1-dev", "A1-test") or not r.is_mcq or r.case != "cyber" or not r.forget("raw") or not r.utility("raw"):
+            continue
+        if "rmu" in (r.cfg.get("dataset_label") or ""):
+            continue  # unverified third-party reference, not part of the curve
+        x = row(r)
+        sp = "dev" if r.base_exp == "A1-dev" else "test"
+        if x["base"]:
+            out["base"][sp] = x
+        else:
+            out[sp].append(x)
+    for sp in ("dev", "test"):
+        b = out["base"].get(sp)
+        for x in out[sp]:
+            x["d_full"] = 100 * (x["full"]["mean"] - b["full"]["mean"]) if b else None
+            x["d_util4"] = 100 * (x["util4"]["mean"] - b["util4"]["mean"]) if (b and x["util4"] and b["util4"]) else None
+    dev = out["dev"]
+    for x in dev:  # Pareto-optimal over all DEV configs: no other config has lower-or-equal forget AND higher-or-equal utility, one strictly
+        fx, ux = x["forget"]["mean"], x["full"]["mean"]
+        x["pareto"] = not any((y["forget"]["mean"] <= fx and y["full"]["mean"] >= ux) and
+                              (y["forget"]["mean"] < fx or y["full"]["mean"] > ux) for y in dev)
+    return out
+
+
+def cyber_pareto(runs, out, ctx):
+    plt = setup(ctx.get("paper"))
+    d = cyber_pareto_rows(runs)
+    if not d["dev"] or "dev" not in d["base"]:
+        raise Skip("no A1-dev Cyber runs with a base run")
+    fig, (ax, bx) = plt.subplots(1, 2, figsize=(6.9, 3.0))
+    b = d["base"]["dev"]
+    names = sorted({x["retain"] for x in d["dev"]})
+    for i, nm in enumerate(names):
+        st = series_style(i)
+        g = [x for x in d["dev"] if x["retain"] == nm]
+        ax.scatter([x["full"]["mean"] for x in g], [x["forget"]["mean"] for x in g], s=20, color=st["color"],
+                   marker=st["marker"], edgecolor="white", linewidth=0.6, label=f"DSG, {nm}", zorder=3)
+        bx.scatter([x["d_full"] for x in g], [x["d_util4"] for x in g], s=20, color=st["color"], marker=st["marker"],
+                   edgecolor="white", linewidth=0.6, label=f"DSG, {nm}", zorder=3)
+    front = sorted([x for x in d["dev"] if x["pareto"]], key=lambda x: x["full"]["mean"])
+    ax.plot([x["full"]["mean"] for x in front], [x["forget"]["mean"] for x in front], color=INK2, linewidth=1.2,
+            drawstyle="steps-post", label="Pareto front (DEV)", zorder=2)
+    ax.scatter([b["full"]["mean"]], [b["forget"]["mean"]], s=60, facecolor="white", edgecolor=INK, linewidth=1.5,
+               marker="o", label="base", zorder=4)
+    ax.axvline(b["full"]["mean"] - 0.01, color=INK2, linewidth=0.8, linestyle="--")
+    ax.text(b["full"]["mean"] - 0.012, ax.get_ylim()[1], "base $-$1 pt", ha="right", va="top", fontsize=6, color=INK2)
+    ax.set_xlabel("full-MMLU utility (DEV, raw)")
+    ax.set_ylabel("WMDP-Cyber accuracy (DEV, raw)")
+    ax.set_title("(a) Cyber forget vs utility (lower-right better)")
+    ax.legend(fontsize=6, loc="upper left")
+    lo = min([x["d_full"] for x in d["dev"]] + [x["d_util4"] for x in d["dev"] if x["d_util4"] is not None] + [0])
+    bx.plot([lo, 0], [lo, 0], color=INK2, linewidth=0.8, linestyle=":", label="equal drop")
+    for sp, mk in (("test", "*"),):
+        for x in d[sp]:
+            if x["d_util4"] is not None:
+                bx.scatter([x["d_full"]], [x["d_util4"]], s=45, marker=mk, facecolor="none",
+                           edgecolor=series_style(names.index(x["retain"]) if x["retain"] in names else 2)["color"], linewidth=0.9, zorder=4)
+    if d["test"]:
+        bx.scatter([], [], s=45, marker="*", facecolor="none", edgecolor=INK2, label="selected config, TEST (5 seeds)")
+    bx.set_xlabel("full-MMLU utility change vs base (points)")
+    bx.set_ylabel("4-subject utility change (points)")
+    bx.set_title("(b) Utility drop: full MMLU vs DSG's 4 subjects")
+    bx.legend(fontsize=6, loc="upper left")
+    return [save(fig, out, "cyber_pareto")]
+
+
 # ----------------------------------------------------------------------------- 5. probes by layer
 def probes_by_layer(runs, out, ctx):
     plt = setup(ctx.get("paper"))
@@ -378,7 +462,7 @@ def gibberish_by_gate(runs, out, ctx):
     return [save(fig, out, "gibberish_by_gate")]
 
 
-ALL = [acc_vs_padding, rho_distributions, gate_roc, pareto, probes_by_layer, relearning_curves,
+ALL = [acc_vs_padding, rho_distributions, gate_roc, pareto, cyber_pareto, probes_by_layer, relearning_curves,
        conformal_coverage, per_language, n5_rounds, t1_rho, feature_overlap, gibberish_by_gate]
 
 

@@ -120,6 +120,7 @@ PARITY = [
     ("gate-score distributions (forget / retain / attacked)", "gate_score_distributions", None, "TEST gated runs + attacks (lab B suite; gpuws FP-static)"),
     ("forget vs utility scatter", "forget_utility_test", None, "every clean TEST run with full-MMLU utility"),
     ("forget vs utility, dev sweep (Pareto)", "pareto_forget_utility", "sweep_a1_dev", "A1-dev"),
+    ("Cyber forget-utility Pareto curve + 4-subject vs full-MMLU drop", "cyber_pareto", "cyber_pareto", "A1-dev, A1-test (Cyber)"),
     ("relearning curves across epochs", "relearning_epochs", None, "A6 (LoRA), A6-full, A6-full-d1v2"),
     ("clamp strength x feature count", "clamp_strength_grid", "sweep_clamp", "FP-clamp (gpuws, DEV)"),
     ("static vs dynamic clamping", "static_vs_dynamic", "static_dynamic", "FP-static (gpuws, TEST)"),
@@ -139,6 +140,43 @@ def _pct(x):
     return "--" if x is None or (isinstance(x, float) and np.isnan(x)) else f"{100 * x:+.1f}\\%"
 
 
+def cyber_pareto_table(runs, hwn) -> dict:
+    """Wave-1 decision (DEVIATIONS 2026-10-04): Cyber reported as a forget-utility Pareto curve. DEV grid rows
+    (Pareto-optimal marked) + the selected configs on TEST (mean over seeds), full MMLU and DSG's 4 subjects."""
+    from dsgx.analysis.figures import cyber_pareto_rows
+
+    d = cyber_pareto_rows(runs)
+    if not d["dev"]:
+        return {}
+    pt = lambda v: "--" if v is None else f"{v:+.1f}"  # noqa: E731
+    rows = []
+    for sp in ("dev", "test"):
+        b = d["base"].get(sp)
+        if b:
+            rows.append([sp.upper(), "base", "--", "--", "--", _ci_cell(b["forget"]), _ci_cell(b["full"]), "", _ci_cell(b["util4"]), "", ""])
+        xs = d[sp]
+        if sp == "test":  # one row per selected config: mean over seeds (range in the change columns)
+            groups = {}
+            for x in xs:
+                groups.setdefault((x["retain"], x["N"], x["pct"], x["c"]), []).append(x)
+            for (ret, N, p, c), g in sorted(groups.items(), key=lambda kv: str(kv[0])):
+                m = lambda k: float(np.mean([x[k]["mean"] for x in g]))  # noqa: E731
+                rng = lambda k: f"{np.mean([x[k] for x in g]):+.1f} [{min(x[k] for x in g):+.1f}, {max(x[k] for x in g):+.1f}]"  # noqa: E731
+                rows.append([f"TEST ({len(g)} seeds)", esc(ret), str(N), str(p), str(c), num(m("forget")), num(m("full")), rng("d_full"),
+                             num(m("util4")), rng("d_util4"), ""])
+            continue
+        for x in sorted(xs, key=lambda x: (x["retain"], -x["full"]["mean"])):
+            rows.append(["DEV", esc(x["retain"]), str(x["N"]), str(x["pct"]), str(x["c"]), _ci_cell(x["forget"]), _ci_cell(x["full"]),
+                         pt(x["d_full"]), _ci_cell(x["util4"]), pt(x["d_util4"]), r"$\star$" if x["pareto"] else ""])
+    return {"cyber_pareto": table(rows, ["Split", "Retain", "$N$", "Pct.", "$c$", "WMDP-Cyber", "Full MMLU", "$\\Delta$ pts",
+                                         "4 subjects (DSG)", "$\\Delta$ pts", "Pareto"],
+                                  "Cyber: forget vs utility over the A1 DEV grid and the DEV-selected configs on TEST. "
+                                  "No configuration keeps full-MMLU utility within 1 point of base. "
+                                  "4 subjects = DSG's utility metric (base-correct items of its 4 MMLU subjects)." + hwn,
+                                  "tab:cyber-pareto", "llrrrccrcrc",
+                                  r"$\star$ Pareto-optimal on DEV (no configuration has both lower forget accuracy and higher full-MMLU utility).")}
+
+
 def build_parity_tables(runs, hw) -> dict:
     from dsgx.analysis.figures import per_dataset_acc
 
@@ -155,6 +193,7 @@ def build_parity_tables(runs, hw) -> dict:
                                     _ci_cell(r.forget("raw")), _ci_cell(r.utility("raw"))] for r in a1],
                                   ["Case", "Retain corpus", "$N$", "Retain pct.", "$c$", "Forget (DEV)", "Utility (DEV)"],
                                   "DSG hyperparameter sweep on DEV (A1)." + hwn, "tab:sweep-a1", "llrrrcc")
+    T.update(cyber_pareto_table(runs, hwn))
     cl = sorted([r for r in fp("FP-clamp") if pp(r)], key=lambda r: (pp(r)["method"], pp(r)["n"], pp(r)["c"]))
     if cl:
         T["sweep_clamp"] = table([[{"dsg": "DSG", "ours": "our gate"}.get(pp(r)["method"], esc(pp(r)["method"])), str(pp(r)["n"]), str(pp(r)["c"]),
