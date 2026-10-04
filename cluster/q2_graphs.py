@@ -521,7 +521,7 @@ def run_tofu(a, jc, paths):
         pr = prune_graph(gr, 0.8, 0.98)
         rep, comp = compute_graph_scores(gr)
         act = gr.active_features[gr.selected_features] if getattr(gr, "selected_features", None) is not None else gr.active_features
-        m = ((act[:, 0] == layer) & torch.isin(act[:, 2], torch.tensor(matched_ids, dtype=act.dtype))).cpu().numpy() if matched_ids else None
+        m = ((act[:, 0] == layer) & torch.isin(act[:, 2], torch.tensor(matched_ids, dtype=act.dtype, device=act.device))).cpu().numpy() if matched_ids else None
         met = graph_metrics(gr.adjacency_matrix.float().cpu().numpy(), act.cpu().numpy(), model.cfg.n_layers, len(gr.input_tokens),
                             gr.logit_probabilities.float().cpu().numpy(), pr.node_mask.cpu().numpy(), m)
         cg = compact_graph(gr, pr, model.cfg.n_layers, tok, None if m is None else np.concatenate([m, np.zeros(len(pr.node_mask) - len(m), bool)]))
@@ -620,7 +620,7 @@ def run_wmdp(a, jc, paths):
         pr = prune_graph(g, 0.8, 0.98)
         rep, comp = compute_graph_scores(g)
         act = g.active_features[g.selected_features] if hasattr(g, "selected_features") else g.active_features
-        m = ((act[:, 0] == 3) & torch.isin(act[:, 2], torch.tensor(matched_ids))).cpu().numpy() if matched_ids else None
+        m = ((act[:, 0] == 3) & torch.isin(act[:, 2], torch.tensor(matched_ids, dtype=act.dtype, device=act.device))).cpu().numpy() if matched_ids else None
         met = graph_metrics(g.adjacency_matrix.float().cpu().numpy(), act.cpu().numpy(), model.cfg.n_layers,
                             len(g.input_tokens), g.logit_probabilities.float().cpu().numpy(), pr.node_mask.cpu().numpy(), m)
         rec = {"dataset": ds, "item_id": int(it.item_id), "prompt_hash": jc.text_hash(prompt), "replacement_score": float(rep),

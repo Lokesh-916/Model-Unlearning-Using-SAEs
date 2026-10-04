@@ -128,6 +128,20 @@ def load_sae(release="gemma-scope-2b-pt-res", sae_id="layer_3/width_16k/average_
     return get_sae(release, sae_id, dtype=dtype, device=device())
 
 
+def offline_sae_shapes():
+    """sae_lens 6.x reads Gemma Scope 2 tensor shapes with HTTP range requests (no offline path; gpuws has no
+    internet, job 110 failed on it). Read the safetensors header from the local HF cache instead."""
+    from huggingface_hub import hf_hub_download
+    from sae_lens.loading import pretrained_sae_loaders as L
+
+    def shapes(repo_id: str, filename: str) -> dict[str, list[int]]:
+        with open(hf_hub_download(repo_id, filename, local_files_only=True), "rb") as fh:
+            meta = json.loads(fh.read(int.from_bytes(fh.read(8), "little")))
+        return {k: v["shape"] for k, v in meta.items() if k != "__metadata__"}
+
+    L.get_safetensors_tensor_shapes = shapes
+
+
 def dsg_features(case="bio", n=20, pct=95, sae_release="gemma-scope-2b-pt-res",
                  sae_id="layer_3/width_16k/average_l0_142"):
     """(features, tau) of the DSG paper config from the activation cache (no model needed)."""

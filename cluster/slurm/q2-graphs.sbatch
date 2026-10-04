@@ -11,7 +11,7 @@
 #SBATCH --requeue
 #SBATCH --kill-on-invalid-dep=yes
 source "$HOME/dsg_cluster/slurm/preamble.sh"
-export DSG_CODE_SNAPSHOT=code-later5
+export DSG_CODE_SNAPSHOT=code-later6   # session 10: device fix (job 122)
 source "$HOME/dsg_cluster/slurm/later.sh"
 Q2="$DSGC/env/q2"
 if [ ! -x "$Q2/bin/python" ]; then

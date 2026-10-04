@@ -85,6 +85,7 @@ def main(argv=None):
     from dsgx.checks.leakage import check_runs
     from dsgx.run import resolve, run
 
+    jc.offline_sae_shapes()
     rc = 0
     for size in a.sizes:
         name = f"a7-{size}"

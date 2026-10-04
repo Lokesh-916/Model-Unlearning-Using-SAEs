@@ -11,7 +11,9 @@ marker="$DSGC/results/.fetched/$JOB"
 [ -f "$marker" ] || { echo "REFUSING: $marker missing; run fetch_results.sh $JOB on the lab PC first"; exit 1; }
 cd "$DSGC"
 paths="$RESULT_PATHS ${FETCH_EXTRA:-}"
-lst='find . -type f ! -name ".lock" -print0 | sort -z | xargs -0 -r sha256sum'
+FIND_EXCL=""
+for x in ${FETCH_EXCLUDE:-}; do FIND_EXCL+=" ! -path \"*/$x\""; done
+lst="find . -type f ! -name \".lock\"$FIND_EXCL -print0 | sort -z | xargs -0 -r sha256sum"
 listing=""
 for p in $paths; do
     [ -e "$p" ] || continue
@@ -20,6 +22,22 @@ done
 h=$(echo "$listing" | sha256sum | cut -c1-16)
 [ "$h" = "$(cut -d' ' -f1 "$marker")" ] || { echo "REFUSING: results changed since fetch ($h vs marker); fetch again"; exit 1; }
 echo "results verified as fetched: $(cat "$marker")"
+# Files excluded from the fetch (FETCH_EXCLUDE, e.g. optimizer state) are deleted only inside finished runs
+# (the run dir, i.e. the path minus the pattern, has a DONE marker).
+for x in ${FETCH_EXCLUDE:-}; do
+    for p in $paths; do
+        [ -d "$p" ] || continue
+        while IFS= read -r f; do
+            rd="${f%/$x}"; [ -f "$rd/DONE" ] || { echo "kept $f (run not DONE)"; continue; }
+            sz=$(du -sh "$f" | cut -f1)
+            if [ "$DRY" = "--dry-run" ]; then echo "would delete $f ($sz)"; continue; fi
+            rm -f -- "$DSGC/$f"
+            printf -- '- %s | `rm -f ~/dsg_cluster/%s` (%s, not fetched, run DONE) | cleanup.sh %s\n' "$(date '+%F %T')" "$f" "$sz" "$JOB" >> "$DSGC/COMMAND_LOG.md"
+            echo "deleted $f ($sz)"
+        done < <(find "$p" -type f -path "*/$x")
+    done
+done
+[ "${PRUNE_ONLY:-}" = 1 ] && { echo "PRUNE_ONLY: large inputs kept"; du -sh "$DSGC"; exit 0; }
 # Inputs shared by several jobs: never delete them while one of our dsg jobs is still queued or running
 # (e.g. rmu-v2 queued behind a6-full needs the corpus that a6-full's cleanup would remove).
 SHARED="private/corpora/bio-forget-corpus.jsonl"

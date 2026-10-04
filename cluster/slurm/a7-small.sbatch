@@ -10,5 +10,6 @@
 #SBATCH --requeue
 #SBATCH --kill-on-invalid-dep=yes
 source "$HOME/dsg_cluster/slurm/preamble.sh"
+export DSG_CODE_SNAPSHOT=code-later6   # session 10: offline Gemma Scope 2 shapes (job 110)
 source "$HOME/dsg_cluster/slurm/later.sh"
 python cluster/a7_server.py --sizes 1b 4b --budget-min "$DSG_BUDGET_MIN"
