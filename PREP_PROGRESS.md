@@ -196,3 +196,14 @@ Every finished result of both machines, separate tables, mean [95% CI] n, claims
 every session. All 7 claims Inconclusive on both machines (inputs missing). Flag: the C-H7 rule reads exp `A2` only,
 so the gpuws `A2-tofu-full` result is not used by the gpuws verdict (changing claims.py needs a DEVIATIONS row).
 Tests: 107 pass on CPU.
+
+## Session 11 (2026-10-04): disk freed, MT-Bench queued, C-H7 input, digest
+- Lab disk 50 → **104 GB** free: deleted smoke models (39.8 GB), third-party RMU (9.8 GB), RMU v1 checkpoint (4.9 GB).
+- MT-Bench (BM3): judge **gemma-2-9b-it** (same family as the judged model: labelled), conditions base / DSG / window-w16.
+  `dsgx/gen/stream.py` takes an optional `score_fn` (default rho unchanged). On CPU, the streaming window score equals the harness
+  `Gate.score` (0.0625 vs 0.0625). Queued 133 → 134–137 behind 132. CPU-calibrated threshold file removed from the lab gate cache
+  (the server calibrates on its own GPU).
+- a6-lora (A6-benign) and q2-graphs fetched, verified, cleaned. Q2: DSG fires on 1 of 3 TOFU facts (fact 1: P(key) 0.988 → 0.000);
+  fact 0 passes in English and in French alike; D2 leaves P(key) unchanged on all 3.
+- C-H7 reads A2-tofu-full (gpuws still Inconclusive: no A7 yet). C-H3 (labpc): **Not supported** by its rule.
+- Fixed: missing hardware label on gpuws TOFU / Q2 runs; session-10 parity test failure. 107 tests pass.

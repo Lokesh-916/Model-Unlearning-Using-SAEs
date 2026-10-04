@@ -34,6 +34,7 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | DSG figure parity data (clamp grid, data efficiency, static/dynamic, multi-topic, latency, TOFU highlights) | `cluster/figparity.py` (conf figs); figures + tables in `paper_assets` (INDEX.md "DSG figure parity") |
 | every finished result, both machines, CIs, claims C-H1..C-H7 (regenerate at the end of EVERY session) | `python -m dsgx.analysis.results_digest` → `$DSG_RESULTS/RESULTS_DIGEST.md` |
 | Cyber forget-utility Pareto curve (Wave-1 decision) | `paper_assets`: figure `cyber_pareto`, table `tab:cyber-pareto` |
+| MT-Bench (BM3): base / DSG / window-w16, judge gemma-2-9b-it (same family: label every number) | `cluster/mtbench_open.py` (conf mtbench; 4 × 3 h resumable, snapshot code-later7) |
 | skip optimizer state when fetching / prune it on the server in DONE runs | conf `FETCH_EXCLUDE` (a6-lora: `last/trainer.pt`); `ssh gpuws 'PRUNE_ONLY=1 ~/dsg_cluster/slurm/cleanup.sh <job>'` |
 
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
@@ -330,3 +331,17 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   transcoders + TOFU model), a7-small (cleanup), muse (cleanup), a7-12b (cleanup; then the lab copy of gemma-3-12b-it can go
   if you approve). If a chain step ends `partial`/`INCOMPLETE`, resubmit that sbatch with `--nice=10000`. a6-baked waits for lab
   D1/D2 weights; A7 translate for lab B3. Regenerate the digest.
+
+### Session 11 — 2026-10-04 11:50–12:xx (end state)
+- **Lab disk:** deleted (user instruction) `dsg_cache/models/{A2,D1,D2}-smoke`, third-party RMU (HF cache),
+  `dsg_results_cluster/checkpoints/RMU-cluster`; no queued job referenced them. Lab free 50 → 104 GB. Legacy artifacts untouched.
+- **Server:** a6-lora 124 COMPLETE (A6-benign done) and q2-graphs 125 done: fetched, verified, cleaned (transcoders, TOFU model).
+  MT-Bench: judge google/gemma-2-9b-it staged (18 GB); chain **133 validate (afterany:132) → 134–137 mtbench** (`--nice=10000`).
+  Server ours 73 GB, free 80 GB; MUSE peak ≈ 89 GB ours (< 100). Queue at session end: 126 a7-small R → 127 → 128–130 muse →
+  131–132 a7-12b → 133–137.
+- **Rules:** C-H7 also reads the gpuws `A2-tofu-full` (input only; DEVIATIONS). No threshold changed. C-H3 on labpc is now
+  **Not supported** by its rule (A4 DSG best layer 9 probe 0.285, CI lo 0.253 < 0.30); it stays so.
+- **Bug fixed:** gpuws TOFU / Q2 runs had no hardware label and were read as labpc. Fixed with HARDWARE.json on the server +
+  re-fetch, and the scripts now write `hardware_label`. Session 10's parity test failure (Cyber Pareto) is fixed; 107 tests pass.
+- **Next:** fetch/verify/cleanup a7-small, muse, a7-12b (then the lab gemma-3-12b-it copy can go if approved), mtbench (read
+  `jobs/mtbench/summary.json`; report with `same_family_judge`); regenerate the digest.

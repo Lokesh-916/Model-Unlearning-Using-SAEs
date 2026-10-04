@@ -188,7 +188,9 @@ Panel dashboard (any time, lab PC): `python -m dsgx.analysis.dashboard` → `res
 `123 validate → 124 a6-lora → 125 q2-graphs → 126–127 a7-small → 128–130 muse → 131–132 a7-12b` (all `--nice=10000`, no
 deadline; pause by hand with `ssh gpuws 'scontrol hold <ids>'` / `scontrol release <ids>` if the other user needs the GPU).
 After each group has left the queue: `cluster/server.sh fetch <job>`, `verify <job>`, `cleanup <job> --yes` for
-a6-lora, q2-graphs, a7-small, muse, a7-12b. a6-lora fetches skip `last/trainer.pt` (optimizer state, `FETCH_EXCLUDE`);
+a7-small, muse, a7-12b, then **mtbench** (session 11: 133 validate → 134–137; judge gemma-2-9b-it, same family as the judged model,
+so always report `same_family_judge: true`; resubmit `mtbench.sbatch --nice=10000` if 137 ends `partial`). a6-lora and q2-graphs are
+already fetched and cleaned. a6-lora fetches skip `last/trainer.pt` (optimizer state, `FETCH_EXCLUDE`);
 cleanup deletes it on the server only inside DONE runs. Fetching metrics (< 1 GB) works down to 45 GB lab free.
 **You should see:** `fetched and verified K files`, then `deleted ...` lines.
 
