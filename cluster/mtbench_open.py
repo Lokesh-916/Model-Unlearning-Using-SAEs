@@ -2,17 +2,22 @@
 comparisons; absolute scores are not comparable with the paper's GPT-4-judged 7.78).
 
 Phase gen (gemma-2-2b-it, TransformerLens, greedy, max 1024 new tokens per turn, chat template):
-  base  no gate;  dsg  canonical streaming DSG gate (dsgx.gen.stream, paper config N=20 / 95 / x500)
+  base        no gate
+  dsg         canonical streaming DSG gate (dsgx.gen.stream, paper config N=20 / 95 / x500, rho > tau)
+  window-w16  our window gate (same 20 features and clamp; score = max fire fraction over 16-token windows,
+              gates.score_window; threshold = gates.calibrate on MMLU DEV prompts at 5% FPR, as A7's best fix),
+              re-evaluated at every generated token like dsg
   80 questions x 2 turns; turn 2 sees the model's own turn-1 answer.
 Phase judge (FIXED, never change between conditions):
-  judge model  JUDGE (default unsloth/Qwen2.5-32B-Instruct-bnb-4bit, ~19 GB, pre-quantised nf4; loads
-               with bitsandbytes, no internet); fallback google/gemma-2-9b-it (bf16, already on the lab PC;
-               same family as the judged model -> self-preference risk, label it)
+  judge model  JUDGE = google/gemma-2-9b-it (bf16, ~18 GB; user decision 2026-10-04, BM3). Same model family
+               as the judged gemma-2-2b-it -> self-preference risk; labelled `same_family_judge` (DEVIATIONS).
+               (unsloth/Qwen2.5-32B-Instruct-bnb-4bit was the original choice; not downloaded.)
   prompts      FastChat single-answer grading (mtbench/data/judge_prompts.jsonl: single-v1 / single-math-v1
                (+ -multi-turn), reference answers mtbench/data/reference_answer/gpt-4.jsonl for math, reasoning,
                coding), system prompt as given, judge chat template, greedy, max 512 new tokens,
                score = [[x]] (fallback [x]); unparsable -> None (counted, reported).
-Resumable: answers_<mode>.jsonl / judgments_<mode>__<judge>.jsonl rows already present are skipped.
+Resumable: answers_<mode>.jsonl / judgments_<mode>__<judge>.jsonl rows already present are skipped; each sbatch
+stops starting new work when DSG_BUDGET_MIN (slurm/later.sh) runs low and prints "partial" (chain several copies).
 Outputs: $DSG_RESULTS/jobs/mtbench/ (answers are benign MT-Bench text) and summary.json with mean score
 per condition and turn, 95% bootstrap CIs over questions, and the paired difference dsg - base.
 """
@@ -29,7 +34,9 @@ from dsgx import paths
 from dsgx.eval import stats
 
 NAME = "mtbench"
-JUDGE = "unsloth/Qwen2.5-32B-Instruct-bnb-4bit"
+JUDGE = "google/gemma-2-9b-it"
+MODES = ["base", "dsg", "window-w16"]
+GEN_MIN, JUDGE_MIN = 2.0, 0.5   # minutes reserved per answer / per judgment before starting it (budget check)
 NEED_REF = {"math", "reasoning", "coding"}
 DATA = paths.REPO_ROOT / "mtbench" / "data"
 
@@ -43,7 +50,16 @@ def append(p, obj):
         f.write(json.dumps(obj) + "\n")
 
 
-def generate_all(modes, max_new, limit):
+def window_gate(b, w=16):
+    """(features, threshold, score_fn) of the window gate: harness Gate + calibrate (cached threshold)."""
+    from dsgx.methods import gates
+
+    g = gates.Gate({"type": "window", "w": w, "n_features": 20, "retain_pct": 95, "case": "bio"}, b)
+    cal = gates.calibrate(b, g, "bio", 0.05, 1000, "mmlu-dev")
+    return g.features, float(cal["threshold"]), (lambda fires: gates.score_window(torch.tensor(fires), len(fires), w)), cal
+
+
+def generate_all(modes, max_new, limit, budget):
     out = jc.job_dir(NAME)
     qs = rows(DATA / "question.jsonl")[: limit or None]
     if jc.TINY:
@@ -61,10 +77,20 @@ def generate_all(modes, max_new, limit):
         b = get_bundle()
         tok = b.model.tokenizer
         feats, tau = jc.dsg_features()
+        win = None
 
         def gen(text, mode):
-            r = generate(b.model, text, b, feats, 500.0, tau, "none" if mode == "base" else "stream", max_new)
+            nonlocal win
+            if mode.startswith("window-w"):
+                if win is None:
+                    win = window_gate(b, int(mode.split("-w")[1]))
+                    jc.log(NAME, f"window gate: {len(win[0])} features, threshold {win[1]:.4f} ({win[3].get('source')}, "
+                                 f"empirical FPR {win[3].get('empirical_fpr')})")
+                r = generate(b.model, text, b, win[0], 500.0, win[1], "stream", max_new, score_fn=win[2])
+            else:
+                r = generate(b.model, text, b, feats, 500.0, tau, "none" if mode == "base" else "stream", max_new)
             return tok.decode(r.tokens, skip_special_tokens=True)
+    complete = True
     for mode in modes:
         p = out / f"answers_{mode}.jsonl"
         done = {(r["question_id"], r["turn"]) for r in rows(p)}
@@ -75,12 +101,20 @@ def generate_all(modes, max_new, limit):
                 msgs.append({"role": "user", "content": turn})
                 key = (q["question_id"], t)
                 if key not in done:
+                    if not budget.fits(GEN_MIN):
+                        complete = False
+                        break
                     text = tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
                     ans = gen(text, mode)
                     append(p, {"mode": mode, "question_id": q["question_id"], "category": q["category"], "turn": t, "answer": ans})
                     prev[key] = ans
                 msgs.append({"role": "assistant", "content": prev[key]})
+            if not complete:
+                break
         jc.log(NAME, f"answers {mode}: {len(rows(p))} rows")
+        if not complete:
+            break
+    return complete
 
 
 def build(q, turn, ans, refs, prompts):
@@ -96,7 +130,7 @@ def build(q, turn, ans, refs, prompts):
     return name, pr["system_prompt"], user
 
 
-def judge_all(modes, judge, limit):
+def judge_all(modes, judge, limit, budget):
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
     out = jc.job_dir(NAME)
@@ -110,12 +144,16 @@ def judge_all(modes, judge, limit):
         model = AutoModelForCausalLM.from_pretrained(judge, dtype=torch.bfloat16, device_map="cuda")
     model.eval()
     tag = judge.split("/")[-1]
+    complete = True
     for mode in modes:
         ans = {(r["question_id"], r["turn"]): r["answer"] for r in rows(out / f"answers_{mode}.jsonl")}
         p = out / f"judgments_{mode}__{tag}.jsonl"
         done = {(r["question_id"], r["turn"]) for r in rows(p)}
         todo = [k for k in sorted(ans) if k not in done and (k[1] == 1 or (k[0], 1) in ans)][: limit or None]
         for qid, turn in todo:
+            if not budget.fits(JUDGE_MIN):
+                complete = False
+                break
             name, system, user = build(qs[qid], turn, ans, refs, prompts)
             try:  # judges without a system role (e.g. Gemma) get the system prompt folded into the user turn
                 text = tok.apply_chat_template([{"role": "system", "content": system}, {"role": "user", "content": user}],
@@ -131,7 +169,9 @@ def judge_all(modes, judge, limit):
             append(p, {"question_id": qid, "turn": turn, "category": qs[qid]["category"], "judge": judge, "prompt": name,
                        "score": float(m.group(1)) if m else None, "judgment": jt})
         jc.log(NAME, f"judged {mode}: {len(rows(p))} rows")
-    return tag
+        if not complete:
+            break
+    return tag, complete
 
 
 def summarise(modes, tag):
@@ -145,29 +185,38 @@ def summarise(modes, tag):
         res[mode] = {"all": stats.bootstrap_ci(vals), "unparsed": sum(v is None for v in sc[mode].values())}
         for t in (1, 2):
             res[mode][f"turn{t}"] = stats.bootstrap_ci([v for (q, tt), v in sc[mode].items() if tt == t and v is not None])
-    if "base" in sc and "dsg" in sc:
-        keys = [k for k in sc["base"] if sc["base"][k] is not None and sc["dsg"].get(k) is not None]
-        res["dsg_minus_base"] = stats.paired_bootstrap([sc["dsg"][k] for k in keys], [sc["base"][k] for k in keys])
+    for m in [x for x in sc if x != "base"]:
+        if "base" in sc:
+            keys = [k for k in sc["base"] if sc["base"][k] is not None and sc[m].get(k) is not None]
+            res[f"{m}_minus_base"] = stats.paired_bootstrap([sc[m][k] for k in keys], [sc["base"][k] for k in keys])
     return res
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--phase", choices=["gen", "judge", "all"], default="all")
-    ap.add_argument("--modes", nargs="*", default=["base", "dsg"])
+    ap.add_argument("--modes", nargs="*", default=MODES)
+    ap.add_argument("--budget-min", type=float, default=None)
     ap.add_argument("--judge", default=JUDGE)
     ap.add_argument("--max-new", type=int, default=1024)
     ap.add_argument("--limit", type=int, default=None)
     a = ap.parse_args(argv)
     jc.require_gpu(40)
+    budget = jc.Budget(a.budget_min)
     if a.phase in ("gen", "all"):
-        generate_all(a.modes, a.max_new if not jc.TINY else 4, a.limit)
+        ok = generate_all(a.modes, a.max_new if not jc.TINY else 4, a.limit, budget)
         torch.cuda.empty_cache()
         from dsgx.models.loader import clear
 
         clear()
+        if not ok:
+            jc.log(NAME, "partial: answers incomplete (budget); resubmit mtbench.sbatch to continue")
+            return 0
     if a.phase in ("judge", "all"):
-        tag = judge_all(a.modes, a.judge, a.limit)
+        tag, ok = judge_all(a.modes, a.judge, a.limit, budget)
+        if not ok:
+            jc.log(NAME, "partial: judgments incomplete (budget); resubmit mtbench.sbatch to continue")
+            return 0
         res = summarise(a.modes, tag)
         jc.summary(NAME, {"judge": a.judge, "settings": {"temperature": 0, "max_new_judge": 512, "max_new_answer": a.max_new,
                                                        "prompts": "FastChat single-v1 / single-math-v1"},

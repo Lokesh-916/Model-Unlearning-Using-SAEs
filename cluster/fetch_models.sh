@@ -3,7 +3,7 @@
 # `cluster/server.sh stage <job>` can copy it. Refuses if lab-PC free disk would drop below 60 GB.
 #   cluster/fetch_models.sh a7-12b      gemma-3-12b-it (~24 GB, licence must be accepted on the HF
 #                                       account: `huggingface-cli login` once) + Gemma Scope 2 12B layer 24 SAE
-#   cluster/fetch_models.sh mtbench     unsloth/Qwen2.5-32B-Instruct-bnb-4bit (~19 GB, the fixed open judge)
+#   cluster/fetch_models.sh mtbench     unsloth/Qwen2.5-32B-Instruct-bnb-4bit (~19 GB; NOT needed since 2026-10-04: judge = gemma-2-9b-it)
 #   cluster/fetch_models.sh q2-graphs   mwhanna/gemma-scope-transcoders (~8 GB, circuit-tracer "gemma" set)
 #   cluster/fetch_models.sh muse        MUSE-News + MUSE-Books datasets (~0.2 GB) + muse_bench code tarball
 #   cluster/fetch_models.sh list        sizes and what is already present

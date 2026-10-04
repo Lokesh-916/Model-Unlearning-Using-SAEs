@@ -25,7 +25,7 @@ L3 16k SAE 0.3 GB · WMDP / MMLU / wikitext 0.2 GB · bio activation cache s0 0.
 | 2 | **a6-full** | lab queue D1 (`models/D1/sameref_a0.0`) and D2 (`models/D2/nullspace`) DONE; rmu fetched | D1 sameref 5.2, D2 nullspace 5.2, RMU best 5.2, corpus 0.7 | 14 + 15.6 + 16.3 ≈ **46 GB** | ~3 h (6 targets × 3 k × 200 steps) | 32 GB (students, targets, corpus) |
 | 3 | **tofu-full** | (optional) X1 selection done → best gate window size | TOFU 6 MB, COMBINE_SELECTION.json | 14 + 10.4 models + 10 transient ≈ **35 GB** | ~2.5 h | 10.4 GB (models) |
 | 4 | **a7-12b** | `cluster/fetch_models.sh a7-12b` (24 GB download, HF licence) ; X1 selection (optional) | gemma-3-12b-it 24 GB, 12B L24 SAE 0.3 GB, translations, corpus | 14 + 24.3 + 1 cache + 0.7 ≈ **40 GB** | ~4 h (cache 0.5 h + 12 runs) | 26 GB |
-| 5 | **mtbench** | `cluster/fetch_models.sh mtbench` (19 GB) | Qwen2.5-32B-Instruct bnb-4bit 19 GB | 14 + 19 ≈ **33 GB** | ~6 h (2 × 160 answers + 320 judgments) | 19 GB |
+| 5 | **mtbench** | — (judge gemma-2-9b-it already in the lab HF cache; session 11) | gemma-2-9b-it 18 GB | 14 + 18 ≈ **32 GB** | ~8 h (3 × 160 answers + 480 judgments; 4 × 3 h copies) | 18 GB |
 | 6 | **q2-graphs** | `cluster/fetch_models.sh q2-graphs` (≈ 8 GB) ; wheels/q2 (present) | transcoders ≈ 8 GB, wheels 29 MB | 14 + 8 + 1.5 graphs ≈ **24 GB** | ~4 h (80 graphs) | 9.5 GB |
 | 7 | **muse** | `cluster/fetch_models.sh muse` (0.2 GB + code) | MUSE News + Books 0.2 GB | 14 + 10.4 + 10 transient ≈ **35 GB** | ~12 h (4 fine-tunes + metrics) | 0.2 GB (models deleted in-job) |
 
@@ -45,7 +45,7 @@ All: `cluster/server.sh run <job>` (= plan + stage + submit), then `check`, `fet
 | tofu-full | `cluster/tofu_full.py` / `tofu-full.sbatch` | `runs/A2-tofu-full/tofu-metrics/metrics.json` | 8 h | full TOFU FT; DSG + best gate; forget quality, utility, truth ratio, ROUGE |
 | a7-12b | `cluster/a7_12b.py` / `a7-12b.sbatch` | `runs/A7-12b/*` (12 harness runs) | 10 h | Gemma 3 12B: base / DSG rule / best fix × clean, dilution 400/1600, translate fr |
 | muse | `cluster/muse.py` / `muse.sbatch` (x3, <= 3 h, resumable) | `runs/A5-muse/muse-{news,books}/metrics.json` | 3 x 3 h | official muse_bench VerbMem / KnowMem / PrivLeak (vs our retrain) for target, target+DSG, target+best-gate, retrain (session 9: queued 118-120) |
-| mtbench | `cluster/mtbench_open.py` / `mtbench.sbatch` | `jobs/mtbench/` (answers, judgments, summary with CIs) | 12 h | MT-Bench base vs DSG, fixed open judge |
+| mtbench | `cluster/mtbench_open.py` / `mtbench.sbatch` (×4, <= 3 h, resumable) | `jobs/mtbench/` (answers, judgments, summary with CIs) | 4 × 3 h | MT-Bench base vs DSG vs window-w16 gate, fixed open judge gemma-2-9b-it (same family, labelled) |
 | q2-graphs | `cluster/q2_graphs.py` / `q2-graphs.sbatch` (3 h) | `runs/Q2-graphs/tofu/{graphs,figures,pt}/`, metrics.json | ~1.5 h | TOFU mode (default): same fact under the TOFU model, + DSG, D2 recipe, DSG + French question; `--mode wmdp` = old aggregate job (private graphs) (session 9: queued 122) |
 
 ## CPU smoke tests (lab PC, tiny random Gemma-2, no GPU)
@@ -61,7 +61,7 @@ checked (gres, requeue, time, no `--mem`, job name `dsg-<job>`, safe cleanup pat
 |---|---|---|---|
 | google/gemma-3-12b-it | a7-12b | ≈ 24 GB | gated licence: accept on huggingface.co and `huggingface-cli login` first |
 | google/gemma-scope-2-12b-it (resid_post/layer_24_width_16k_l0_medium only) | a7-12b | ≈ 0.3 GB | listed in sae_lens 6.50 (`gemma-scope-2-12b-it-res`) |
-| unsloth/Qwen2.5-32B-Instruct-bnb-4bit | mtbench judge | ≈ 19 GB | pre-quantised nf4, loads with bitsandbytes 0.50.2 offline; fallback judge `google/gemma-2-9b-it` is already present (same family → self-preference risk; label it) |
+| unsloth/Qwen2.5-32B-Instruct-bnb-4bit | (not used) | ≈ 19 GB | superseded 2026-10-04: the judge is `google/gemma-2-9b-it` (already present; same family → self-preference risk, labelled) |
 | mwhanna/gemma-scope-transcoders | q2-graphs | 7.9 GB (config + 26 layers) | **staged on gpuws** by `cluster/stage_q2_transcoders.sh` (streamed one file at a time; not kept on the lab PC) |
 | muse-bench/MUSE-News, muse-bench/MUSE-Books | muse | ≈ 0.2 GB | then `python -m cluster.muse --inspect` to confirm config/split/column names |
 | github.com/swj0419/muse_bench (tarball) | muse | < 1 MB | **fetched** (sha256 7222054…); the job calls its metrics/ functions (privleak.eval crashes on main, so its eval_data + sweep are used) |

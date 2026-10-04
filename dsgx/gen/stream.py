@@ -8,6 +8,10 @@ mode="stream" (canonical): the gate is re-evaluated at every step on prompt + ge
 mode="prompt_only" (ablation): the gate is decided once on the prompt and kept.
 mode="none": the unguarded model through the same loop.
 
+score_fn (optional): gate score from the per-position fire flags (BOS included as False), compared with `tau`;
+default None = rho (fraction of firing positions), the DSG rule. E.g. the window gate (MT-Bench, session 11):
+lambda fires: gates.score_window(torch.tensor(fires), len(fires), 16) with the threshold from gates.calibrate.
+
 The clamp rule is DSG-faithful: on an active sequence every selected feature is set to
 -multiplier at every position where any selected feature fires; the SAE error is added back.
 """
@@ -31,8 +35,9 @@ class GenResult:
 
 
 class _GateHook:
-    def __init__(self, sae, features, multiplier, tau):
+    def __init__(self, sae, features, multiplier, tau, score_fn=None):
         self.sae = sae
+        self.score_fn = score_fn
         self.feats = list(int(f) for f in features)
         self.mult = float(multiplier)
         self.tau = float(tau)
@@ -56,7 +61,7 @@ class _GateHook:
         any_fire = (tgt > 0).any(dim=2)[0]
         new = any_fire.tolist()
         all_f = (self.fires if not full else []) + new
-        rho = sum(all_f) / len(all_f)
+        rho = sum(all_f) / len(all_f) if self.score_fn is None else float(self.score_fn(all_f))
         gate = (rho > self.tau) if self.forced is None else self.forced
         self.pending = (new, rho, gate, full)
         self.last_gate = gate
@@ -83,7 +88,7 @@ def _end_ids(model):
 
 @torch.no_grad()
 def generate(model, prompt: str, bundle=None, features=None, multiplier=500.0, tau=None,
-             mode: str = "stream", max_new: int = 64) -> GenResult:
+             mode: str = "stream", max_new: int = 64, score_fn=None) -> GenResult:
     """Greedy generation (batch 1). `prompt` must already contain the chat template and <bos>."""
     from transformer_lens.cache.key_value_cache import TransformerLensKeyValueCache
 
@@ -93,7 +98,7 @@ def generate(model, prompt: str, bundle=None, features=None, multiplier=500.0, t
     hook = None
     model.reset_hooks()
     if mode != "none":
-        hook = _GateHook(bundle.sae, features, multiplier, tau)
+        hook = _GateHook(bundle.sae, features, multiplier, tau, score_fn)
         model.add_hook(bundle.hook_name, hook)
 
     def full_pass(seq):
