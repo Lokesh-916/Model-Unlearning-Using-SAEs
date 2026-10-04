@@ -261,10 +261,12 @@ def ch7(runs, paired):
         fd, ff = dsg[0].forget("raw")["mean"], min(r.forget("raw")["mean"] for r in fix)
         ev.append(f"A7 {m}: DSG {fd:.3f} vs best fix {ff:.3f} forget acc under attack")
         ok_all &= ff < fd
-    tofu = [r for r in runs if r.base_exp == "A2" and r.name == "tofu-metrics"]
+    # A2 = lab TOFU task; A2-tofu-full = the gpuws full-fine-tune TOFU job (same tofu-metrics layout). Added
+    # 2026-10-04 (DEVIATIONS): input source only; the criterion is unchanged. Runs are per machine, never pooled.
+    tofu = [r for r in runs if r.base_exp in ("A2", "A2-tofu-full") and r.name == "tofu-metrics"]
     if tofu:
         cond = tofu[0].metrics.get("conditions", {})
-        ev.append("A2 TOFU conditions: " + ", ".join(sorted(cond)))
+        ev.append(f"{tofu[0].base_exp} TOFU conditions: " + ", ".join(sorted(cond)))
         if not any("gate" in k or "fix" in k for k in cond):
             ev.append("A2: no best-fix condition on TOFU yet")
             ok_all = False

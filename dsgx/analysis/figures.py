@@ -245,7 +245,8 @@ def cyber_pareto(runs, out, ctx):
         g = [x for x in d["dev"] if x["retain"] == nm]
         ax.scatter([x["full"]["mean"] for x in g], [x["forget"]["mean"] for x in g], s=20, color=st["color"],
                    marker=st["marker"], edgecolor="white", linewidth=0.6, label=f"DSG, {nm}", zorder=3)
-        bx.scatter([x["d_full"] for x in g], [x["d_util4"] for x in g], s=20, color=st["color"], marker=st["marker"],
+        g4 = [x for x in g if x["d_util4"] is not None]  # runs without the dsg_subset view have no 4-subject point
+        bx.scatter([x["d_full"] for x in g4], [x["d_util4"] for x in g4], s=20, color=st["color"], marker=st["marker"],
                    edgecolor="white", linewidth=0.6, label=f"DSG, {nm}", zorder=3)
     front = sorted([x for x in d["dev"] if x["pareto"]], key=lambda x: x["full"]["mean"])
     ax.plot([x["full"]["mean"] for x in front], [x["forget"]["mean"] for x in front], color=INK2, linewidth=1.2,

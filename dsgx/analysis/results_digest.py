@@ -324,8 +324,8 @@ def claims_section(lab, gpu, lab_paired, gpu_paired, a6, tofu, st_lab, st_gpu) -
         ev["C-H7"].append("TOFU (gpuws, full FT): forget answer prob " + ", ".join(f"{k} {v:.3f}" for k, v in f.items() if v is not None)
                           + "; model utility " + ", ".join(f"{k} {v:.3f}" for k, v in u.items() if v is not None)
                           + ". The best gate here is the default window w16 (no X1 selection yet).")
-        ev["C-H7"].append("Note: the C-H7 rule reads the lab experiment `A2` (tofu-metrics); the gpuws TOFU run is `A2-tofu-full`, "
-                          "so the gpuws verdict does not see it. Mapping it would change claims.py and needs a DEVIATIONS row.")
+        ev["C-H7"].append("The C-H7 rule reads both the lab `A2` and the gpuws `A2-tofu-full` TOFU result (input change "
+                          "2026-10-04, DEVIATIONS; criterion unchanged).")
     a7 = have("A7", "A7-1b", "A7-4b", "A7-12b")
     ev["C-H7"].append(f"A7 (Gemma 3) results present on {', '.join(a7)}." if a7 else
                       "No A7 (Gemma 3) result yet (job 110 failed offline; fixed and queued on gpuws in session 10).")

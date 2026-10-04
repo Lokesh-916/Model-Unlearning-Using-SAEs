@@ -160,8 +160,13 @@ def cyber_pareto_table(runs, hwn) -> dict:
             for x in xs:
                 groups.setdefault((x["retain"], x["N"], x["pct"], x["c"]), []).append(x)
             for (ret, N, p, c), g in sorted(groups.items(), key=lambda kv: str(kv[0])):
-                m = lambda k: float(np.mean([x[k]["mean"] for x in g]))  # noqa: E731
-                rng = lambda k: f"{np.mean([x[k] for x in g]):+.1f} [{min(x[k] for x in g):+.1f}, {max(x[k] for x in g):+.1f}]"  # noqa: E731
+                def m(k):
+                    v = [x[k]["mean"] for x in g if x[k]]
+                    return float(np.mean(v)) if v else None
+
+                def rng(k):
+                    v = [x[k] for x in g if x[k] is not None]
+                    return f"{np.mean(v):+.1f} [{min(v):+.1f}, {max(v):+.1f}]" if v else "--"
                 rows.append([f"TEST ({len(g)} seeds)", esc(ret), str(N), str(p), str(c), num(m("forget")), num(m("full")), rng("d_full"),
                              num(m("util4")), rng("d_util4"), ""])
             continue

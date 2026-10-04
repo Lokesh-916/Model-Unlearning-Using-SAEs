@@ -207,6 +207,12 @@ def test_paper_assets_parity(tmp_path):
     mcq_run("A1-test", {"name": "base"}, forget=bern(0.6, 60, 1), util=bern(0.8, 60, 2), extra_cfg=many)
     mcq_run("B1", DSG, attack={"name": "dilution", "pad": 400}, forget=bern(0.5, 60, 3), util=bern(0.8, 60, 2))
     mcq_run("A1-dev", DSG, split="dev", forget=bern(0.3, 60, 1), util=bern(0.8, 60, 2))
+    mcq_run("A1-dev", {"name": "base"}, case="cyber", split="dev", forget=bern(0.4, 60, 4), util=bern(0.8, 60, 2))
+    for i, rc in enumerate(("wikitext", "mmlu-aux-chat")):   # Cyber Pareto (session 10 Wave-1 decision)
+        mcq_run("A1-dev", {**DSG, "retain_corpus": rc}, case="cyber", split="dev", forget=bern(0.3 - 0.05 * i, 60, 5 + i),
+                util=bern(0.7 - 0.2 * i, 60, 7 + i))
+    mcq_run("A1-test", {**DSG, "retain_corpus": "wikitext"}, case="cyber", forget=bern(0.3, 60, 9), util=bern(0.7, 60, 10))
+    mcq_run("A1-test", {"name": "base"}, case="cyber", forget=bern(0.4, 60, 11), util=bern(0.8, 60, 2))
     for me, m in (("dsg", DSG), ("ours", OURS)):
         for n in (10, 20):
             for c in (10, 500):
@@ -234,5 +240,6 @@ def test_paper_assets_parity(tmp_path):
     assert len(rows) == len(paper_assets.PARITY)
     waiting = [l for l in rows if "waiting for data" in l]
     assert all("sweep tables" in l for l in waiting), waiting   # only RMU-v2 / D1-v2 sweep tables lack fake data
+    assert (tmp_path / "figures" / "cyber_pareto.pdf").exists() and "Pareto" in (tmp_path / "tables" / "cyber_pareto.tex").read_text()
     for t in ("sweep_clamp", "data_efficiency", "static_dynamic", "multitopic", "latency", "sweep_a1_dev"):
         assert r"\toprule" in (tmp_path / "tables" / f"{t}.tex").read_text()
