@@ -32,6 +32,9 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | MUSE BM1 (official muse_bench metrics, retrain reference, DSG + best gate) | `cluster/muse.py` (conf muse; 3 x 3 h resumable) |
 | Q2 attribution graphs, TOFU base / DSG / D2 / French attack | `cluster/q2_graphs.py` (conf q2-graphs; env/q2 on gpuws; transcoders via `cluster/stage_q2_transcoders.sh`) |
 | DSG figure parity data (clamp grid, data efficiency, static/dynamic, multi-topic, latency, TOFU highlights) | `cluster/figparity.py` (conf figs); figures + tables in `paper_assets` (INDEX.md "DSG figure parity") |
+| every finished result, both machines, CIs, claims C-H1..C-H7 (regenerate at the end of EVERY session) | `python -m dsgx.analysis.results_digest` → `$DSG_RESULTS/RESULTS_DIGEST.md` |
+| Cyber forget-utility Pareto curve (Wave-1 decision) | `paper_assets`: figure `cyber_pareto`, table `tab:cyber-pareto` |
+| skip optimizer state when fetching / prune it on the server in DONE runs | conf `FETCH_EXCLUDE` (a6-lora: `last/trainer.pt`); `ssh gpuws 'PRUNE_ONLY=1 ~/dsg_cluster/slurm/cleanup.sh <job>'` |
 
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
 `calibrate(..., rule="conformal")` (cache key unchanged for the default quantile rule); `dsgx/attacks/transforms.py`
@@ -306,3 +309,24 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   token alone (rho gate: clamps any generated token that fires a selected feature; window gate: never fires after the
   prompt), so TOFU ROUGE for full+dsg / full+best-gate measures that behaviour. MUSE uses prompt-only gating (PromptGate).
 - **Next:** runbook §5.3 items 5–6 (fetch/verify/cleanup muse, q2-graphs); regenerate the dashboard.
+
+### Session 10 — 2026-10-04 10:40–12:xx (end state)
+- **Jobs 100–122:** done 100–107 (107: 21/23), 111, 113, 116, 117/121 validate EXACT; 112 no-op; failed 108/109 (A6-benign:
+  `tatsu-lab/alpaca` not staged), 110 a7-small (sae_lens fetches Gemma Scope 2 shapes over HTTP), 118–120 muse (in-job disk
+  guard, ours 85 GB), 122 q2 (`torch.isin` device). Fixes 8e60aa0 (+ `server.sh stage` warns on lab disk, c283b28). Table:
+  PREP_PROGRESS "Session 10".
+- **Fetched + verified:** figs 585, d1-v2 46, c3 98, tofu-full 11 (v2 metrics valid), a6-lora 166 (without trainer state).
+  Cleaned: figs, d1-v2, c3, tofu-full (retain), A6 trainer.pt pruned. Staged a6-lora, a7-small, a7-12b.
+  Server: ours 68 GB, free 85 GB at submit.
+- **Queue (all `--nice=10000`, no hold, no deadline):** 123 validate → 124 a6-lora (2 benign jobs) → 125 q2-graphs →
+  126–127 a7-small → 128–130 muse → 131–132 a7-12b. Snapshot `code-later6` (5866a88) for a7-*/q2; muse keeps code-later4.
+- **Lab PC:** 50 GB free (below the 60 GB line all session; nothing deleted; candidates in PREP_PROGRESS). Remaining lab
+  waves need ≈ 45–55 GB: free ~25 GB before D2/D1/A2 training (Waves 3–5) or the scheduler stops at 30 GB.
+- **Wave 1:** resumed at 10:41:25 before this session (`control.json`); decisions in DEVIATIONS (Bio primary; Cyber Pareto;
+  measured 4-subject vs full-MMLU relation; resume time). A4 probe__base done (best layer 19, 0.630 vs control 0.259).
+- **Results digest:** `$DSG_RESULTS/RESULTS_DIGEST.md` (regenerate every session). All claims Inconclusive on both machines.
+  The C-H7 rule reads exp `A2` only, so the gpuws `A2-tofu-full` result is not used (changing claims.py needs a DEVIATIONS row).
+- **Next:** when 124–132 have left the queue: fetch/verify a6-lora (then `cleanup a6-lora --yes`), q2-graphs (then cleanup:
+  transcoders + TOFU model), a7-small (cleanup), muse (cleanup), a7-12b (cleanup; then the lab copy of gemma-3-12b-it can go
+  if you approve). If a chain step ends `partial`/`INCOMPLETE`, resubmit that sbatch with `--nice=10000`. a6-baked waits for lab
+  D1/D2 weights; A7 translate for lab B3. Regenerate the digest.

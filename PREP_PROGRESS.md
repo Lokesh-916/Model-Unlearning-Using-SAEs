@@ -115,3 +115,84 @@ commit via `git archive`; HARDWARE.json marks those runs gpuws), `cluster/a7_ser
 Findings: muse_bench `privleak.eval` crashes on main (eval_data + sweep used); transformers 4.57.3 needs a local
 tokenizer path offline; `tofu_full.Gate` scores single tokens during cached generation (see CLAUDE.md session 9;
 113 left unchanged). Tests: 107 pass on CPU (+ Q2 overlay test when `env_q2_lab` exists).
+
+## Session 10 (2026-10-04): server failures fixed, lab disk, Wave-1 decisions, results digest
+
+### Part 1: server jobs 100–122 (all ended by 03:44)
+| job | what | outcome | cause / note |
+|---|---|---|---|
+| 100–103 | d1-v2-train ×4 | done | resumed across copies; all 3 students trained (103 had nothing left) |
+| 104 | d1-v2-test | done | DEV rule bound not met (all drops > 0.02): fallback α 0.1 (drop 0.039); TEST WMDP 0.473, MMLU 0.537 |
+| 105 | d1-v2-a6 | done | relearn 0.440 → 0.437 / 0.490 / 0.493 (k 10 / 100 / 1000) |
+| 106 | c3 | done | 10/10 lab C3 jobs (gate AUROC 0.976–0.993 across layers 1–24) |
+| 107 | a6-lora | done 21/23 | A6-benign-dsg-{hook,nohook} failed: `tatsu-lab/alpaca` not staged (offline) |
+| 108, 109 | a6-lora | failed fast | same alpaca cause (0.4 min each) |
+| 110 | a7-small | failed | sae_lens reads Gemma Scope 2 tensor shapes over HTTP (no offline path) |
+| 111 | figs-a | done | clamp 73, data-efficiency 33 |
+| 112 | figs-a | skipped (no-op) | nothing left after 111 |
+| 113 | tofu-full-v2 | done | metric v2 (model utility: full 0.616, full+dsg 0.495, best gate 0.599, retain 0.608) |
+| 116 | figs-lat | done | interleaved latency; DSG overhead +2.2–3.1 % (64–2048 tokens) |
+| 117, 121 | validate | done | `VALIDATE sanity-gpuws EXACT` |
+| 118–120 | muse ×3 | failed fast (refused) | in-job disk guard: ours 85 GB + 16 GB need ≥ 100 |
+| 122 | q2-graphs | failed | `torch.isin` test elements on CPU, graph on cuda:0 |
+
+Fixed (8e60aa0): `jobcommon.offline_sae_shapes()` (reads the safetensors header from the local cache; 1B/4B/12B SAEs
+and the Gemma 3 1B bundle load on CPU with sockets disabled; also checked on the gpuws login node), Q2 device,
+alpaca staged (a6-lora, a6-baked). Fetched + sha256-verified: figs 585 files, d1-v2 46, c3 98, tofu-full 11,
+a6-lora 166 (without `last/trainer.pt`: new `FETCH_EXCLUDE`, pruned on the server only in DONE runs, 16 × 0.95 GB).
+Cleanup: figs, d1-v2 (students 15 GB + corpus), c3, tofu-full (retain) → ours 80 → 43 GB, free 73 → 110 GB.
+Staged: a6-lora (alpaca, corpus), a7-small (corpus), a7-12b (24.4 GB) → ours 68 GB, free 85 GB.
+**Chain (all `--nice=10000`, no hold, no deadline): 123 validate → 124 a6-lora → 125 q2-graphs → 126–127 a7-small →
+128–130 muse → 131–132 a7-12b.** Peak ours ≈ 86 GB (MUSE transient 16 GB), free ≥ ~67 GB. Snapshot `code-later6` (5866a88).
+Not ready: a6-baked (lab D1/D2 weights), mtbench (judge not downloaded), A7 translate (lab B3 cache).
+Lab-side note: the lab PC was below the 60 GB line during the whole session (50–51 GB). `fetch_results.sh` now allows
+metric-only fetches (< 1 GB) down to 45 GB; `server.sh stage` warns instead of refusing (it only reads on the lab PC).
+D1 v2 student weights were deleted with the d1-v2 cleanup (not fetched: lab disk); the metrics are kept, rerun to rebuild.
+
+### Part 2: lab disk (55 → 50 GB free during this session)
+What grew since 2026-10-03 12:00 (files newer than that): `~/.ollama` **+9.3 GB** (personal `qwen3` model blob, created
+2026-10-04 00:16; not this project), `dsg_cache` +4.1 GB (lab queue: Cyber activation caches s1–s4 etc.), `~/.cache`
++0.4 GB, `~/.local` +0.3 GB (Claude Code versions), `dsg_results` and `dsg_results_cluster` < 0.1 GB. Earlier (2026-10-03
+11:23): gemma-3-12b-it + Gemma Scope 2 12B L24 download, 24.4 GB.
+Caches outside the project: `~/.cache/huggingface` 80 GB (gemma-3-12b-it 23, gemma-2-9b-it 18, third-party RMU 9.8,
+gemma-3-4b-it 8.1, gemma-2-2b-it 4.9, Gemma Scope 2B res 4.0, NLLB 2.4, gemma-3-1b-it 1.9, the rest < 1.5 each),
+`~/.cache/pip` 5.1 GB, `~/.ollama` 8.7 GB (du), `~/miniconda3` 24 GB, `~/.vscode-server` 5.8 GB, `/tmp` 1.8 GB.
+No Qwen in the HF cache: the personal Qwen project is the Ollama `qwen3` model.
+
+**Remaining lab waves need ≈ 45–55 GB:** model weights A2 tofu full + retain (2 × 4.9), D1 sameref + undo α 0.1/0.3/0.5
+(4 × 4.9), D2 nullspace + ortho (2 × 4.9) = 39 GB; their run dirs (≈ 1 GB trainer state each, from the smokes) ≈ 6 GB;
+activation caches (C1, N6, N7 multi-layer; ~0.3–0.4 GB each) 2–4 GB; residual captures A4/D3 and ~150 run dirs 1–5 GB.
+At 50 GB free with the scheduler's 30 GB floor (`min_free_disk_gb`), the queue would stop part-way through Waves 3–5
+(D2 / D1 / A2 training). About 25 GB must be freed before then.
+
+**Legacy artifacts in baselines_DSG (not deleted; your decision):**
+| file (under `artifacts_dynamic_bs1_*/unlearning/gemma-2-2b-it/gemma-scope-2b-pt-res_layer_*/width_16k/average_l0_142/results/sparsities/`) | size | reproduced by the new cache? |
+|---|---|---|
+| bio `layer_3/act_fgt.pkl` | 17.19 GiB | **yes**, max abs diff 0.0 on all 16,384 features (FOUNDATION_REPORT) |
+| bio `layer_3/act_ret.pkl` | 17.19 GiB | **yes**, same check |
+| bio `layer_8/act_fgt.pkl` | 17.19 GiB | no l0_142 layer-8 cache exists (C3 used canonical SAEs); not verified |
+| bio `layer_8/act_ret.pkl` | 17.19 GiB | same |
+| cyber `layer_3/act_fgt.pkl` | 17.19 GiB | same 30 features, 2 order swaps, τ 0.1410 vs 0.1416: **not bit-exact** |
+| cyber `layer_3/act_ret_ORIGINAL_wikitext.pkl` | 17.19 GiB | same as above (not bit-exact) |
+| cyber `layer_3/act_ret.pkl` (legacy chat-retain corpus) | 2.22 GiB | **no**: build script unknown (REPO_REPORT); keep |
+Only the two bio layer-3 files (34.4 GiB) have the diff-0.0 evidence. Keep the 119 small files (1.4 MiB: sparsity
+txt, question ids, metrics pkl): `dsgx/checks/sanity.py` reads the legacy ids / sparsities.
+Other candidates (not deleted): `dsg_cache/models/{D1,D2,A2}-smoke` 40 GB (runbook T4 lists `*-smoke` models as safe);
+`~/.cache/huggingface` gemma-2-9b-it 18 GB (MT-Bench fallback judge; MT-Bench not scheduled), third-party RMU 9.8 GB
+(A1-test-003 done; no lab experiment config references it), gemma-3-{1b,4b,12b}-it 33 GB (A7 runs on gpuws; keep
+until a7-small / a7-12b are fetched and verified); `dsg_results_cluster/checkpoints/RMU-cluster` 4.9 GB (RMU v1,
+superseded by v2); `~/.cache/pip` 5.1 GB; Ollama `qwen3` 9.3 GB (personal).
+
+### Part 3: Wave-1 decisions (DEVIATIONS.md, 4 rows)
+Bio primary for all attacks and fixes; Cyber as a forget-utility Pareto curve (`cyber_pareto` figure + `tab:cyber-pareto`,
+5866a88). Measured: on TEST the DEV-selected Cyber configs drop full MMLU by 9.1 (chat-retain) and 28.1 (WikiText) points
+(5 seeds). DSG's 4-subject metric does **not** hide those drops (it shows −17.6 / −62.3). It understates only mild configs
+(DEV: within 1 point while full MMLU drops 2.5–2.8). Logged with the measured numbers.
+Resume: the queue was already resumed at 10:41:25 (`control.json`), before this session's review; A3-benign-open then
+A4-capture started with fresh heartbeats; `wave_check 1` re-run: VERDICT OK (Cyber utility WARNs expected).
+
+### Part 4: `python -m dsgx.analysis.results_digest` → `$DSG_RESULTS/RESULTS_DIGEST.md`
+Every finished result of both machines, separate tables, mean [95% CI] n, claims per machine. Regenerate at the end of
+every session. All 7 claims Inconclusive on both machines (inputs missing). Flag: the C-H7 rule reads exp `A2` only,
+so the gpuws `A2-tofu-full` result is not used by the gpuws verdict (changing claims.py needs a DEVIATIONS row).
+Tests: 107 pass on CPU.

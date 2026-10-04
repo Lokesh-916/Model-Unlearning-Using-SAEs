@@ -184,6 +184,14 @@ a `dsg-<job>*` job is queued):
 Panel dashboard (any time, lab PC): `python -m dsgx.analysis.dashboard` → `results/dashboard.html`
 (`--every 15` keeps regenerating it; `--no-server` skips the ssh query).
 
+### 5.4 Session 10 chain (2026-10-04)
+`123 validate → 124 a6-lora → 125 q2-graphs → 126–127 a7-small → 128–130 muse → 131–132 a7-12b` (all `--nice=10000`, no
+deadline; pause by hand with `ssh gpuws 'scontrol hold <ids>'` / `scontrol release <ids>` if the other user needs the GPU).
+After each group has left the queue: `cluster/server.sh fetch <job>`, `verify <job>`, `cleanup <job> --yes` for
+a6-lora, q2-graphs, a7-small, muse, a7-12b. a6-lora fetches skip `last/trainer.pt` (optimizer state, `FETCH_EXCLUDE`);
+cleanup deletes it on the server only inside DONE runs. Fetching metrics (< 1 GB) works down to 45 GB lab free.
+**You should see:** `fetched and verified K files`, then `deleted ...` lines.
+
 **Later (not queued):**
 - `a6-baked` (33 moved lab jobs on student / D1-local / D2 weights): when the lab jobs `D1-train-sameref`,
   `D1-train-undo-a0.3` (Wave 5) and `D2-edit-nullspace` (Wave 3) are DONE: `cluster/server.sh plan a6-baked`,
@@ -251,6 +259,9 @@ The claims table (C-H1 … C-H7) is computed by fixed rules in `dsgx/analysis/cl
 cites the runs and numbers it used.
 
 ---
+
+Results digest (end of every session; both machines, CIs, claims):
+`python -m dsgx.analysis.results_digest` → **You should see:** `wrote .../dsg_results/RESULTS_DIGEST.md (N lab runs, M gpuws runs)`.
 
 ## 8. Qualitative track (Q1–Q8)
 
