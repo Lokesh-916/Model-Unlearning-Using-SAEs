@@ -223,3 +223,31 @@ Tests: 107 pass on CPU.
   behind the held mtbench 134–137. `cluster/release_when_free.sh` (lab, nohup) releases our held jobs when no other user has a job
   queued (two checks 10 min apart). `cluster/a6_baked_d1_when_ready.sh` stages the student/D1 part and submits a held chain once
   D1-train-sameref and undo-a0.3 are DONE.
+
+## Session 13 (2026-10-05): Trainer accumulation audit + re-runs, A2 optimizer fairness, C-H2 diagnosis
+- **Audit** (zero_grad after step_fn only hurts step functions that `backward()` earlier micro-batches themselves):
+  | run | machine | affected | why |
+  |---|---|---|---|
+  | TOFU-full fine-tunes full + retain (84/96; eval 113) | gpuws | **yes** | `tofu_full.step_fn` accum 4: only the last micro-batch reached the optimizer |
+  | MUSE retrain + target, News + Books (128–130) | gpuws | **yes** | `muse.step_fn` accum 4, same pattern |
+  | FP-highlight (99), Q2 graphs (125) | gpuws | **yes (dependents)** | computed on the TOFU-full `full` model |
+  | D1-full (93), D1 v2 (100–104) | gpuws | no | forward-only step_fn (one forget + one retain batch per step) |
+  | RMU v1 (80) / v2 (88) | gpuws | no | own loop (zero_grad → backward → step), no accumulation, no Trainer |
+  | A6-full, A6-full-d1v2 (105), A6 a6-lora (107, 124) | gpuws | no | forward-only step_fn (exp/A6 c2472e5 has no manual backward) |
+  | D1-train-sameref / undo-* (lab) | lab | no | accumulation + zero_grad fix landed together (exp/D1 4d086c4) |
+  | A2-tofu-finetune-full (lab, 11:08) | lab | no | same (exp/A2 ef5eb17) |
+  | A2-tofu-finetune-retain (lab, 5c3229f) | lab | no (bug) | one padded batch per step; **but fp32 AdamW vs 8-bit for full → re-run** |
+  | every other Trainer use (exp/* branches, v2-harness) | lab | no | `git grep backward()`: no step_fn backpropagates itself (C1 attribution is not training) |
+- **Server re-runs** (snapshot code-later8 = 46d8bfc): `train_version 2` on models / partials / DONE (old ones never reused);
+  tofu-full: budget stop at checkpoints, disk guard, retain model deleted after its metrics (MUSE peak stays ≥ 50 GB free).
+  Old outputs moved (not deleted) to `results/_superseded/accbug-2026-10-05/` (server) and `dsg_results_cluster/_superseded/…` (lab).
+  Chain, all held: **153 validate → 154–155 tofu-full-v3 → 156 figs-hl → 157–159 muse-v2 → 134–137 mtbench → 150–152 a6-baked**
+  (134 re-pointed to afterany:159). Q2: `cluster/q2_rerun_when_ready.sh` stages + submits held `validate → q2-graphs-v2` after MUSE.
+  `cluster/chain_tail.sh`: watchers append at the end of the chain (a6_baked_d1 watcher restarted with it).
+- **Lab A2 fairness:** retain re-pinned to ef5eb17 and re-run (AdamW 8-bit, eff. batch 8, done 11:31); A2-tofu-metrics (had started
+  on the old retain model) stopped and re-queued. DEVIATIONS rows (2).
+- **C-H2:** Inconclusive because `runs/B2|B3/attack-success/attack_success.json` are empty: `attack_success.compute` needs a clean
+  (no-attack) run of the same method in the same experiment; B2/B3 contain only base/none. Missing input: a `dsg-faithful`,
+  `attack: none` TEST run (same selected config, bs 1) in B2 and B3. The 0.455 (B2 split k2) is accuracy under attack, not the
+  rule's gated-item attack success. Rule unchanged.
+- Tests: 111 pass (4 new in `tests/test_prep_accum_rerun.py`). Digest regenerated (276 lab, 264 gpuws runs).

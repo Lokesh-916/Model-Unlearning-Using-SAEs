@@ -216,6 +216,21 @@ user has a job queued), `nohup cluster/a6_baked_d1_when_ready.sh >> $P/dsg_resul
 All these results are gpuws-only: `final_report --hardware gpuws` and `paper_assets --hardware gpuws
 --runs $P/dsg_results_cluster/runs` (INDEX.md lists every DSG figure type and whether its data exist).
 
+### 5.6 Session 13 (2026-10-05): re-runs with the fixed Trainer (accumulation bug)
+One linear held chain (`--nice=10000`): `153 validate → 154–155 tofu-full-v3 → 156 figs-hl → 157–159 muse-v2 →
+134–137 mtbench → 150 validate → 151–152 a6-baked`. Code snapshot `code-later8`. Old outputs: server
+`results/_superseded/accbug-2026-10-05/`, lab `dsg_results_cluster/_superseded/accbug-2026-10-05/` (keep; never in tables).
+Watcher `nohup cluster/q2_rerun_when_ready.sh >> $P/dsg_results_cluster/q2_rerun_watch.log 2>&1 &` stages q2-graphs and appends a
+held `validate → q2-graphs-v2` once tofu-full v2 is done and MUSE has left the queue. Watchers append behind
+`cluster/chain_tail.sh` (end of the chain, not the highest id).
+1. After 155: `cluster/server.sh fetch tofu-full`, `verify tofu-full`, then `cleanup tofu-full --yes` (the job already
+   deleted `retain`; `full` stays for Q2). **You should see:** `metrics.json` with `"train_version": 2`.
+2. After 156: `fetch figs`, `verify figs` (FP-highlight). Do not run `cleanup figs` before this fetch (it refuses anyway).
+3. After 159: `fetch muse`, `verify muse`, `cleanup muse --yes` (summary.json lists `finished: [news, books]`).
+4. After q2-graphs-v2: `fetch q2-graphs`, `verify q2-graphs`, `cleanup q2-graphs --yes` (removes the TOFU model).
+5. Regenerate: `python -m dsgx.analysis.results_digest`, then `paper_assets` / `appendix_tables` for the TOFU, MUSE, Q2 and
+   FP-highlight assets.
+
 ### 5.2 Server results in the report
 Server results land in `$P/dsg_results_cluster/` (same run-directory format). They are reported
 in their own **gpuws** tables and never mixed with lab-PC numbers:

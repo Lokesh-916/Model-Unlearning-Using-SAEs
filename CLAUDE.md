@@ -36,11 +36,12 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | Cyber forget-utility Pareto curve (Wave-1 decision) | `paper_assets`: figure `cyber_pareto`, table `tab:cyber-pareto` |
 | MT-Bench (BM3): base / DSG / window-w16, judge gemma-2-9b-it (same family: label every number) | `cluster/mtbench_open.py` (conf mtbench; 4 × 3 h resumable, snapshot code-later7) |
 | skip optimizer state when fetching / prune it on the server in DONE runs | conf `FETCH_EXCLUDE` (a6-lora: `last/trainer.pt`); `ssh gpuws 'PRUNE_ONLY=1 ~/dsg_cluster/slurm/cleanup.sh <job>'` |
+| session 13 re-runs (Trainer accumulation fix): TOFU-full, FP-highlight, MUSE, Q2; `train_version 2` guards | `tofu-full-v3`, `figs-hl`, `muse-v2`, `q2-graphs-v2` sbatch (snapshot code-later8); `cluster/q2_rerun_when_ready.sh`; `cluster/chain_tail.sh` (end of our gpuws chain, for watchers); runbook §5.6 |
 
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
 `calibrate(..., rule="conformal")` (cache key unchanged for the default quantile rule); `dsgx/attacks/transforms.py`
 rewrite_cache / suffix accept `exp:` to read another experiment's private artifacts (used by X1).
-Tests: `CUDA_VISIBLE_DEVICES= ~/miniconda3/envs/mechunlearn2/bin/python -m pytest -q tests` = 107 pass on CPU (~6 min; `tests/test_prep_*.py`; server jobs run with a
+Tests: `CUDA_VISIBLE_DEVICES= ~/miniconda3/envs/mechunlearn2/bin/python -m pytest -q tests` = 111 pass on CPU (~9 min; `tests/test_prep_*.py`; server jobs run with a
 tiny random Gemma-2 via `DSG_TINY=1`). Before submitting, also check real (non-tiny) configs on CPU: resolve + `check_runs` (session 8 found
 the multi-topic union-tau bug this way: an activation cache stores fire bits only for its own 2048 candidate features).
 Gotchas found: Neuronpedia's `3-gemmascope-res-16k` is the canonical **l0_59** SAE, not DSG's l0_142 (Q1 only queries
@@ -357,3 +358,20 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
 - **Next:** fetch mtbench (report `same_family_judge`) and a6-baked when done; X1 selection result in
   `$DSG_RESULTS/runs/X1-screen/select/COMBINE_SELECTION.md`; regenerate the digest.
 
+### Session 13 — 2026-10-05 11:00–12:xx (end state)
+- **Trainer accumulation audit** (PREP_PROGRESS "Session 13" table): affected = gpuws TOFU-full fine-tunes (84/96, eval 113), MUSE
+  (128–130) and their dependents FP-highlight (99) + Q2 (125). Not affected: D1-full, D1 v2, RMU v1/v2, A6-full / a6-lora, every lab
+  run (lab D1/A2 got accumulation and the fix in one commit). User decision: re-run all affected (DEVIATIONS row supersedes "not re-run").
+- **Server:** old outputs moved to `results/_superseded/accbug-2026-10-05/` (+ lab `dsg_results_cluster/_superseded/…`; `.fetched`
+  markers moved too, so cleanup refuses until re-fetched). MUSE data re-staged (sha256 ok). Ours 42 GB, free 76 GB at submit.
+  One linear held chain: **153 validate → 154–155 tofu-full-v3 → 156 figs-hl → 157–159 muse-v2 → 134–137 mtbench → 150–152 a6-baked**.
+  Gotcha: re-pointing a held job ahead needs `scontrol update JobId=<first new> Dependency=` BEFORE pointing the old head at the new
+  tail (else "Circular job dependency"); submit.sh refuses an unchained first job while ours are queued, so submit behind the tail first.
+- **Watchers (lab):** release_when_free.sh, a6_baked_d1_when_ready.sh (restarted; now appends via chain_tail.sh), x1_enqueue_when_ready.sh,
+  new q2_rerun_when_ready.sh (stages q2-graphs + held `validate → q2-graphs-v2` after tofu-full v2 is done and MUSE left the queue).
+- **Lab:** A2-tofu-finetune-retain re-run at ef5eb17 (AdamW 8-bit, same as full; DONE 11:31); old run in `runs/A2/_superseded/`;
+  A2-tofu-metrics stopped (it had started on the old retain model) and re-queued (running at session end). DEVIATIONS row.
+- **C-H2** stays Inconclusive: B2/B3 `attack_success.json` are empty because neither experiment has a no-attack `dsg-faithful` run
+  (the attack-success task needs the method's clean run in the same exp). No rule changed.
+- **Next:** runbook §5.6 (fetch/verify/cleanup tofu-full after 155, figs after 156, muse after 159, q2-graphs after its chain);
+  regenerate the digest after A2-tofu-metrics finishes (C-H7 labpc input).
