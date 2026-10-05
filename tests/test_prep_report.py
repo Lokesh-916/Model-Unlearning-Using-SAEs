@@ -85,3 +85,16 @@ def test_hardware_never_mixed(tmp_path):
 
     assert final_report.main(["--out", str(tmp_path), "--n-boot", "50", "--no-figures"]) == 2
     assert final_report.main(["--out", str(tmp_path), "--n-boot", "50", "--no-figures", "--hardware", "gpuws"]) == 0
+
+
+def test_ch7_reads_tofu_extra_per_machine():
+    """2026-10-05: the gpuws C-H7 verdict also reads the lab A2 TOFU run; each TOFU run is checked on its own."""
+    class T:
+        base_exp, name, hardware = "A2", "tofu-metrics", "labpc"
+        metrics = {"conditions": {"full": {}, "full+dsg": {}, "retain-model": {}}}
+    c = claims.ch7([], [], [T()])
+    assert c["verdict"] == "Inconclusive"
+    assert "A2 (labpc) TOFU conditions: full, full+dsg, retain-model" in c["evidence"]
+    assert any("no best-fix" in e for e in c["evidence"])
+    assert "missing: A2 tofu-metrics" in claims.ch7([], [])["evidence"]
+    assert len(claims.evaluate([], [], tofu_extra=[T()])) == 7

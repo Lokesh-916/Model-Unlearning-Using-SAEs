@@ -27,6 +27,27 @@ from dsgx.util import atomic_write_text
 
 CLUSTER = Path(os.environ.get("DSG_RESULTS_CLUSTER", Path.home() / "projects/mechunlearn-project/dsg_results_cluster"))
 SKIP_EXP = ("_archive", "canary", "watchdog-test", "sanity_job73_backup")
+# Lab A2 TOFU result accepted as a C-H7 input of the gpuws verdict (2026-10-05, DEVIATIONS) only when its two
+# fine-tunes and the metrics job ran at the fixed Trainer loop with the same optimizer (exp/A2 ef5eb17), the
+# metrics job started after both fine-tunes ended, and all three are DONE.
+A2_FAIR_COMMIT = "ef5eb17"
+A2_FAIR_JOBS = ("A2-tofu-finetune-full", "A2-tofu-finetune-retain", "A2-tofu-metrics")
+
+
+def lab_a2_tofu_fair(lab) -> tuple[list, str]:
+    """(lab A2 tofu-metrics runs usable as the gpuws C-H7 TOFU input, one-line provenance note)."""
+    qd = paths.results_dir() / "queue"
+    jobs = {j: (read(qd / "jobs" / f"{j}.json") or {}, read(qd / "state" / f"{j}.json") or {}) for j in A2_FAIR_JOBS}
+    bad = [j for j, (job, st) in jobs.items()
+           if st.get("status") != "DONE" or not str(job.get("commit", "")).startswith(A2_FAIR_COMMIT)]
+    if bad:
+        return [], f"lab A2 TOFU not used: {', '.join(bad)} not DONE at exp/A2 {A2_FAIR_COMMIT}"
+    ft_end = max(jobs[j][1].get("end", 0) for j in A2_FAIR_JOBS[:2])
+    if jobs["A2-tofu-metrics"][1].get("start", 0) < ft_end:
+        return [], "lab A2 TOFU not used: tofu-metrics started before a fine-tune ended"
+    runs = [r for r in lab if r.base_exp == "A2" and r.name == "tofu-metrics"]
+    return runs, (f"lab A2 TOFU (exp/A2 {A2_FAIR_COMMIT}: fixed Trainer loop, 8-bit AdamW for full and retain) "
+                  f"{'used' if runs else 'missing'}")
 
 
 def ci(d, digits=3) -> str:
@@ -313,11 +334,12 @@ def server_jobs_section(root: Path) -> list[str]:
 
 # ----------------------------------------------------------------------------- claims
 def claims_section(lab, gpu, lab_paired, gpu_paired, a6, tofu, st_lab, st_gpu) -> list[str]:
+    a2_lab, a2_note = lab_a2_tofu_fair(lab)
     L = ["## What this means for claims C-H1..C-H7", "",
          "Verdicts are the fixed rules of `dsgx/analysis/claims.py`, applied per machine (never pooled). "
          "\"Evidence so far\" lists finished results bearing on the claim; it is descriptive and does not override a verdict.", ""]
     vl = {c["id"]: c for c in claims.evaluate(lab, lab_paired)}
-    vg = {c["id"]: c for c in claims.evaluate(gpu, gpu_paired)}
+    vg = {c["id"]: c for c in claims.evaluate(gpu, gpu_paired, tofu_extra=a2_lab)}
     rows = [[cid, claims.CLAIMS[cid], f"{vl[cid]['verdict']}: {vl[cid]['evidence'][0][:90] if vl[cid]['evidence'] else ''}",
              f"{vg[cid]['verdict']}: {vg[cid]['evidence'][0][:90] if vg[cid]['evidence'] else ''}"] for cid in claims.CLAIMS]
     L += md_table(["claim", "statement", "lab PC (labpc)", "server (gpuws)"], rows)
@@ -380,8 +402,16 @@ def claims_section(lab, gpu, lab_paired, gpu_paired, a6, tofu, st_lab, st_gpu) -
         ev["C-H7"].append("TOFU (gpuws, full FT): forget answer prob " + ", ".join(f"{k} {v:.3f}" for k, v in f.items() if v is not None)
                           + "; model utility " + ", ".join(f"{k} {v:.3f}" for k, v in u.items() if v is not None)
                           + ". The best gate here is the default window w16 (no X1 selection yet).")
-        ev["C-H7"].append("The C-H7 rule reads both the lab `A2` and the gpuws `A2-tofu-full` TOFU result (input change "
-                          "2026-10-04, DEVIATIONS; criterion unchanged).")
+    ev["C-H7"].append("The C-H7 rule reads the lab `A2` and the gpuws `A2-tofu-full` TOFU results (input change "
+                      "2026-10-04, DEVIATIONS); since 2026-10-05 the gpuws verdict (the only machine with A7) also reads "
+                      "the lab A2 result, each comparison within its own machine (DEVIATIONS; criterion unchanged). "
+                      + a2_note + ".")
+    for r in a2_lab:
+        c = r.metrics.get("conditions") or {}
+        ev["C-H7"].append("TOFU (labpc, A2): model utility " + ", ".join(
+            f"{k} {v.get('model_utility'):.3f}" for k, v in c.items() if isinstance(v, dict) and v.get("model_utility") is not None)
+            + f"; conditions {', '.join(c)}"
+            + ("." if any("gate" in k or "fix" in k for k in c) else " (no best-fix condition yet: X1 not run)."))
     a7 = have("A7", "A7-1b", "A7-4b", "A7-12b")
     ev["C-H7"].append(f"A7 (Gemma 3) results present on {', '.join(a7)}." if a7 else
                       "No A7 (Gemma 3) result yet (job 110 failed offline; fixed and queued on gpuws in session 10).")

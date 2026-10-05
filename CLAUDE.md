@@ -41,7 +41,7 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
 `calibrate(..., rule="conformal")` (cache key unchanged for the default quantile rule); `dsgx/attacks/transforms.py`
 rewrite_cache / suffix accept `exp:` to read another experiment's private artifacts (used by X1).
-Tests: `CUDA_VISIBLE_DEVICES= ~/miniconda3/envs/mechunlearn2/bin/python -m pytest -q tests` = 111 pass on CPU (~9 min; `tests/test_prep_*.py`; server jobs run with a
+Tests: `CUDA_VISIBLE_DEVICES= ~/miniconda3/envs/mechunlearn2/bin/python -m pytest -q tests` = 112 pass on CPU (~9 min; `tests/test_prep_*.py`; server jobs run with a
 tiny random Gemma-2 via `DSG_TINY=1`). Before submitting, also check real (non-tiny) configs on CPU: resolve + `check_runs` (session 8 found
 the multi-topic union-tau bug this way: an activation cache stores fire bits only for its own 2048 candidate features).
 Gotchas found: Neuronpedia's `3-gemmascope-res-16k` is the canonical **l0_59** SAE, not DSG's l0_142 (Q1 only queries
@@ -375,3 +375,14 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   (the attack-success task needs the method's clean run in the same exp). No rule changed.
 - **Next:** runbook §5.6 (fetch/verify/cleanup tofu-full after 155, figs after 156, muse after 159, q2-graphs after its chain);
   regenerate the digest after A2-tofu-metrics finishes (C-H7 labpc input).
+
+### Session 14 — 2026-10-05 12:25–13:xx (end state)
+- **C-H2 input:** no-attack `dsg-faithful` TEST run (same @forget items, prompt, selected config n20/rp95/m500, bs 1) appended
+  last to B2.yaml / B3.yaml (exp/B2 1b892a6, exp/B3 b12cf6c, pushed, Chakrish28 trailer; earlier run indices verified unchanged).
+  Lab jobs `B2-clean-dsg`, `B3-clean-dsg` (wave 1, must = head of the queue) → `B2/B3-attack-success-v2` (old empty outputs copied to
+  `runs/B*/_superseded/attack-success-noclean-2026-10-05`). C-H2 rule unchanged. DEVIATIONS row.
+- **C-H7 input:** `claims.evaluate(..., tofu_extra=)`; the digest passes the lab A2 tofu-metrics run into the gpuws verdict only if
+  `lab_a2_tofu_fair` holds (A2 fine-tunes + metrics DONE at exp/A2 ef5eb17, metrics after both fine-tunes). Every TOFU run checked on
+  its own, labelled by hardware. DEVIATIONS row. A2-tofu-metrics DONE 12:18:52.
+- A5-mia, N2-adapter, N3-demo-check, N4-challenge-check were stale BLOCKED (by the session-13 stop of A2-tofu-metrics): re-queued.
+- **Next:** session 13's runbook §5.6 items; digest after every session.

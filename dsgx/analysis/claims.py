@@ -244,7 +244,7 @@ def ch6(runs):
     return _claim("C-H6", "Supported" if sup else "Not supported", ev, {"cells": {b: list(v) for b, v in verdicts.items()}})
 
 
-def ch7(runs, paired):
+def ch7(runs, paired, tofu_extra=None):
     ev, ok_all, have = [], True, False
     a7 = [p for p in paired if p["exp"] == "A7" and p["vs"] == "base" and "forget" in p]
     mcq = [r for r in runs if r.is_mcq and r.base_exp == "A7"]
@@ -263,13 +263,17 @@ def ch7(runs, paired):
         ok_all &= ff < fd
     # A2 = lab TOFU task; A2-tofu-full = the gpuws full-fine-tune TOFU job (same tofu-metrics layout). Added
     # 2026-10-04 (DEVIATIONS): input source only; the criterion is unchanged. Runs are per machine, never pooled.
-    tofu = [r for r in runs if r.base_exp in ("A2", "A2-tofu-full") and r.name == "tofu-metrics"]
+    # tofu_extra: TOFU results of the other machine (2026-10-05, DEVIATIONS): the gpuws verdict also reads the lab
+    # A2 result (fixed Trainer loop, same 8-bit AdamW for full and retain), since A7 runs only on gpuws. Each TOFU
+    # check stays within its own machine (DSG and fix conditions of one tofu-metrics run); nothing is pooled.
+    tofu = [r for r in runs if r.base_exp in ("A2", "A2-tofu-full") and r.name == "tofu-metrics"] + list(tofu_extra or [])
     if tofu:
-        cond = tofu[0].metrics.get("conditions", {})
-        ev.append(f"{tofu[0].base_exp} TOFU conditions: " + ", ".join(sorted(cond)))
-        if not any("gate" in k or "fix" in k for k in cond):
-            ev.append("A2: no best-fix condition on TOFU yet")
-            ok_all = False
+        for t in tofu:
+            cond = t.metrics.get("conditions", {})
+            ev.append(f"{t.base_exp} ({t.hardware}) TOFU conditions: " + ", ".join(sorted(cond)))
+            if not any("gate" in k or "fix" in k for k in cond):
+                ev.append(f"{t.base_exp} ({t.hardware}): no best-fix condition on TOFU yet")
+                ok_all = False
     else:
         ok_all = False
         ev.append("missing: A2 tofu-metrics")
@@ -278,7 +282,7 @@ def ch7(runs, paired):
     return _claim("C-H7", "Supported" if ok_all else "Inconclusive", ev)
 
 
-def evaluate(runs, paired) -> list[dict]:
+def evaluate(runs, paired, tofu_extra=None) -> list[dict]:
     out = []
     for f in (ch1, ch2, ch3, ch4):
         try:
@@ -287,7 +291,7 @@ def evaluate(runs, paired) -> list[dict]:
             out.append(_claim(f.__name__.replace("ch", "C-H"), "Inconclusive", [f"rule error: {type(e).__name__}: {e}"]))
     for f in (ch5, ch7):
         try:
-            out.append(f(runs, paired))
+            out.append(f(runs, paired, tofu_extra) if f is ch7 else f(runs, paired))
         except Exception as e:
             out.append(_claim(f.__name__.replace("ch", "C-H"), "Inconclusive", [f"rule error: {type(e).__name__}: {e}"]))
     try:

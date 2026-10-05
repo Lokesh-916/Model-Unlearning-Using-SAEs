@@ -251,3 +251,10 @@ Tests: 107 pass on CPU.
   `attack: none` TEST run (same selected config, bs 1) in B2 and B3. The 0.455 (B2 split k2) is accuracy under attack, not the
   rule's gated-item attack success. Rule unchanged.
 - Tests: 111 pass (4 new in `tests/test_prep_accum_rerun.py`). Digest regenerated (276 lab, 264 gpuws runs).
+
+## Session 14 (2026-10-05): C-H2 clean DSG runs (B2/B3), C-H7 reads the lab A2 TOFU result, digest
+- B2/B3: one `{attack: {name: none}}` extra (dsg-faithful, TEST @forget, bs 1, same selection) on exp/B2 1b892a6 / exp/B3 b12cf6c;
+  queued `B2-clean-dsg` (run 8), `B3-clean-dsg` (run 16) at the head of the queue, then `B2/B3-attack-success-v2`. Rule unchanged.
+- C-H7: gpuws verdict also reads the lab A2 TOFU run (fixed loop, 8-bit AdamW for full and retain; provenance check
+  `results_digest.lab_a2_tofu_fair`). Each TOFU run checked separately. 1 new test (`test_ch7_reads_tofu_extra_per_machine`).
+- DEVIATIONS: 2 rows. Stale BLOCKED A5/N2/N3/N4 re-queued.
