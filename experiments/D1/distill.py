@@ -2,7 +2,13 @@
 full-parameter UNDO; the full 2B version is DEFERRED). Student = gemma-2-2b-it + LoRA with a noised
 initialisation (noise alpha). Loss = KL(student || guarded teacher) on forget prompts + KL(student ||
 unguarded teacher) on retain prompts. Teachers are the same base weights with the DSG hook on/off
-(LoRA adapters disabled). Saves a merged checkpoint for eval + A6. Compared with lora-student-same-ref."""
+(LoRA adapters disabled). Saves a merged checkpoint for eval + A6. Compared with lora-student-same-ref.
+
+Memory (16 GB card; the first version OOMed at 14.8 GB): the TransformerLens bundle is released before the HF
+model loads (only the SAE is kept), so one 2B model is resident; the teacher is that same frozen bf16 model with
+the adapters off. Micro-batch 1 with gradient accumulation over `bs` (same effective batch; no padding, so the KL
+is taken at each prompt's real last token), gradient checkpointing, logits for the last position only, AdamW 8-bit."""
+import gc
 import json
 
 import torch
@@ -38,13 +44,17 @@ def task(ctx):
     cache = ac.ActivationCache(ac.build_cache(b, f"{case}-forget-corpus", "wikitext", 0))
     feats = dsg.select_features(cache, 20, 95)
     tau = dsg.calibrate_tau(cache, feats, 95)
-    sae = b.sae  # keep the SAE; drop the TransformerLens model so the HF student fits in 16 GB
+    sae, layer = b.sae, b.layer  # keep the SAE; release the TransformerLens model (the bundle held it)
     from dsgx.models import loader
 
+    del b, cache
     loader._MODELS.clear()
+    gc.collect()
     torch.cuda.empty_cache()
     model, tok = load_hf(dtype=torch.bfloat16)
-    teach_hook, _ = add_dsg_hook_hf(model, sae, feats, 500, tau, b.layer)
+    model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
+    model.config.use_cache = False
+    teach_hook, _ = add_dsg_hook_hf(model, sae, feats, 500, tau, layer)
     teach_hook.enabled = False
     lcfg = LoraConfig(r=rank, lora_alpha=2 * rank, target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                       "gate_proj", "up_proj", "down_proj"], lora_dropout=0.0, task_type="CAUSAL_LM")
@@ -61,32 +71,44 @@ def task(ctx):
 
     def batch(src, n):
         idx = torch.randint(0, len(src), (n,), generator=g).tolist()
-        return tok([src[i] for i in idx], return_tensors="pt", padding=True, truncation=True,
-                   max_length=512, add_special_tokens=False).to(model.device)
+        return [tok(src[i], return_tensors="pt", truncation=True, max_length=512,
+                    add_special_tokens=False).to(model.device) for i in idx]
+
+    def logits(enc):  # the KL uses the last position only
+        return model(**enc, logits_to_keep=1).logits
 
     def step_fn(step):
-        fb, rb = batch(forget, bs), batch(retain, bs)
-        with torch.no_grad():
-            model.disable_adapter_layers()
-            teach_hook.enabled = not same_ref
-            tf = model(**fb).logits
-            teach_hook.enabled = False
-            tr = model(**rb).logits
-            model.enable_adapter_layers()
-        sf = model(**fb).logits
-        sr = model(**rb).logits
-        loss = _kl(sf, tf) + _kl(sr, tr)
-        return {"loss": loss, "kl_forget": _kl(sf, tf).detach(), "kl_retain": _kl(sr, tr).detach()}
+        fbs, rbs = batch(forget, bs), batch(retain, bs)  # same sampling order as the batched version
+        tot, klf, klr = 0.0, 0.0, 0.0
+        for j, (fb, rb) in enumerate(zip(fbs, rbs)):     # micro-batch 1, accumulate over bs
+            with torch.no_grad():
+                model.disable_adapter_layers()
+                teach_hook.enabled = not same_ref
+                tf = logits(fb)
+                teach_hook.enabled = False
+                tr_ = logits(rb)
+                model.enable_adapter_layers()
+            kf, kr = _kl(logits(fb), tf), _kl(logits(rb), tr_)
+            loss = (kf + kr) / bs
+            klf, klr = klf + float(kf) / bs, klr + float(kr) / bs
+            if j < bs - 1:
+                loss.backward()
+                tot = tot + loss.detach()
+            else:
+                tot = loss + tot
+        return {"loss": tot, "kl_forget": klf, "kl_retain": klr}
 
     out = ctx.run_dir()
     tr = Trainer(model, model.parameters(), out, lr=float(a.get("lr", 2e-4)), steps=steps,
-                 ckpt_every=max(10, steps // 4), progress=ctx.progress, optimizer="adamw")
+                 ckpt_every=max(10, steps // 4), progress=ctx.progress, optimizer=a.get("optimizer", "adamw8bit"))
     ctx.progress.update(steps_total=steps, force=True)
     tr.run(step_fn)
     merged = model.merge_and_unload()
     ck = ctx.cache_dir("models", ctx.exp_id, f"{'sameref' if same_ref else 'undo'}_a{alpha}")
     merged.save_pretrained(ck); tok.save_pretrained(ck)
     ctx.write_metrics({"noise_alpha": alpha, "rank": rank, "steps": steps, "same_ref": same_ref,
+                       "effective_batch": bs, "micro_batch": 1, "optimizer": tr.opt.__class__.__name__,
+                       "gradient_checkpointing": True, "peak_vram_gb": torch.cuda.max_memory_allocated() / 1e9,
                        "checkpoint": str(ck), "features": [int(f) for f in feats], "tau": tau,
                        "last": tr.log[-1] if tr.log else None})
     ctx.finish({"view": "d1-distill", "forget": None})
