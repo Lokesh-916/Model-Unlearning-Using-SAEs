@@ -147,6 +147,27 @@ def task_section(runs, hw) -> list[str]:
     return [f"#### Task results with CIs ({hw})", ""] + md_table(["exp", "run", "metric", "mean [95% CI] n"], rows)
 
 
+def conformal_section(runs, hw) -> list[str]:
+    """N6: conformal threshold per target alpha; empirical FPR on held-out and shifted benign text (Wilson CI)."""
+    rows = []
+    for r in runs:
+        cov, m = r.metrics.get("coverage"), r.metrics
+        if r.base_exp != "N6" or not isinstance(cov, dict):
+            continue
+        g = m.get("gate", {})
+        gate = g.get("type", "?") + (f" w{g['w']}" if "w" in g else "")
+        for alpha, c in sorted(cov.items(), key=lambda kv: float(kv[0])):
+            rows.append([gate, alpha, f"{c['tau']:.4f}", f"{c['calib_fpr']:.3f} n={m.get('n_calib')}",
+                         ci(wilson(c["empirical_fpr_heldout"], m.get("n_heldout"))),
+                         ci(wilson(c["empirical_fpr_shifted"], m.get("n_shifted")))])
+    if not rows:
+        return []
+    return [f"#### N6 conformal gate thresholds ({hw})", "",
+            "Benign false-positive rate at the conformal threshold for target alpha; held-out = same benign "
+            "distribution as calibration, shifted = other benign text. Wilson 95% CI.", ""] + md_table(
+        ["gate", "target alpha", "tau", "calib FPR", "held-out FPR", "shifted FPR"], rows)
+
+
 # ----------------------------------------------------------------------------- A6 relearning / tampering (gpuws)
 def a6_section(root: Path) -> tuple[list[str], dict]:
     L, summ = [], {}
@@ -392,10 +413,10 @@ def main(argv=None) -> int:
          f"Sources: lab `{paths.results_dir() / 'runs'}` ({len(lab)} runs), server `{croot}` ({len(gpu)} runs, fetched and sha256-verified).", ""]
     L += ["## 1. Lab PC (labpc)", ""]
     ml, st_lab, lab_paired = mcq_section(lab, "labpc", a.n_boot)
-    L += ml + task_section(lab, "labpc")
+    L += ml + task_section(lab, "labpc") + conformal_section(lab, "labpc")
     L += ["## 2. Server (gpuws)", "", "### 2.1 MCQ conditions (harness runs)", ""]
     mg, st_gpu, gpu_paired = mcq_section(gpu, "gpuws", a.n_boot)
-    L += mg + task_section(gpu, "gpuws")
+    L += mg + task_section(gpu, "gpuws") + conformal_section(gpu, "gpuws")
     a6l, a6s = a6_section(croot)
     L += ["### 2.2 A6 tampering (gpuws)", ""] + a6l
     tl, tofu = tofu_section(croot, a.n_boot)
