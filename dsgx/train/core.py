@@ -119,7 +119,9 @@ def lm_loss(model, tok, texts, max_len=512, mask_prefix=None):
 
 
 class Trainer:
-    """Minimal resumable loop. step_fn(step) -> dict(loss=tensor, **floats) does forward+loss."""
+    """Minimal resumable loop. step_fn(step) -> dict(loss=tensor, **floats) does forward+loss.
+    Gradient accumulation: step_fn calls backward() on all but the last micro-batch (each loss already
+    divided by the number of micro-batches) and returns loss = last_loss + sum of the earlier (detached)."""
 
     def __init__(self, model, params, out_dir: Path, lr=1e-4, steps=100, ckpt_every=50, progress=None,
                  eval_fn=None, eval_every=None, optimizer="adamw", save_fn=None, grad_clip=1.0):
@@ -177,9 +179,11 @@ class Trainer:
         self.model.train()
         t0 = time.time()
         for step in range(self.start, self.steps):
+            # zero_grad before step_fn, so a step_fn may backward() earlier micro-batches itself
+            # (gradient accumulation) and return the last one; identical for forward-only step_fns.
+            self.opt.zero_grad(set_to_none=True)
             out = step_fn(step)
             loss = out.pop("loss")
-            self.opt.zero_grad(set_to_none=True)
             loss.backward()
             gn = float(torch.nn.utils.clip_grad_norm_(self.params, self.grad_clip))
             self.opt.step()

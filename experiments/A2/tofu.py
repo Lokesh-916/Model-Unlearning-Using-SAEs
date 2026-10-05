@@ -15,7 +15,7 @@ def finetune(ctx):
     from datasets import load_dataset
     from peft import LoraConfig, get_peft_model
 
-    from dsgx.train.core import Trainer, load_hf, lm_loss
+    from dsgx.train.core import Trainer, load_hf
 
     a = ctx.args
     cfg = a.get("config", "full")
@@ -24,6 +24,10 @@ def finetune(ctx):
     qa = [(x["question"], x["answer"]) for c in cfgs
           for x in load_dataset("locuslab/TOFU", c, split="train")]
     model, tok = load_hf(dtype=torch.bfloat16)
+    # 16 GB: gradient checkpointing + micro-batch 1 with token-weighted accumulation (same effective batch
+    # and same token-mean loss as one padded batch of bs) + AdamW 8-bit. The first version OOMed at 13.9 GB.
+    model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
+    model.config.use_cache = False
     model = get_peft_model(model, LoraConfig(r=int(a.get("rank", 32)), lora_alpha=64, lora_dropout=0.0,
                            target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
                            task_type="CAUSAL_LM"))
@@ -35,16 +39,36 @@ def finetune(ctx):
         idx = torch.randint(0, len(qa), (bs,), generator=g).tolist()
         prefixes = [CHAT.format(q=qa[i][0]) for i in idx]
         texts = [p + qa[i][1] + "<end_of_turn>" for p, i in zip(prefixes, idx)]
-        return {"loss": lm_loss(model, tok, texts, max_len=384, mask_prefix=prefixes)}
+        encs, ns = [], []
+        for t, p in zip(texts, prefixes):
+            enc = tok(t, return_tensors="pt", truncation=True, max_length=384, add_special_tokens=False)
+            labels = enc["input_ids"].clone()
+            labels[0, :len(tok(p, add_special_tokens=False)["input_ids"])] = -100
+            encs.append((enc.to(model.device), labels.to(model.device)))
+            ns.append(int((labels[0, 1:] != -100).sum()))   # tokens this item contributes to the batch mean
+        n_tot = max(1, sum(ns))
+        tot = 0.0
+        for j, ((enc, labels), n) in enumerate(zip(encs, ns)):
+            if n == 0:
+                continue
+            loss = model(**enc, labels=labels).loss * (n / n_tot)
+            if j < bs - 1 and any(ns[j + 1:]):
+                loss.backward()
+                tot = tot + loss.detach()
+            else:
+                tot = loss + tot
+        return {"loss": tot}
 
     tr = Trainer(model, model.parameters(), ctx.run_dir(), lr=float(a.get("lr", 1e-4)), steps=steps,
-                 ckpt_every=max(10, steps // 5), progress=ctx.progress)
+                 ckpt_every=max(10, steps // 5), progress=ctx.progress, optimizer=a.get("optimizer", "adamw8bit"))
     tr.run(step_fn)
     merged = model.merge_and_unload()
     out = ctx.cache_dir("models", ctx.exp_id, a["tag"])
     merged.save_pretrained(out)
     tok.save_pretrained(out)
     ctx.write_metrics({"config": a.get("config", "full"), "steps": steps, "checkpoint": str(out),
+                       "effective_batch": bs, "micro_batch": 1, "optimizer": tr.opt.__class__.__name__,
+                       "gradient_checkpointing": True, "peak_vram_gb": torch.cuda.max_memory_allocated() / 1e9,
                        "final_loss": tr.log[-1]["loss"] if tr.log else None})
     ctx.finish({"view": f"tofu-finetune:{a['tag']}", "forget": None})
 
