@@ -25,6 +25,9 @@ extra:
   - {method: {name: base}, attack: {name: translate, lang: hi, min_chrf: 40}, batch_size: 1}
   - {method: {name: base}, attack: {name: encode, encoding: base64}, batch_size: 1}
   - {method: {name: base}, attack: {name: none}, batch_size: 1}
+  # C-H2 input (2026-10-05, DEVIATIONS): the no-attack DSG condition on the same TEST items, same selected config, bs 1;
+  # attack_success.compute needs it to define the gated items. Appended last so earlier run indices stay unchanged.
+  - {attack: {name: none}}
 jobs: {group_size: 6, est_seconds_per_item: 0.3, est_vram_gb: 8.5, est_ram_gb: 20, overhead_minutes: 3, deps: ["exp:A1-dev", translate]}
 tasks:
   - id: translate
