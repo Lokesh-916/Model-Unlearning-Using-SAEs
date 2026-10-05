@@ -207,3 +207,19 @@ Tests: 107 pass on CPU.
   fact 0 passes in English and in French alike; D2 leaves P(key) unchanged on all 3.
 - C-H7 reads A2-tofu-full (gpuws still Inconclusive: no A7 yet). C-H3 (labpc): **Not supported** by its rule.
 - Fixed: missing hardware label on gpuws TOFU / Q2 runs; session-10 parity test failure. 107 tests pass.
+
+## Session 12 (2026-10-05): OOM fixes, X1 wiring, server fetch + a6-baked (D2) held
+- Digest: new N6 conformal table (tau, calib / held-out / shifted benign FPR, Wilson CI). Regenerated at start and end.
+- **Lab OOM fixes** (smoke-tested on the lab GPU after N5 finished, queue paused meanwhile): D1 distill kept the TL bundle
+  alive (two 2B models resident); now released, micro-batch 1 + accumulation (same effective batch), gradient checkpointing,
+  last-position logits, AdamW 8-bit: peak 6.4 GiB (was 14.8). A2 TOFU full: same + token-weighted accumulation: 5.6 GiB (was 13.9).
+  exp/D1 4d086c4, exp/A2 ef5eb17; waiting D1/A2 jobs re-pinned; D1-train-sameref wave 5 → 3 so it runs first; 19 jobs re-queued.
+- **Trainer bug** (`zero_grad` after `step_fn`): gpuws tofu-full and muse fine-tunes kept only the last of 4 micro-batches
+  (effective batch 4 / 2, ~1/4 of the data per epoch). Fixed (f40dde8, test). Not re-run: user decision. DEVIATIONS row.
+- **X1:** C3 ranking from gpuws (layers 16, 24, 8); `--enqueue` waits for the D1 undo checkpoints:
+  `scripts/x1_enqueue_when_ready.sh` (lab, nohup; log `$DSG_RESULTS/logs/x1_enqueue.log`). Dry run: 20 candidates, 43 DEV runs, 8.8 GPU-h.
+- **Server:** a7-small (86 files), muse (21), a7-12b (43) fetched + verified + cleaned (ours 74 → 37 GB, free 46 → 83 GB).
+  a6-baked staged for D2 only (11 jobs, `A6_BAKED_GLOBS`), chain **150 validate → 151–152 a6-baked**, `--hold --nice=10000`,
+  behind the held mtbench 134–137. `cluster/release_when_free.sh` (lab, nohup) releases our held jobs when no other user has a job
+  queued (two checks 10 min apart). `cluster/a6_baked_d1_when_ready.sh` stages the student/D1 part and submits a held chain once
+  D1-train-sameref and undo-a0.3 are DONE.

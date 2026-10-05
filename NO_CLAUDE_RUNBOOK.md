@@ -194,6 +194,14 @@ already fetched and cleaned. a6-lora fetches skip `last/trainer.pt` (optimizer s
 cleanup deletes it on the server only inside DONE runs. Fetching metrics (< 1 GB) works down to 45 GB lab free.
 **You should see:** `fetched and verified K files`, then `deleted ...` lines.
 
+### 5.5 Session 12 (2026-10-05): held chain + watchers
+Queue: `134–137 mtbench → 150 validate → 151–152 a6-baked (D2 only)`, all held (`--hold`) and `--nice=10000`.
+Lab-PC background watchers (check with `pgrep -af 'when_ready|release_when'`; restart the same way if the PC rebooted):
+`nohup cluster/release_when_free.sh >> $P/dsg_results_cluster/release_watch.log 2>&1 &` (releases our held jobs once no other
+user has a job queued), `nohup cluster/a6_baked_d1_when_ready.sh >> $P/dsg_results_cluster/a6_baked_d1_watch.log 2>&1 &`
+(student + D1 part of a6-baked, held chain), `nohup scripts/x1_enqueue_when_ready.sh >> $DSG_RESULTS/logs/x1_enqueue.log 2>&1 &`
+(X1 `--enqueue` once D1-train-undo-a0.{1,3,5} are DONE). After 137: `fetch mtbench`, verify, cleanup; after 152: `fetch a6-baked`.
+
 **Later (not queued):**
 - `a6-baked` (33 moved lab jobs on student / D1-local / D2 weights): when the lab jobs `D1-train-sameref`,
   `D1-train-undo-a0.3` (Wave 5) and `D2-edit-nullspace` (Wave 3) are DONE: `cluster/server.sh plan a6-baked`,

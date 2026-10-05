@@ -345,3 +345,15 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   re-fetch, and the scripts now write `hardware_label`. Session 10's parity test failure (Cyber Pareto) is fixed; 107 tests pass.
 - **Next:** fetch/verify/cleanup a7-small, muse, a7-12b (then the lab gemma-3-12b-it copy can go if approved), mtbench (read
   `jobs/mtbench/summary.json`; report with `same_family_judge`); regenerate the digest.
+
+### Session 12 — 2026-10-05 10:00–11:xx (end state)
+- **Lab:** D1-train-* and A2-tofu-finetune-full OOM fixed (exp/D1 4d086c4, exp/A2 ef5eb17; peak 6.4 / 5.6 GiB, smoke-tested on
+  the lab GPU); 19 jobs re-queued, D1-train-sameref first (wave 3). Trainer `zero_grad` moved before `step_fn` (f40dde8): the gpuws
+  tofu-full + muse fine-tunes used only 1 of 4 micro-batches per step (DEVIATIONS; not re-run, user decision).
+- **X1:** reads the gpuws C3 ranking; enqueued by `scripts/x1_enqueue_when_ready.sh` once the D1 undo checkpoints exist.
+- **Server:** a7-small, muse, a7-12b fetched/verified/cleaned (ours 37 → 42 GB after staging, free 78 GB). Held chain:
+  134–137 mtbench → 150 validate → 151–152 a6-baked (D2 only). Watchers on the lab PC: `release_when_free.sh`,
+  `a6_baked_d1_when_ready.sh` (runbook 5.5). anish's job 149 was running; never touched.
+- **Next:** fetch mtbench (report `same_family_judge`) and a6-baked when done; X1 selection result in
+  `$DSG_RESULTS/runs/X1-screen/select/COMBINE_SELECTION.md`; regenerate the digest.
+
