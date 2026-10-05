@@ -1,7 +1,8 @@
 #!/bin/bash
 # Run on the LAB PC. Submit one long chain of our gpuws jobs behind a running one, through slurm/submit.sh
 # (disk check, COMMAND_LOG, refusal rules). The first job is always validate.sbatch (sanity-gpuws, exact).
-#   cluster/submit_chain.sh [--after-any ID] [--nice N] [--dry-run] SPEC...
+#   cluster/submit_chain.sh [--after-any ID] [--nice N] [--hold] [--dry-run] SPEC...
+# --hold submits every job held (JobHeldUser); release with `scontrol release <ids>` (cluster/release_when_free.sh).
 # SPEC = file.sbatch    -> --dependency=afterok:<validate>,afterany:<previous>  (an unrelated failure or a
 #                          time limit upstream does not cancel it; every job resumes / skips finished work)
 #        file.sbatch+   -> --dependency=afterok:<previous>  (needs the previous one to succeed)
@@ -14,6 +15,7 @@ while [ $# -gt 0 ]; do
     case "$1" in
     --after-any) AFTER="$2"; shift 2;;
     --nice) NICE="--nice=$2"; shift 2;;
+    --hold) NICE="$NICE --hold"; shift;;
     --dry-run) DRY=1; shift;;
     *) break;;
     esac
