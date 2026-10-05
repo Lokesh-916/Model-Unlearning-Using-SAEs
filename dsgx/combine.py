@@ -71,9 +71,25 @@ BRANCH = "exp/X1-combine"
 
 
 # ----------------------------------------------------------------------------- candidates
+def _cluster_runs() -> Path:
+    import os
+
+    return Path(os.environ.get("DSG_RESULTS_CLUSTER", paths.results_dir().parent / "dsg_results_cluster")) / "runs"
+
+
+def _c3_ranking_path(runs_root: Path) -> Path | None:
+    """Lab C3 ranking, else the gpuws one (the 10 C3 lab jobs were MOVED-TO-SERVER in session 8; the
+    ranking only chooses which layers are screened, the screening + selection run on labpc; DEVIATIONS 2026-10-05)."""
+    for root in (runs_root, _cluster_runs()):
+        p = root / "C3" / "auroc" / "metrics.json"
+        if p.exists():
+            return p
+    return None
+
+
 def _c3_top_layers(runs_root: Path, k=3) -> list[str]:
-    p = runs_root / "C3" / "auroc" / "metrics.json"
-    if not p.exists():
+    p = _c3_ranking_path(runs_root)
+    if p is None:
         return []
     ranked = json.loads(p.read_text()).get("ranked", [])
     return [r["layer"] for r in ranked if not str(r["layer"]).startswith("layer_3/")][:k]
@@ -97,6 +113,9 @@ def candidates(case="bio", runs_root: Path | None = None, cache: Path | None = N
     out.append({"slot": "detector", "name": "probe-sae", "patch": {"gate": {"type": "probe_sae", "probe_train": "cache"}}})
     out.append({"slot": "detector", "name": "probe-resid", "patch": {"gate": {"type": "probe_resid", "probe_train": "cache"}}})
     top = _c3_top_layers(runs_root)
+    c3p = _c3_ranking_path(runs_root)
+    if top and c3p is not None and not str(c3p).startswith(str(runs_root)):
+        print(f"  note: C3 layer ranking read from {c3p} (gpuws; candidate choice only): {', '.join(top)}")
     if not top:
         missing.append("C3 layer ranking (runs/C3/auroc); layer and N7 candidates use layers 8 and 12")
         top = ["layer_8/width_16k/canonical", "layer_12/width_16k/canonical"]
