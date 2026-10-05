@@ -385,4 +385,7 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   `lab_a2_tofu_fair` holds (A2 fine-tunes + metrics DONE at exp/A2 ef5eb17, metrics after both fine-tunes). Every TOFU run checked on
   its own, labelled by hardware. DEVIATIONS row. A2-tofu-metrics DONE 12:18:52.
 - A5-mia, N2-adapter, N3-demo-check, N4-challenge-check were stale BLOCKED (by the session-13 stop of A2-tofu-metrics): re-queued.
+- **Results (13:27–13:33):** B2/B3-clean-dsg and attack-success-v2 DONE (B2 7, B3 13 conditions). Digest regenerated (281 lab, 264 gpuws runs):
+  **C-H2 labpc Supported** by its unchanged rule (5 conditions; max B2 decompose split k3 0.694 [0.642, 0.751], B3 spaced 0.449
+  [0.389, 0.509], n 265). C-H7 Inconclusive on both machines (no best-fix TOFU condition: X1 not run).
 - **Next:** session 13's runbook §5.6 items; digest after every session.

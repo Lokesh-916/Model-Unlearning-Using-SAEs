@@ -257,4 +257,6 @@ Tests: 107 pass on CPU.
   queued `B2-clean-dsg` (run 8), `B3-clean-dsg` (run 16) at the head of the queue, then `B2/B3-attack-success-v2`. Rule unchanged.
 - C-H7: gpuws verdict also reads the lab A2 TOFU run (fixed loop, 8-bit AdamW for full and retain; provenance check
   `results_digest.lab_a2_tofu_fair`). Each TOFU run checked separately. 1 new test (`test_ch7_reads_tofu_extra_per_machine`).
-- DEVIATIONS: 2 rows. Stale BLOCKED A5/N2/N3/N4 re-queued.
+- DEVIATIONS: 2 rows. Stale BLOCKED A5/N2/N3/N4 re-queued. 112 tests pass.
+- Result: clean runs + attack-success DONE 13:33; **C-H2 (labpc) Supported** (B2 decompose split k3 0.694 [0.642, 0.751], B3 spaced
+  0.449 [0.389, 0.509], n 265; 5 conditions meet the rule). C-H7 Inconclusive on both machines (no TOFU best-fix condition yet).
