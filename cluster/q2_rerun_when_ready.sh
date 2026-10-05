@@ -26,7 +26,7 @@ while true; do
 done
 echo "[q2-watch] $(date -Is) tofu-full v2 done, muse left the queue: staging q2-graphs"
 cluster/server.sh stage q2-graphs || { echo "[q2-watch] stage refused/failed: chain not submitted"; exit 1; }
-last=$(ssh -n -o BatchMode=yes gpuws 'squeue -h -u suraj -o "%i"' | sort -n | tail -1)
+last=$(cluster/chain_tail.sh)  # end of our one linear chain (not the highest id)
 cluster/submit_chain.sh ${last:+--after-any $last} --nice 10000 --hold q2-graphs-v2.sbatch \
     || { echo "[q2-watch] submit failed"; exit 1; }
 pgrep -f release_when_free.sh > /dev/null \

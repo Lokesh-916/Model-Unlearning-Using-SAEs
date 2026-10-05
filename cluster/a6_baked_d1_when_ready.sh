@@ -28,7 +28,7 @@ for d in sameref_a0.0 undo_a0.3; do
 done
 echo "[a6-d1-watch] $(date -Is) D1 weights ready: staging a6-baked (all globs)"
 cluster/server.sh stage a6-baked || { echo "[a6-d1-watch] stage refused/failed: chain not submitted"; exit 1; }
-last=$(ssh -n -o BatchMode=yes gpuws 'squeue -h -u suraj -o "%i"' | sort -n | tail -1)
+last=$(cluster/chain_tail.sh)  # end of our one linear chain (not the highest id)
 cluster/submit_chain.sh ${last:+--after-any $last} --nice 10000 --hold a6-baked.sbatch a6-baked.sbatch a6-baked.sbatch \
     || { echo "[a6-d1-watch] submit failed"; exit 1; }
 nohup cluster/release_when_free.sh >> "$HOME/projects/mechunlearn-project/dsg_results_cluster/release_watch.log" 2>&1 &
