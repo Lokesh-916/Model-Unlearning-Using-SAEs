@@ -4,7 +4,9 @@
    tokens, chat template) two models, resumable (trainer state every 200 steps):
      full   = forget10 + retain90 (the TOFU "full" set, as in exp/A2)
      retain = retain90 only (the never-learned reference; also used by Q3)
-   saved to $DSG_CACHE/models/A2-tofu-full/{full,retain}.
+   saved to $DSG_CACHE/models/A2-tofu-full/{full,retain} with train_version.json (2 = fixed Trainer accumulation);
+   retain is deleted once the metrics are written (--keep-retain keeps it). Budget (DSG_BUDGET_MIN) and disk
+   (free >= 50 GB after 16 GB) are checked before each fine-tune; training stops at a checkpoint, next sbatch resumes.
 2. DSG on TOFU (layer-3 Gemma Scope SAE on the fine-tuned model): per-feature fire rate on forget10 vs
    retain90 QA text; top-20 features by (p_forget + 1e-4) / (p_retain + 1e-4) among features firing on
    >= 1% of forget tokens; tau = 95th percentile of rho on retain sequences (DSG's retain-percentile rule).
@@ -36,10 +38,23 @@ EPOCHS, LR, BS, ACCUM, MAXLEN = 5, 1e-5, 4, 4, 256
 # no marker): only the last micro-batch did. Models and partial results without version 2 are never reused.
 TRAIN_VERSION = 2
 TRAIN_MIN_START, STOP_MARGIN, EVAL_MIN = 15, 6, 30  # minutes of DSG_BUDGET_MIN (slurm/later.sh)
+DISK_NEED_GB = 16  # one model being trained (5.2) + trainer state (~10)
 
 
 class _Stop(Exception):
     pass
+
+
+def disk_ok(need_gb=DISK_NEED_GB) -> bool:
+    """Rule 5 inside the job: free >= 50 GB after `need_gb`, and our total stays < 100 GB."""
+    import os
+
+    root = Path(os.environ.get("DSGC", paths.cache_dir()))
+    free = shutil.disk_usage(root).free / 1e9
+    ours = sum(f.stat().st_size for f in root.rglob("*") if f.is_file() and not f.is_symlink()) / 1e9 if not jc.TINY else 0
+    ok = free - need_gb >= 50 and ours + need_gb < 100
+    jc.log(NAME, f"disk: free {free:.0f} GB, ours {ours:.0f} GB, need {need_gb} GB -> {'ok' if ok else 'REFUSING'}")
+    return ok or jc.TINY
 
 
 def model_ok(path) -> bool:
@@ -68,7 +83,7 @@ def finetune(tag, rows, a, tok, budget):
         if model_ok(out):
             return out
         raise SystemExit(f"{out} was trained by the old loop (no train_version {TRAIN_VERSION}): move it away first")
-    if not budget.fits(TRAIN_MIN_START):
+    if not budget.fits(TRAIN_MIN_START) or not disk_ok():
         return None
     model = jc.load_lm(jc.HF_2B, train=True)
     dev = next(model.parameters()).device
@@ -259,8 +274,13 @@ def main(argv=None):
     ap.add_argument("--n-calib", type=int, default=400)
     ap.add_argument("--window", type=int, default=None)
     ap.add_argument("--budget-min", type=float, default=None)
+    ap.add_argument("--keep-retain", action="store_true", help="keep the retain model after the metrics are written")
     a = ap.parse_args(argv)
     budget = jc.Budget(a.budget_min)
+    d = paths.runs_dir() / "A2-tofu-full" / "tofu-metrics"
+    if (d / "DONE").exists() and (jc.read_json(d / "metrics.json", {}) or {}).get("train_version") == TRAIN_VERSION:
+        jc.log(NAME, "done (train_version 2), skip")
+        return 0
     from scipy.stats import ks_2samp
 
     jc.require_gpu(40)
@@ -349,7 +369,6 @@ def main(argv=None):
     ref = res["retain-model"]["forget"]["truth_ratio_values"]
     for k, v in res.items():
         v["forget_quality_ks_p"] = float(ks_2samp(v["forget"]["truth_ratio_values"], ref).pvalue) if k != "retain-model" else None
-    d = paths.runs_dir() / "A2-tofu-full" / "tofu-metrics"
     d.mkdir(parents=True, exist_ok=True)
     atomic_write_json(d / "metrics.json", {"conditions": res, "n_forget": n, "n_retain": n, "metric_version": METRIC_VERSION,
                                            "train_version": TRAIN_VERSION, "models": {k: str(v) for k, v in paths_.items()}, "hardware_label": jc.hardware_label()})
@@ -357,6 +376,11 @@ def main(argv=None):
     jc.summary(NAME, {"conditions": {k: {"forget_quality_ks_p": v.get("forget_quality_ks_p"), "model_utility": v.get("model_utility"),
                                          "forget_truth_ratio": v["forget"]["truth_ratio"]} for k, v in res.items()},
                       "models": {k: str(v) for k, v in paths_.items()}})
+    if not a.keep_retain:  # only the metrics need it; frees 5.2 GB for the next job (Q2 / FP-highlight use `full`)
+        del m
+        gc.collect()
+        shutil.rmtree(paths_["retain"], ignore_errors=True)
+        jc.log(NAME, f"removed {paths_['retain']} (metrics written)")
     jc.log(NAME, "done")
     return 0
 

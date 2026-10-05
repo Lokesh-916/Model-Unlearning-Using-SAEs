@@ -65,13 +65,14 @@ def test_tofu_full_tiny(tiny):
     from dsgx import paths
 
     m = _reload("cluster.tofu_full")
-    assert m.main(["--epochs", "1", "--bs", "2", "--accum", "2", "--maxlen", "64"]) == 0
+    assert m.main(["--epochs", "1", "--bs", "2", "--accum", "2", "--maxlen", "64", "--keep-retain"]) == 0
     met = json.loads((paths.runs_dir() / "A2-tofu-full" / "tofu-metrics" / "metrics.json").read_text())
     assert set(met["conditions"]) == {"retain-model", "full", "full+dsg", "full+best-gate"}
     # resume: drop the final metrics and one condition; a rerun re-evaluates only that one
     part = paths.runs_dir() / "A2-tofu-full" / "tofu-metrics" / "partial"
     assert len(list(part.glob("*.json"))) == 4
     (part / "full+best-gate.json").unlink()
+    (part.parent / "DONE").unlink()  # a finished run (DONE, train_version 2) is skipped as a whole
     keep = (part / "full.json").stat().st_mtime_ns
     assert m.main(["--epochs", "1", "--bs", "2", "--accum", "2", "--maxlen", "64"]) == 0
     assert (part / "full.json").stat().st_mtime_ns == keep and (part / "full+best-gate.json").exists()
