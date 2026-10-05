@@ -48,6 +48,7 @@ MATCH_COS = 0.5
 N_SCAN, N_FACTS = 40, 3
 GRAPH_MIN = 10            # budget for one graph (attribution + pruning + figure), with margin
 FR_FILE = Path(__file__).resolve().parent / "data" / "q2_tofu_forget10_fr.json"
+TOFU_TRAIN_VERSION = 2   # = cluster/tofu_full.TRAIN_VERSION (env/q2 does not import tofu_full); older models / gates are refused
 STOP = {"this", "that", "with", "from", "which", "have", "been", "were", "their", "they", "there", "also", "into",
         "about", "would", "could", "should", "these", "those", "when", "where", "while", "known", "born", "author",
         "authors", "book", "books", "work", "works", "name", "being", "such", "many", "some", "very", "often"}
@@ -416,7 +417,10 @@ def tc_wdec(model, layer=3):
 def tofu_gate(jc, paths):
     """(features, tau, source) of tofu-full's DSG on the TOFU model; None if the file is missing."""
     p = paths.runs_dir() / "A2-tofu-full" / "tofu-metrics" / "partial" / "full+dsg.json"
-    g = (jc.read_json(p, {}) or {}).get("gate") or {}
+    rec = jc.read_json(p, {}) or {}
+    g = rec.get("gate") or {}
+    if rec.get("train_version") != TOFU_TRAIN_VERSION:  # written by the old training loop: recompute instead
+        return None
     if g.get("features") and g.get("threshold") is not None:
         return [int(f) for f in g["features"]], float(g["threshold"]), str(p.relative_to(paths.results_dir()))
     return None
@@ -468,6 +472,10 @@ def run_tofu(a, jc, paths):
     hf_dir = paths.cache_dir() / "models" / "A2-tofu-full" / "full"
     if not jc.TINY and not (hf_dir / "config.json").exists():
         jc.log(NAME, f"ABORT: TOFU model {hf_dir} is missing (tofu-full cleaned up too early?); nothing run")
+        return 2
+    if not jc.TINY and (jc.read_json(hf_dir / "train_version.json", {}) or {}).get("train_version") != TOFU_TRAIN_VERSION:
+        jc.log(NAME, f"ABORT: TOFU model {hf_dir} is from the old training loop (no train_version "
+                     f"{TOFU_TRAIN_VERSION}); rerun tofu-full first; nothing run")
         return 2
     model = load_replacement(jc, tok, hf_dir)
     model.eval()

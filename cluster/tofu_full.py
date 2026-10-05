@@ -21,6 +21,7 @@ import argparse
 import gc
 import json
 import shutil
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -31,6 +32,19 @@ from dsgx.util import atomic_write_json, now_iso
 
 NAME = "tofu-full"
 EPOCHS, LR, BS, ACCUM, MAXLEN = 5, 1e-5, 4, 4, 256
+# 2: Trainer zero_grad before step_fn (f40dde8), all `accum` micro-batches reach the optimizer. 1 (jobs 84/96,
+# no marker): only the last micro-batch did. Models and partial results without version 2 are never reused.
+TRAIN_VERSION = 2
+TRAIN_MIN_START, STOP_MARGIN, EVAL_MIN = 15, 6, 30  # minutes of DSG_BUDGET_MIN (slurm/later.sh)
+
+
+class _Stop(Exception):
+    pass
+
+
+def model_ok(path) -> bool:
+    """A fine-tuned TOFU model of the current training loop (used by tofu-full, figparity highlight, q2)."""
+    return (jc.read_json(Path(path) / "train_version.json", {}) or {}).get("train_version") == TRAIN_VERSION
 
 
 def tofu(config):
@@ -45,19 +59,28 @@ def chat(tok, q, a=None):
     return p if a is None else (p, a)
 
 
-def finetune(tag, rows, a, tok):
+def finetune(tag, rows, a, tok, budget):
+    """Saved model dir, or None when the budget ran out (checkpointed; the next chained sbatch resumes)."""
     from dsgx.train.core import Trainer
 
     out = paths.cache_dir() / "models" / "A2-tofu-full" / tag
     if (out / "config.json").exists():
-        return out
+        if model_ok(out):
+            return out
+        raise SystemExit(f"{out} was trained by the old loop (no train_version {TRAIN_VERSION}): move it away first")
+    if not budget.fits(TRAIN_MIN_START):
+        return None
     model = jc.load_lm(jc.HF_2B, train=True)
     dev = next(model.parameters()).device
     g = torch.Generator().manual_seed(0)
     steps = max(1, a.epochs * len(rows) // (a.bs * a.accum))
     order = torch.cat([torch.randperm(len(rows), generator=g) for _ in range(a.epochs + 1)]).tolist()
 
+    tr = None
+
     def step_fn(step):
+        if step % 200 == 0 and step > tr.start and not budget.fits(STOP_MARGIN):
+            raise _Stop(step)  # the checkpoint of `step` was written at the end of the previous step
         tot = 0.0
         for j in range(a.accum):
             base = (step * a.accum + j) * a.bs
@@ -78,10 +101,20 @@ def finetune(tag, rows, a, tok):
 
     tr = Trainer(model, model.parameters(), jc.job_dir(NAME) / f"ft-{tag}", lr=a.lr, steps=steps,
                  ckpt_every=200, optimizer="adamw" if jc.TINY else "adamw8bit")
-    tr.run(step_fn)
+    jc.log(NAME, f"{tag}: {len(rows)} rows x {a.epochs} epochs = {steps} steps (start {tr.start})")
+    try:
+        tr.run(step_fn)
+    except _Stop as e:
+        jc.log(NAME, f"{tag}: budget low, stopped at step {e.args[0]} (checkpointed); next job resumes")
+        del model, tr
+        gc.collect()
+        torch.cuda.empty_cache()
+        return None
     out.mkdir(parents=True, exist_ok=True)
     model.save_pretrained(out)
     tok.save_pretrained(out)
+    atomic_write_json(out / "train_version.json", {"train_version": TRAIN_VERSION, "steps": steps, "micro_batch": a.bs,
+                                                   "accum": a.accum, "effective_batch": a.bs * a.accum, "time": now_iso()})
     shutil.rmtree(tr.out / "last", ignore_errors=True)
     del model, tr
     gc.collect()
@@ -225,7 +258,9 @@ def main(argv=None):
     ap.add_argument("--n-eval", type=int, default=400)
     ap.add_argument("--n-calib", type=int, default=400)
     ap.add_argument("--window", type=int, default=None)
+    ap.add_argument("--budget-min", type=float, default=None)
     a = ap.parse_args(argv)
+    budget = jc.Budget(a.budget_min)
     from scipy.stats import ks_2samp
 
     jc.require_gpu(40)
@@ -234,7 +269,11 @@ def main(argv=None):
     f10, r90 = tofu("forget10"), tofu("retain90")
     if jc.TINY:
         f10, r90 = f10[:8], r90[:8]
-    paths_ = {"full": finetune("full", f10 + r90, a, tok), "retain": finetune("retain", r90, a, tok)}
+    paths_ = {"full": finetune("full", f10 + r90, a, tok, budget)}
+    paths_["retain"] = paths_["full"] and finetune("retain", r90, a, tok, budget)
+    if not all(paths_.values()):
+        jc.log(NAME, "partial: fine-tuning not finished; resubmit tofu-full-v3.sbatch to continue")
+        return 0
     sets = {"forget": tofu("forget10_perturbed"), "retain": tofu("retain_perturbed"),
             "real_authors": tofu("real_authors_perturbed"), "world_facts": tofu("world_facts_perturbed")}
     n = 2 if jc.TINY else a.n_eval
@@ -242,14 +281,23 @@ def main(argv=None):
     part = paths.runs_dir() / "A2-tofu-full" / "tofu-metrics" / "partial"
     part.mkdir(parents=True, exist_ok=True)
     res = {k: jc.read_json(part / f"{k}.json", None) for k in ("retain-model", "full", "full+dsg", "full+best-gate")}
-    res = {k: v for k, v in res.items() if v is not None and v.get("n") == n and v.get("metric_version") == METRIC_VERSION}
+    res = {k: v for k, v in res.items() if v is not None and v.get("n") == n and v.get("metric_version") == METRIC_VERSION
+           and v.get("train_version") == TRAIN_VERSION}
     for k in res:
         jc.log(NAME, f"resumed: {k} already evaluated")
 
     def save(k):
-        atomic_write_json(part / f"{k}.json", {**res[k], "n": n})
+        atomic_write_json(part / f"{k}.json", {**res[k], "n": n, "train_version": TRAIN_VERSION})
         jc.log(NAME, f"eval {k} saved")
 
+    def out_of_budget(k):
+        if k in res or budget.fits(EVAL_MIN):
+            return False
+        jc.log(NAME, f"partial: budget too low for eval {k}; resubmit tofu-full-v3.sbatch to continue")
+        return True
+
+    if out_of_budget("retain-model"):
+        return 0
     if "retain-model" not in res:
         m = jc.load_lm(paths_["retain"])
         m.eval()
@@ -258,6 +306,8 @@ def main(argv=None):
         del m
         gc.collect()
         torch.cuda.empty_cache()
+    if out_of_budget("full"):
+        return 0
     m = jc.load_lm(paths_["full"])
     m.eval()
     if "full" not in res:
@@ -287,6 +337,8 @@ def main(argv=None):
     for tag, g in (("full+dsg", rho_g), ("full+best-gate", win_g)):
         if tag in res:
             continue
+        if out_of_budget(tag):
+            return 0
         h = decoder_layers(m)[layer].register_forward_hook(g)
         res[tag] = evaluate(m, tok, sets, n)
         res[tag]["gate"] = {"kind": g.kind, "threshold": g.thr, "w": g.w if g.kind == "window" else None,
@@ -300,7 +352,7 @@ def main(argv=None):
     d = paths.runs_dir() / "A2-tofu-full" / "tofu-metrics"
     d.mkdir(parents=True, exist_ok=True)
     atomic_write_json(d / "metrics.json", {"conditions": res, "n_forget": n, "n_retain": n, "metric_version": METRIC_VERSION,
-                                           "models": {k: str(v) for k, v in paths_.items()}, "hardware_label": jc.hardware_label()})
+                                           "train_version": TRAIN_VERSION, "models": {k: str(v) for k, v in paths_.items()}, "hardware_label": jc.hardware_label()})
     atomic_write_json(d / "DONE", {"time": now_iso(), "headline": {k: v.get("forget_quality_ks_p") for k, v in res.items()}})
     jc.summary(NAME, {"conditions": {k: {"forget_quality_ks_p": v.get("forget_quality_ks_p"), "model_utility": v.get("model_utility"),
                                          "forget_truth_ratio": v["forget"]["truth_ratio"]} for k, v in res.items()},

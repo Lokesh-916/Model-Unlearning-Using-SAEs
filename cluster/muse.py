@@ -62,6 +62,13 @@ EVAL_MIN = 25          # one condition's metrics (300 generations + 600 scoring 
 TRAIN_MIN_START = 20   # do not start (or resume) a fine-tune with less budget than this
 STOP_MARGIN = 8        # stop training at a checkpoint when less than this is left
 DISK_NEED_GB = 16      # one model (5.2) + trainer state (~10) at a time
+# 2: Trainer zero_grad before step_fn (f40dde8), all `accum` micro-batches reach the optimizer. 1 (jobs 128-130,
+# no marker): only the last micro-batch did. Models, partials and DONE without version 2 are never reused.
+TRAIN_VERSION = 2
+
+
+def _current(p) -> bool:
+    return (jc.read_json(p, {}) or {}).get("train_version") == TRAIN_VERSION
 
 
 class _Stop(Exception):
@@ -303,7 +310,9 @@ def finetune(corpus, tag, texts, a, tok, budget):
 
     out = model_dir(corpus, tag)
     if (out / "config.json").exists():
-        return out
+        if _current(out / "train_version.json"):
+            return out
+        raise SystemExit(f"{out} was trained by the old loop (no train_version {TRAIN_VERSION}): move it away first")
     if not budget.fits(TRAIN_MIN_START):
         return None
     model = jc.load_lm(jc.HF_2B, train=True)
@@ -343,6 +352,8 @@ def finetune(corpus, tag, texts, a, tok, budget):
     out.mkdir(parents=True, exist_ok=True)
     model.save_pretrained(out)
     tok.save_pretrained(out)
+    atomic_write_json(out / "train_version.json", {"train_version": TRAIN_VERSION, "steps": steps, "micro_batch": a.bs,
+                                                   "accum": a.accum, "effective_batch": a.bs * a.accum, "time": now_iso()})
     shutil.rmtree(tr.out / "last", ignore_errors=True)
     del model, tr
     gc.collect()
@@ -372,7 +383,7 @@ def run_corpus(corpus, a, tok, budget, mt) -> bool:
     """True when the corpus is finished (DONE written)."""
     d = paths.runs_dir() / EXP / f"muse-{corpus}"
     part = d / "partial"
-    if (d / "DONE").exists():
+    if _current(d / "DONE"):
         jc.log(NAME, f"{corpus}: done, skip")
         return True
     part.mkdir(parents=True, exist_ok=True)
@@ -382,7 +393,7 @@ def run_corpus(corpus, a, tok, budget, mt) -> bool:
         fr, r1 = raw_texts(corpus, "forget"), raw_texts(corpus, "retain1")
     data = None
     # 1. retrain reference
-    if not (part / "retrain.json").exists():
+    if not _current(part / "retrain.json"):
         if not model_dir(corpus, "retrain").exists() and not disk_ok():
             return False
         m_dir = finetune(corpus, "retrain", r1, a, tok, budget)
@@ -390,14 +401,15 @@ def run_corpus(corpus, a, tok, budget, mt) -> bool:
             return False
         data = data or load_eval(corpus, a.n)
         m = jc.load_lm(m_dir).eval()
-        atomic_write_json(part / "retrain.json", {"metrics": evaluate(mt, m, tok, data), "time": now_iso()})
+        atomic_write_json(part / "retrain.json", {"metrics": evaluate(mt, m, tok, data), "time": now_iso(),
+                                                  "train_version": TRAIN_VERSION})
         del m
         gc.collect()
         torch.cuda.empty_cache()
         if not a.keep:
             shutil.rmtree(m_dir, ignore_errors=True)
     # 2. target
-    todo = [c for c in CONDITIONS if not (part / f"{c}.json").exists()]
+    todo = [c for c in CONDITIONS if not _current(part / f"{c}.json")]
     if todo:
         if not model_dir(corpus, "target").exists() and not disk_ok():
             return False
@@ -424,7 +436,7 @@ def run_corpus(corpus, a, tok, budget, mt) -> bool:
                     h.remove()
                 res["gate"] = {**info, "kind": gates[c].kind, "threshold": gates[c].thr,
                                "fire_rate_eval_prompts": pg.n_fired / max(1, pg.n_prompts), "n_eval_prompts": pg.n_prompts}
-            res["time"] = now_iso()
+            res["time"], res["train_version"] = now_iso(), TRAIN_VERSION
             atomic_write_json(part / f"{c}.json", res)
             jc.log(NAME, f"{corpus}: {c} done")
         del m
@@ -440,8 +452,9 @@ def run_corpus(corpus, a, tok, budget, mt) -> bool:
                                            "implementation": mt.impl, "privleak_auc_key": AUC_KEY,
                                            "privleak_reference": "our retrain model (same recipe, retain1 only)",
                                            "gating": "prompt-only (decision on the prompt, kept for generated tokens)",
-                                           "hardware": os.environ.get("DSG_HARDWARE", "unknown")})
-    atomic_write_json(d / "DONE", {"time": now_iso(), "headline": {k: v["privleak"] for k, v in res.items()}})
+                                           "hardware": os.environ.get("DSG_HARDWARE", "unknown"),
+                                           "train_version": TRAIN_VERSION})
+    atomic_write_json(d / "DONE", {"time": now_iso(), "train_version": TRAIN_VERSION, "headline": {k: v["privleak"] for k, v in res.items()}})
     if not a.keep:
         shutil.rmtree(model_dir(corpus, "target"), ignore_errors=True)
     return True

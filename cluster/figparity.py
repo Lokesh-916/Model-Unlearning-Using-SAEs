@@ -303,10 +303,12 @@ def part_highlight(R, budget, n=12):
     if (d / "DONE").exists():
         R.dirs.setdefault("highlight", {})["tofu"] = str(d)
         return
-    if R.plan or not budget.fits(15) or not (jc.TINY or (full / "config.json").exists()):
-        R.left.setdefault("highlight", []).append("tofu" + ("" if jc.TINY or (full / "config.json").exists() else " (A2-tofu-full model missing)"))
-        return
     from cluster import tofu_full as tf
+
+    ok = jc.TINY or tf.model_ok(full)  # exists and was trained by the current loop (train_version)
+    if R.plan or not budget.fits(15) or not ok:
+        R.left.setdefault("highlight", []).append("tofu" + ("" if ok else " (A2-tofu-full model missing or from the old loop)"))
+        return
     from dsgx.train.core import decoder_layers
 
     tok = jc.load_tok()
