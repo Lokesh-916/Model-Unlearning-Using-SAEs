@@ -134,7 +134,10 @@ def text_hash(t: str) -> str:
 # ------------------------------------------------------------------------------- task
 def task(ctx):
     """args: items (wmdp-bio-open | tofu-forget10 | mmlu-open:subj,...), split, limit,
-    methods: [{name: base|dsg-faithful, n_features, retain_pct, multiplier, mode: stream|prompt_only}],
+    methods: [{name: base|dsg-faithful, n_features, retain_pct, multiplier, mode: stream|prompt_only}
+              | {name: gated, gate: {type: rho|window|cusum, ...}, calib: {fpr, n_max, source, rule},
+                 intervention: {type: clamp_all, multiplier}, mode, tag}],   (gated = the MCQ `gated` method's gate,
+    same features and cached threshold, re-evaluated at every generated token; clamp_all only)
     case, seed, max_new, model / sae overrides."""
     import pandas as pd
 
@@ -161,8 +164,23 @@ def task(ctx):
     for mcfg in a["methods"]:
         tag = mcfg.get("tag") or f"{mcfg['name']}-{mcfg.get('mode', 'stream')}"
         ctx.write_config(tag, items=a["items"], n_items=len(items), method=mcfg)
-        feats, tau = None, None
-        if mcfg["name"] != "base":
+        feats, tau, score_fn, token_fn = None, None, None, None
+        if mcfg["name"] == "gated":
+            from dsgx.methods import gates
+
+            iv = mcfg.get("intervention", {"type": "clamp_all"})
+            assert iv.get("type", "clamp_all") == "clamp_all", "streaming generation supports clamp_all only"
+            gspec = {"case": case, **mcfg.get("gate", {"type": "rho"})}
+            ac.build_cache(b, gspec.get("forget_corpus", f"{case}-forget-corpus"), gspec.get("retain_corpus", "wikitext"),
+                           int(gspec.get("calib_seed", ctx.seed)))
+            g = gates.Gate(gspec, b, ctx.seed)
+            cal = mcfg.get("calib", {})
+            if g.threshold is None:
+                cal = gates.calibrate(b, g, case, float(cal.get("fpr", 0.05)), int(cal.get("n_max", 1000)),
+                                      cal.get("source", "mmlu-dev"), cal.get("rule", "quantile"))
+            feats, tau, score_fn, token_fn = gates.stream_gate(g)
+            mcfg = {**mcfg, "multiplier": iv.get("multiplier", 500), "calib_record": cal}
+        elif mcfg["name"] != "base":
             cache = ac.build_cache(b, mcfg.get("forget_corpus", f"{case}-forget-corpus"),
                                    mcfg.get("retain_corpus", "wikitext"), int(mcfg.get("calib_seed", ctx.seed)))
             cache = ac.ActivationCache(cache)
@@ -175,7 +193,7 @@ def task(ctx):
         with priv.open("w") as f:
             for it in items:
                 r = generate(b.model, open_prompt(it.question), b, feats, float(mcfg.get("multiplier", 500)),
-                             tau, mode, int(a.get("max_new", 64)))
+                             tau, mode, int(a.get("max_new", 64)), score_fn=score_fn, token_fn=token_fn)
                 text = decode(b.model, r.tokens)
                 texts.append(text)
                 f.write(json.dumps({"item_id": it.item_id, "text": text}) + "\n")
