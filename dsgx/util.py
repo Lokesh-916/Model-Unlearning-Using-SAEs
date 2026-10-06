@@ -48,6 +48,24 @@ def atomic_write_text(path, text: str) -> None:
         raise
 
 
+def atomic_write_bytes(path, data: bytes) -> None:
+    """Binary twin of atomic_write_text (fsync, then rename)."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
+        os.chmod(tmp, 0o666 & ~_UMASK)
+        os.replace(tmp, path)
+    except BaseException:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+        raise
+
+
 def atomic_write_json(path, obj: Any, indent: int = 2) -> None:
     atomic_write_text(path, json.dumps(obj, indent=indent, default=_json_default, sort_keys=False))
 
