@@ -1,0 +1,30 @@
+# A7-scaled - EXPLORATORY follow-up to A7 (DEVIATIONS 2026-10-06), lab PC only; not a claim-rule input
+# (C-H7 reads exp A7 only). Question: are DSG's selected Gemma Scope 2 features on Gemma 3 1B on the answer
+# path once the clamp has Gemma 2's strength relative to the residual stream?
+# docs/A7_GEMMA3_DIAGNOSIS.md (prep): with the clamp at -500, ||edit|| / ||resid|| = 33.573 on Gemma-2-2B L3
+# but 0.325 on Gemma-3-1B L13 (fp32, all tokens clamped; the edit is linear in the clamp value), so the
+# scaled clamp is 500 x 33.573 / 0.325 = 51,650. Fixed before any run; no other value is tried.
+# Comparators on the same machine: base and DSG default (-500), same cache, features and tau as the scaled run.
+# Subset: the first 300 WMDP-Bio TEST items (split order) + the full TEST splits of A7's two utility subjects.
+exp_id: A7-scaled
+priority: should
+wave: 7
+base:
+  case: bio
+  split: test
+  purpose: report
+  view: raw
+  batch_size: 1
+  limit: 300
+  datasets: ["@forget", high_school_geography, human_aging]
+  dataset_label: forget300+util
+  attack: {name: dilution, pad: 0}
+  model: {name: gemma-3-1b-it, sae_release: gemma-scope-2-1b-it-res, sae_id: 'layer_13_width_16k_l0_medium'}
+runs:
+  - {method: {name: base}}
+  - {method: {name: gated, gate: {type: rho, n_features: 20, retain_pct: 95}, calib: {source: cache-retain}}}
+  - {method: {name: gated, gate: {type: rho, n_features: 20, retain_pct: 95}, calib: {source: cache-retain},
+      intervention: {type: clamp_all, multiplier: 51650}}}
+jobs: {group_size: 3, est_seconds_per_item: 0.5, est_vram_gb: 8, est_ram_gb: 20, overhead_minutes: 15, gpu_exclusive: true}
+smoke:
+  base: {limit: 4, datasets: ["@forget"]}
