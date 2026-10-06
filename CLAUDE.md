@@ -417,3 +417,13 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   gate leave Gemma 3 1B/4B/12B accuracy exactly unchanged although the gate fires on 16–32 % of WMDP items (undiagnosed).
 - Report: `$DSG_RESULTS/IMPROVEMENTS_REPORT.md` (copy `docs/IMPROVEMENTS_REPORT.md`): every experiment, both machines, verdicts, presentation list.
 - **Next:** after 163: `fetch a6-baked`, `verify`, `cleanup a6-baked --yes` (before MUSE 171 starts); after 169/170/173: runbook 5.6; digest.
+
+### Session 17 — 2026-10-06 12:50–14:1x (end state)
+- **Three lab power cuts** (before 12:37, ~13:30, ~13:46): reboot_recover each time; N10 + Q2 watchers running again. X1 TEST in progress.
+- **A7 diagnosed, not a bug** (`docs/A7_GEMMA3_DIAGNOSIS.md`): DSG's absolute −500 clamp is 0.33× (1B) / 0.10× (4B) of Gemma 3's residual
+  norm vs 34× on Gemma 2 L3; no gpuws re-run queued.
+- **Self-updating paper:** `scripts/paper_update.sh` → `paper/numbers.tex` + PDF (23 pages, 0 warnings). Results sections, abstract,
+  conclusion drafted with macros; `\interimnote` on C-H5/C-H6/C-H7 parts. Re-run it after X1 TEST, a6-baked, TOFU/MUSE re-runs; then
+  remove interim marks. Paper commit 563dec7 (draft).
+- Note: prep commit "Paper update command documented…" carries both co-author trailers although it is docs/tests only (pushed; left
+  as is, rule 4).
