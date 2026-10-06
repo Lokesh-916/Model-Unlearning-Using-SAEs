@@ -21,6 +21,6 @@ export CUDA_VISIBLE_DEVICES=
 if [ "${1:-}" != "--no-pdf" ]; then
   export PATH="$HOME/.local/bin:$PATH"   # latexmk 4.88 lives there (session 5)
   (cd "$PAPER" && latexmk -pdf -silent main.tex >/dev/null 2>&1) || { echo "latexmk failed: see $PAPER/main.log"; exit 1; }
-  grep -c "Warning" "$PAPER/main.log" | sed 's/^/LaTeX warnings: /'
-  echo "built $PAPER/main.pdf ($(pdfinfo "$PAPER/main.pdf" 2>/dev/null | awk '/^Pages/{print $2}') pages)"
+  echo "LaTeX warnings: $(grep -c "Warning" "$PAPER/main.log" || true)"
+  echo "built $PAPER/main.pdf ($(grep -o 'Output written on main.pdf ([0-9]* pages' "$PAPER/main.log" | grep -o '[0-9]* pages' || echo '? pages'))"
 fi

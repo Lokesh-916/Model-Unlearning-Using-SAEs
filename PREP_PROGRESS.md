@@ -284,3 +284,13 @@ Tests: 107 pass on CPU.
   absolute clamp (−500, unit decoder rows) vs Gemma 3's residual norm (1B L13 6,834; 4B L17 30,931; Gemma 2 L3 92):
   edit/resid 0.33 / 0.10 vs 33.6; one clamped token moves the last-token distribution ~9× less. Item level: 1B DSG changes 6
   answers (cancelling), 4B/12B none; non-fired items bit-identical. Reported as a finding; no gpuws re-run queued.
+- **Two more power cuts (~13:30, ~13:46):** `scripts/reboot_recover.sh` each time (X1-002 / X1-004 re-queued as interrupted);
+  N10 and Q2 watchers restarted each time.
+- **Part 3 (self-updating paper):** `scripts/paper_update.sh` = final_report --interim for labpc and gpuws into
+  `$P/paper_numbers/{labpc,gpuws}` (never `$DSG_RESULTS/summary.json`) → `dsgx.analysis.paper_numbers` → `paper/numbers.tex`
+  (341 macros, `\resX` = value [CI] (n), Val/CI/N(/P); source of each macro in a comment; missing source → red [pending];
+  6 pending: B4/B5 have no attack-success summary) → latexmk (23 pages, 0 warnings). final_report summary.json gains a `paper`
+  block and run-level CIs for single-seed rows (values now match the digest). Paper: Sections 8, App. A, App. D numbers are
+  macros (values unchanged; the Section 8 cross-GPU numbers were recomputed from the two sanity runs and reproduce exactly);
+  abstract, Results I–IV and conclusion drafted from the digest, `\interimnote` on X1 TEST (C-H5), a6-baked (C-H6),
+  TOFU/MUSE re-runs (C-H7). Digest regenerated.

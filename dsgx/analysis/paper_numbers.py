@@ -367,7 +367,7 @@ def a7_diag_numbers(N, path: Path):
     for case, w, dt in (("g2", "GemmaTwo", "float32"), ("g3-1b", "GemmaOne", "float32"), ("g3-4b", "GemmaFour", "bfloat16")):
         al, one = by.get((case, "all", dt)), by.get((case, "one", dt))
         N.text(f"Diag{w}Resid", f"{al['resid']:,.0f}".replace(",", "{,}") if al else None, src + f" {case} resid")
-        N.text(f"Diag{w}Ratio", f"{al['edit_over_resid']:.2f}" if al else None, src + f" {case} edit/resid")
+        N.text(f"Diag{w}Ratio", (f"{al['edit_over_resid']:.1f}" if al['edit_over_resid'] >= 10 else f"{al['edit_over_resid']:.2f}") if al else None, src + f" {case} edit/resid")
         N.text(f"Diag{w}KlAll", f"{al['kl_last']:.2f}" if al else None, src + f" {case} last-token KL, all tokens clamped")
         N.text(f"Diag{w}KlOne", f"{one['kl_last']:.4f}" if one else None, src + f" {case} last-token KL, one token clamped")
 

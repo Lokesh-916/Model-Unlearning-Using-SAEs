@@ -36,6 +36,8 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | Cyber forget-utility Pareto curve (Wave-1 decision) | `paper_assets`: figure `cyber_pareto`, table `tab:cyber-pareto` |
 | MT-Bench (BM3): base / DSG / window-w16, judge gemma-2-9b-it (same family: label every number) | `cluster/mtbench_open.py` (conf mtbench; 4 × 3 h resumable, snapshot code-later7) |
 | skip optimizer state when fetching / prune it on the server in DONE runs | conf `FETCH_EXCLUDE` (a6-lora: `last/trainer.pt`); `ssh gpuws 'PRUNE_ONLY=1 ~/dsg_cluster/slurm/cleanup.sh <job>'` |
+| self-updating paper: every result number regenerated (paper/numbers.tex, one macro per number with CI and n) + PDF rebuilt | `scripts/paper_update.sh [--no-pdf]` (`dsgx.analysis.paper_numbers`; runbook §7) |
+| A7 Gemma 3 diagnosis (clamp scale vs residual norm; a finding, not a bug) | `docs/A7_GEMMA3_DIAGNOSIS.md`, `scripts/diag_gemma3_clamp.py` (CPU) |
 | session 13 re-runs (Trainer accumulation fix): TOFU-full, FP-highlight, MUSE, Q2; `train_version 2` guards | `tofu-full-v3`, `figs-hl`, `muse-v2`, `q2-graphs-v2` sbatch (snapshot code-later8); `cluster/q2_rerun_when_ready.sh`; `cluster/chain_tail.sh` (end of our gpuws chain, for watchers); runbook §5.6 |
 
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`

@@ -291,6 +291,20 @@ for testing), `--out DIR` (default `$DSG_RESULTS`). Re-running is safe; files ar
 The claims table (C-H1 … C-H7) is computed by fixed rules in `dsgx/analysis/claims.py`; every verdict
 cites the runs and numbers it used.
 
+**Self-updating paper (session 17): one command regenerates every number and rebuilds the PDF.**
+```bash
+scripts/paper_update.sh            # final_report --interim (labpc, gpuws) -> paper_numbers/*/summary.json,
+                                   # dsgx.analysis.paper_numbers -> paper/numbers.tex, latexmk -> paper/main.pdf
+scripts/paper_update.sh --no-pdf   # numbers.tex only
+```
+**You should see:** two `claims: ...` lines, `wrote .../paper/numbers.tex: N macros, P pending` (each pending number
+listed with its missing source), `LaTeX warnings: 0`, `built .../main.pdf (NN pages)`. Then
+`git -C ~/projects/mechunlearn-project/paper diff numbers.tex` and commit it in the paper repo. Result numbers in the
+paper are only macros `\resX` (value [CI] (n)), `\resXVal`, `\resXCI`, `\resXN` (diffs also `\resXP`); a missing
+source prints a red [pending]; text resting on unfinished runs is marked `\interimnote{...}` (orange): remove those
+marks when X1 TEST, the TOFU/MUSE re-runs and a6-baked are in and their numbers are no longer pending.
+It never writes `$DSG_RESULTS/summary.json` (the N10 watcher's).
+
 ---
 
 Results digest (end of every session; both machines, CIs, claims):
@@ -402,4 +416,5 @@ anything from `dsg_private/`, `items.parquet` text columns, or generations.
 | combination wave | `python -m dsgx.combine {--dry-run,--enqueue}` |
 | final report | `python -m dsgx.analysis.final_report [--interim]` |
 | paper assets | `python -m dsgx.analysis.paper_assets` |
+| paper numbers + PDF | `scripts/paper_update.sh [--no-pdf]` |
 | qualitative | `python -m dsgx.analysis.qual.<q1_feature_cards,q3_never_learned,q5_geometry,q6_trajectory,annotate>` |
