@@ -546,7 +546,7 @@ the tests the paper did not run.
 
 ---
 
-## 10. What is still running or waiting (as of 2026-10-06 11:00)
+## 10. What is still running or waiting (as of 2026-10-06 10:45)
 - **Lab PC:** X1 TEST (2/33, decides C-H5), then A5, C4, D3 probes, N2/N3/N4/N8; re-queue T3, T5, A8-tables and N10-cards at
   the end (they ran on smoke data). Lab ETA about 1 day.
 - **Server:** a6-baked (151 running; 152 and 160–163 behind another user's jobs) → TOFU-full v3 (167–169) → FP-highlight
