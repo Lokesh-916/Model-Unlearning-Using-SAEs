@@ -38,7 +38,7 @@ Each section heading carries its area.
 | A4 | Linear probes on guarded activations | labpc | **Did not work** (for the thesis) | guarded probe 0.285 vs control 0.249: answers not linearly recoverable |
 | A5 | Membership inference + MUSE | labpc / gpuws | **Pending** | MIA waiting in queue; MUSE re-run 171–173 queued |
 | A6 | Tampering: relearning, quantisation, steering, benign FT | gpuws | **Partly worked** | RMU v2 recovers +0.14–0.16; DSG-nohook = base; LoRA relearning too weak |
-| A7 | DSG on Gemma 3 1B / 4B / 12B | gpuws | **Did not work** | accuracy change 0.000 on all three models (undiagnosed) |
+| A7 | DSG on Gemma 3 1B / 4B / 12B | gpuws | **Did not work** | accuracy change 0.000 on all three models: the fixed −500 clamp is 0.10–0.33× of Gemma 3's residual norm (34× on Gemma 2) |
 | A8 | Latency, VRAM, table generator | both | **Worked** | overhead +1.4–3.1 % (gpuws), +0.04 % forward (labpc) |
 | B1 | Dilution: pad the question with filler | labpc | **Worked** (attack) | attack success 0.909 [0.875, 0.943]; base keeps 0.630 under the same padding |
 | B2 | Decomposition across chat turns | labpc | **Worked** (attack) | attack success 0.694 [0.642, 0.751] (3-turn split) |
@@ -237,10 +237,12 @@ TOFU membership inference is waiting in the lab queue. The MUSE part is BM1 (§8
 TEST, utility, and dilution 400 / 1,600. **Why.** To check that the findings are not specific to Gemma-2-2B (C-H7).
 **Result.** The base models score 0.465 (1B), 0.611 (4B) and 0.714 (12B). With DSG or our gate, **forget accuracy changes
 by 0.000 on every model** (paired Δ 0.000, n 637), although the gate fires on 16–32 % of WMDP items and τ calibrates to
-≈ 0. **Verdict.** Did not work. **Learned.** Either the selected Gemma Scope 2 features are not on the path to the answer at
-those layers, or the clamp does not reach the answer through this model family. A gate that fires without changing a
-single answer points to the second, but this is **not yet diagnosed**. As it stands, DSG's recipe does not transfer to
-Gemma 3, which is itself a generality result.
+≈ 0 (1B: 6 answers change and cancel out; 4B/12B: none). **Verdict.** Did not work. **Learned (diagnosed, session 17,
+`docs/A7_GEMMA3_DIAGNOSIS.md`).** Not a bug: the hook site, the error term and propagation to the next layer all check out.
+DSG's clamp (−500 per feature) is an absolute constant. Gemma 3's residual norm at the Gemma Scope 2 layers is 6,834 (1B) and
+30,931 (4B) against 92 for Gemma 2 at layer 3, so the edit is 0.33× / 0.10× of the residual instead of 34×. One clamped token
+moves the last-token distribution about 9× less (KL 0.0024 vs 0.021). DSG's recipe does not transfer across model families
+unless the clamp is scaled to the residual norm.
 
 ### A8 · Reporting standards and cost · Eval (Amaloch)
 **What.** Latency, VRAM and one table generator. **Result.** Lab PC (50 prompts, debug prints off): forward-pass overhead
@@ -551,5 +553,5 @@ the tests the paper did not run.
   the end (they ran on smoke data). Lab ETA about 1 day.
 - **Server:** a6-baked (151 running; 152 and 160–163 behind another user's jobs) → TOFU-full v3 (167–169) → FP-highlight
   (170) → MUSE v2 (171–173; needs `cleanup a6-baked` first) → Q2 v2 (automatic watcher).
-- **Open diagnosis:** why the A7 gate fires on Gemma 3 without changing any answer.
+- **A7 diagnosed** (session 17): clamp scale vs Gemma 3's residual norm, a finding (no re-run).
 - `python -m dsgx.analysis.results_digest` after each of these; the claims table updates itself.

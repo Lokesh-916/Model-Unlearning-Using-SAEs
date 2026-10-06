@@ -277,3 +277,10 @@ Tests: 107 pass on CPU.
   smoke / archived / unfinished runs). `N10-cards`: deps likewise, methods taken from summary.json; re-queued by
   `scripts/n10_after_x1.sh` (running, nohup) after `final_report --interim` writes summary.json. Old outputs in
   `runs/{T,A8,N10}/_superseded/smoke-inputs-2026-10-04/`. DEVIATIONS row. T5 left (its glob matches no run).
+- **Power cut during Part 1; lab back ~12:37.** Queue recovered (tmux 12:45, doctor clean); unpushed 3d983c1 pushed;
+  `n10_after_x1.sh` and `cluster/q2_rerun_when_ready.sh` restarted (both had died with the reboot).
+- **Part 2 (A7 Gemma 3 diagnosis, `docs/A7_GEMMA3_DIAGNOSIS.md`, `scripts/diag_gemma3_clamp.py`, CPU only):** not a bug.
+  Hook `blocks.<L>.hook_resid_post` valid, error term does not cancel the edit, hooked output feeds layer L+1. Cause: DSG's
+  absolute clamp (−500, unit decoder rows) vs Gemma 3's residual norm (1B L13 6,834; 4B L17 30,931; Gemma 2 L3 92):
+  edit/resid 0.33 / 0.10 vs 33.6; one clamped token moves the last-token distribution ~9× less. Item level: 1B DSG changes 6
+  answers (cancelling), 4B/12B none; non-fired items bit-identical. Reported as a finding; no gpuws re-run queued.
