@@ -231,6 +231,14 @@ held `validate → q2-graphs-v2` once tofu-full v2 is done and MUSE has left the
 5. Regenerate: `python -m dsgx.analysis.results_digest`, then `paper_assets` / `appendix_tables` for the TOFU, MUSE, Q2 and
    FP-highlight assets.
 
+### 5.7 Session 17 (2026-10-06): reporting jobs after X1
+`T-T3` and `A8-tables` are re-queued and depend on all 33 X1 jobs (they start by themselves after `X1-attack-success`).
+`N10-cards` needs a fresh `summary.json`, so a watcher does it:
+`nohup scripts/n10_after_x1.sh >> $DSG_RESULTS/logs/n10_after_x1.log 2>&1 &` (started in session 17; **restart it after a reboot**
+if the log has no `N10-cards re-queued` line). **You should see** in the log: `X1 done; writing summary.json`, then
+`N10-cards re-queued`. If it says `X1 has BAD:FAILED`: `python -m dsgx.queue.doctor`, fix, rerun the watcher.
+T5 is not re-queued: its glob `C2*/*cusum*/traces.npz` matches no run directory (names carry no detector).
+
 ### 5.2 Server results in the report
 Server results land in `$P/dsg_results_cluster/` (same run-directory format). They are reported
 in their own **gpuws** tables and never mixed with lab-PC numbers:

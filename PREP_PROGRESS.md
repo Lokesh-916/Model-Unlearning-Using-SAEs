@@ -271,3 +271,9 @@ Tests: 107 pass on CPU.
   result / verdict / lesson, overview table, claims, and the presentation list.
 - **Found while writing it:** T3, A8-tables, N10-cards ran on smoke runs only (re-queue at the end); A7 gate fires on Gemma 3 but
   changes no answer (undiagnosed); attack success for leetspeak is near the chance level of the base model under the same encoding.
+
+## Session 17 (2026-10-06): reporting jobs after X1, Gemma 3 diagnosis, self-updating paper
+- **Part 1:** `T-T3`, `A8-tables` re-queued (WAITING) with deps on all 33 X1 jobs; T3 re-pinned to exp/T-checks 219ed0e (skips
+  smoke / archived / unfinished runs). `N10-cards`: deps likewise, methods taken from summary.json; re-queued by
+  `scripts/n10_after_x1.sh` (running, nohup) after `final_report --interim` writes summary.json. Old outputs in
+  `runs/{T,A8,N10}/_superseded/smoke-inputs-2026-10-04/`. DEVIATIONS row. T5 left (its glob matches no run).
