@@ -8,6 +8,8 @@ with features and LLR weights from the fine-tuned model's own TOFU cache (forget
 threshold calibrated as in X1 (5% FPR on benign MMLU DEV prompts), evaluated over the full question + answer sequence like
 the DSG hook in A2. Per-item values go to items.parquet (scores only); paired bootstrap differences per condition vs
 `full+dsg` and vs `full`. TOFU authors are fictitious (no hazardous text)."""
+import shutil
+
 import numpy as np
 
 from experiments.A2.tofu import CHAT, _answer_logprob  # noqa: F401  (same scoring as the A2 run)
@@ -30,6 +32,7 @@ def metrics(ctx):
 
     from dsgx.data import activation_cache as ac
     from dsgx.eval.stats import bootstrap_ci, paired_bootstrap
+    from dsgx.itemckpt import ItemCheckpoints
     from dsgx.methods import dsg, gates
     from dsgx.models.loader import get_bundle
     from dsgx.run import resolve_weights
@@ -44,6 +47,7 @@ def metrics(ctx):
     ctx.write_config(None, conditions=conds)
     ctx.progress.update(items_total=len(conds) * (2 * len(fset) + 2 * len(rset)), items_done=0, force=True)
     res, per = {}, {}
+    ck_root = ctx.run_dir() / "partial"
     for c in conds:
         b = get_bundle(weights=resolve_weights(c["weights"], ctx.exp_id))
         m = b.model
@@ -70,24 +74,21 @@ def metrics(ctx):
             v = _answer_logprob(m, q, ans)
             return v
 
-        def truth_ratios(ds):
-            out = []
-            for x in ds:
-                para = np.exp(logp(x["question"], x["paraphrased_answer"]))
-                pert = np.mean([np.exp(logp(x["question"], p)) for p in x["perturbed_answer"]])
-                out.append(pert / max(para, 1e-12))
-                ctx.progress.advance(1)
-            return np.array(out)
+        def truth_ratio(x):
+            para = np.exp(logp(x["question"], x["paraphrased_answer"]))
+            pert = np.mean([np.exp(logp(x["question"], p)) for p in x["perturbed_answer"]])
+            return pert / max(para, 1e-12)
 
-        def answer_probs(ds):
-            out = []
-            for x in ds:
-                out.append(np.exp(logp(x["question"], x["answer"])))
-                ctx.progress.advance(1)
-            return np.array(out)
+        def answer_prob(x):
+            return np.exp(logp(x["question"], x["answer"]))
 
-        tr_f, tr_r = truth_ratios(fset), truth_ratios(rset)
-        ans_f, ans_r = answer_probs(fset), answer_probs(rset)
+        def scored(part, ds, fn):  # item-level checkpoints (scores only), reused after an interruption
+            ck = ItemCheckpoints(ck_root / c["tag"] / part, {"commit": ctx.job.get("commit"), "condition": c,
+                                                             "info": info, "part": part, "n": len(ds)})
+            return np.array(ck.map(list(ds), fn, key=lambda x: x["question"], on_done=ctx.progress.advance))
+
+        tr_f, tr_r = scored("tr_forget", fset, truth_ratio), scored("tr_retain", rset, truth_ratio)
+        ans_f, ans_r = scored("ans_forget", fset, answer_prob), scored("ans_retain", rset, answer_prob)
         m.reset_hooks()
         per[c["tag"]] = {"tr_forget": tr_f, "tr_retain": tr_r, "ans_forget": ans_f, "ans_retain": ans_r}
         util_parts = [float(ans_r.mean()), float(np.clip(1 - tr_r, 0, 1).mean())]
@@ -110,4 +111,5 @@ def metrics(ctx):
     ctx.write_metrics({"conditions": res, "paired": paired, "n_forget": len(fset), "n_retain": len(rset),
                        "models": "lab A2 TOFU fine-tunes (exp/A2 ef5eb17), read via ckpt:A2/"})
     ctx.finish({"view": "tofu-metrics", "forget": None})
+    shutil.rmtree(ck_root, ignore_errors=True)
     return {k: v.get("forget_quality_ks_p") for k, v in res.items()}
