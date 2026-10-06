@@ -40,7 +40,8 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | A7 Gemma 3 diagnosis (clamp scale vs residual norm; a finding, not a bug) | `docs/A7_GEMMA3_DIAGNOSIS.md`, `scripts/diag_gemma3_clamp.py` (CPU) |
 | session 13 re-runs (Trainer accumulation fix): TOFU-full, FP-highlight, MUSE, Q2; `train_version 2` guards | `tofu-full-v3`, `figs-hl`, `muse-v2`, `q2-graphs-v2` sbatch (snapshot code-later8); `cluster/q2_rerun_when_ready.sh`; `cluster/chain_tail.sh` (end of our gpuws chain, for watchers); runbook §5.6 |
 | item-level eval resume (power cuts): chunks in `<run>/partial/`, `DSGX_RESUME_EVERY` (default 200, 0 = off) | `dsgx/run.py` `_score_resumable` (v2-harness caa43d6; `tests/test_resume_items.py`) |
-| A7-scaled: Gemma 3 1B with the norm-scaled clamp (exploratory, lab queue after X1) | `exp/A7-gemma3 configs/experiments/A7-scaled.yaml`, job `A7-scaled-000` |
+| A7-scaled: Gemma 3 1B with the norm-scaled clamp (exploratory; MOVED-TO-SERVER in session 20, runs on gpuws after X1) | `exp/A7-gemma3 configs/experiments/A7-scaled.yaml`, job `A7-scaled-000`, conf a7-scaled |
+| X1 TEST replica on gpuws (same 33 jobs, own comparators, per-machine claims, "X1 replicated on two machines" digest line) | conf `x1` (`cluster/stage_x1.sh`, `lab_jobs.py --group x1`); runbook §5.8 |
 
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
 `calibrate(..., rule="conformal")` (cache key unchanged for the default quantile rule); `dsgx/attacks/transforms.py`
@@ -435,3 +436,14 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   restarts from its last 200-item chunk with identical per-item outputs. Finished runs need no re-run.
 - **A7-scaled-000** queued (lab, after all X1): Gemma 3 1B, clamp −51,650 vs DSG default + base. Exploratory, not a claim input.
 - **Next:** after A7-scaled-000: compare forget/utility of the three runs (labpc only); digest; paper_update after X1 TEST.
+
+### Session 20 — 2026-10-06 17:2x–17:5x (end state)
+- **X1 TEST replica on gpuws:** conf `x1` stages wmdp-corpora bio-retain, translations, B4/B5 caches and the lab A1-dev DEV run
+  configs (select input only); 33 jobs at exp/X1-combine 93625f5 (`LABJOBS_PIN`; lab pinned 4 to aa71469). CPU check on the login node:
+  192 configs resolve, select = n20/rp95/m500 (as on the lab), every attack input loads offline. Snapshot `code-later9` (ce6e211).
+- **A7-scaled-000 MOVED-TO-SERVER** (conf `a7-scaled`, `lab_jobs.py --offline-sae-shapes`); 2 DEVIATIONS rows.
+- **Queue:** 175 tofu-full-v3 R → 176 → 177 figs-hl → **183 validate → 184–186 x1 → 188 a7-scaled → 189 x1 (catch-up)** → 178–180 muse-v2
+  (178 re-pointed to afterany:189). Ours 35 GB, free 68 GB at submit.
+- Digest/claims: X1 per machine; `claims.evaluate` raises on mixed hardware; replication line once both complete.
+- **Next:** runbook §5.8 (fetch/verify/cleanup x1 after 189, a7-scaled after 188), then §5.6 for tofu/figs/muse.
+

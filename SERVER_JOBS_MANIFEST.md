@@ -93,3 +93,14 @@ gemma-2-9b-it, NLLB translations of WMDP-Bio (private).
 Peak while 98–113 run: ours ≈ 42 + 36 ≈ 78 GB (< 100), free ≈ 75 GB (≥ 50). New tools: `cluster/submit_chain.sh`
 (validate first, `afterok` validate + `afterany` previous, `--nice`), `cluster/stage_lab_jobs.sh` (git-archive snapshot
 of a pinned exp commit + job specs), `slurm/later.sh` (snapshot dir, budget = Slurm time left − 12 min).
+
+## Session 20 jobs (2026-10-06; chain 183–189, runbook §5.8)
+
+| job (conf) | script / sbatch | what | staged inputs | ours at peak | est. gpuws |
+|---|---|---|---|---|---|
+| x1 | `cluster/lab_jobs.py --group x1` / `x1` ×3 + 1 catch-up | X1 TEST replica: the lab's 33 jobs (192 runs: base; DSG, default gate, combined = CUSUM gate × 5 seeds; all B attacks) + attack-success, exp/X1-combine 93625f5, own gpuws comparators | wmdp-corpora bio-retain (2.7 GB), translations, B4 rewrites, B5 suffix, A1-dev DEV configs (select input only) | +3 GB | ≈ 5–6 h (lab 16 h) |
+| a7-scaled | `lab_jobs.py --group a7-scaled --offline-sae-shapes` / `a7-scaled` | lab `A7-scaled-000` (MOVED-TO-SERVER): Gemma 3 1B, base / DSG −500 / clamp −51,650, 300 WMDP-Bio TEST + 2 utility subjects | Gemma 3 1B, Gemma Scope 2 1B, L13 cache (2.9 GB) | +3 GB | ≈ 15 min |
+
+`stage_lab_jobs.sh` gained `LABJOBS_PIN` (run a group at one commit that contains every lab pin) and `LABJOBS_REPLICA=1`
+(the lab keeps its jobs). Slurm rejected a 4th chained x1 copy with "Circular job dependency" (long chain with double
+`afterok+afterany` edges); the catch-up copy 189 sits after a7-scaled instead.

@@ -239,6 +239,18 @@ if the log has no `N10-cards re-queued` line). **You should see** in the log: `X
 `N10-cards re-queued`. If it says `X1 has BAD:FAILED`: `python -m dsgx.queue.doctor`, fix, rerun the watcher.
 T5 is not re-queued: its glob `C2*/*cusum*/traces.npz` matches no run directory (names carry no detector).
 
+### 5.8 Session 20 (2026-10-06): X1 TEST replica + A7-scaled on gpuws
+Chain (nice 0): `175–176 tofu-full-v3 → 177 figs-hl → 183 validate → 184–186 x1 → 188 a7-scaled → 189 x1 (catch-up, no-op if
+done) → 178–180 muse-v2`. x1 = the lab's 33 X1 TEST jobs at exp/X1-combine 93625f5 (`cluster/lab_jobs.py --group x1`, status in
+`results/jobs/labjobs-x1/status.json`); the lab X1 keeps running. a7-scaled = the lab job `A7-scaled-000` (MOVED-TO-SERVER).
+1. After 189: `cluster/server.sh fetch x1`, `verify x1` (**you should see** ~192 run dirs + `attack-success` under
+   `dsg_results_cluster/runs/X1`, `HARDWARE.json` = gpuws), then `cleanup x1 --yes` (retain corpus, translations, B4/B5, code-X1-*).
+   If `labjobs-x1/status.json` says `"complete": false`: `ssh gpuws 'cd ~/dsg_cluster/slurm && ./submit.sh x1.sbatch --dependency=afterany:<last of ours>'`.
+2. After 188: `fetch a7-scaled`, `verify a7-scaled`, `cleanup a7-scaled --yes` (Gemma 3 1B + SAE + cache). Do both cleanups before
+   MUSE trains if free space is tight: MUSE's in-job guard needs free − 16 GB ≥ 50 GB.
+3. Digest: `python -m dsgx.analysis.results_digest` reports X1 per machine; once both are 192/192 + attack-success it prints
+   **X1 replicated on two machines** with each machine's own C-H5 verdict (never pooled; `claims.evaluate` refuses mixed hardware).
+
 ### 5.2 Server results in the report
 Server results land in `$P/dsg_results_cluster/` (same run-directory format). They are reported
 in their own **gpuws** tables and never mixed with lab-PC numbers:
