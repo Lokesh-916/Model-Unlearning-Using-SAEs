@@ -313,3 +313,15 @@ Tests: 107 pass on CPU.
   the D1/D2 weights. Ours 47 → 20 GB, `/` free 56 → 83 GB.
 - **Chain (nice 0, not held):** 174 validate EXACT → 175–176 tofu-full-v3 (175 R 17:23, guard ok: free 89, need 16) → 177 figs-hl
   → 178–180 muse-v2. Next: runbook §5.6. `q2_rerun_when_ready.sh` was not running: restart it for the Q2 re-run.
+
+## Session 20 (2026-10-06 17:2x–17:5x): X1 TEST replica + A7-scaled on gpuws
+- **X1 replica** (conf `x1`, commit ce6e211): the lab's 33 X1 TEST jobs (192 runs + attack-success) on gpuws at exp/X1-combine
+  93625f5 with their own gpuws comparators (base, DSG, default gate; combined = CUSUM gate; 5 seeds; all B attacks). Inputs staged:
+  wmdp-corpora bio-retain (2.7 GB), translations, B4 rewrites, B5 suffix, 32 lab A1-dev bio DEV run configs (select input only).
+  Login-node CPU check: 192 configs resolve, select = n20/rp95/m500, every attack loads offline (counts only).
+- **A7-scaled-000** MOVED-TO-SERVER (conf `a7-scaled`; `lab_jobs.py --offline-sae-shapes` for Gemma Scope 2 shapes offline).
+- New: `stage_lab_jobs.sh` LABJOBS_PIN / LABJOBS_REPLICA, `cluster/stage_x1.sh`, digest `x1_machine_lines` (per machine +
+  "X1 replicated on two machines"), `claims.evaluate` refuses mixed hardware. 125 tests pass. Snapshot `code-later9`.
+- **Chain:** 175 R → 176 → 177 figs-hl → 183 validate → 184–186 x1 → 188 a7-scaled → 189 x1 catch-up → 178–180 muse-v2.
+  Slurm refused a 4th consecutive x1 ("Circular job dependency"), hence 189 after a7-scaled. Est.: X1 ≈ 21:30 → ~03:00,
+  A7-scaled ~03:15, MUSE done by ~12:30 on 10-07 (upper bound from time limits). Disk at MUSE start ≈ 72 GB free (guard needs 66).
