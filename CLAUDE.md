@@ -39,14 +39,13 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | self-updating paper: every result number regenerated (paper/numbers.tex, one macro per number with CI and n) + PDF rebuilt | `scripts/paper_update.sh [--no-pdf]` (`dsgx.analysis.paper_numbers`; runbook §7) |
 | A7 Gemma 3 diagnosis (clamp scale vs residual norm; a finding, not a bug) | `docs/A7_GEMMA3_DIAGNOSIS.md`, `scripts/diag_gemma3_clamp.py` (CPU) |
 | session 13 re-runs (Trainer accumulation fix): TOFU-full, FP-highlight, MUSE, Q2; `train_version 2` guards | `tofu-full-v3`, `figs-hl`, `muse-v2`, `q2-graphs-v2` sbatch (snapshot code-later8); `cluster/q2_rerun_when_ready.sh`; `cluster/chain_tail.sh` (end of our gpuws chain, for watchers); runbook §5.6 |
-
 | item-level eval resume (power cuts): chunks in `<run>/partial/`, `DSGX_RESUME_EVERY` (default 200, 0 = off) | `dsgx/run.py` `_score_resumable` (v2-harness caa43d6; `tests/test_resume_items.py`) |
 | A7-scaled: Gemma 3 1B with the norm-scaled clamp (exploratory, lab queue after X1) | `exp/A7-gemma3 configs/experiments/A7-scaled.yaml`, job `A7-scaled-000` |
 
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
 `calibrate(..., rule="conformal")` (cache key unchanged for the default quantile rule); `dsgx/attacks/transforms.py`
 rewrite_cache / suffix accept `exp:` to read another experiment's private artifacts (used by X1).
-Tests: `CUDA_VISIBLE_DEVICES= ~/miniconda3/envs/mechunlearn2/bin/python -m pytest -q tests` = 114 pass on CPU (~9 min; `tests/test_prep_*.py`; server jobs run with a
+Tests: `CUDA_VISIBLE_DEVICES= ~/miniconda3/envs/mechunlearn2/bin/python -m pytest -q tests` = 120 pass on CPU (~9 min; `tests/test_prep_*.py`; server jobs run with a
 tiny random Gemma-2 via `DSG_TINY=1`). Before submitting, also check real (non-tiny) configs on CPU: resolve + `check_runs` (session 8 found
 the multi-topic union-tau bug this way: an activation cache stores fire bits only for its own 2048 candidate features).
 Gotchas found: Neuronpedia's `3-gemmascope-res-16k` is the canonical **l0_59** SAE, not DSG's l0_142 (Q1 only queries
