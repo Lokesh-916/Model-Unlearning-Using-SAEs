@@ -11,6 +11,9 @@ mode="none": the unguarded model through the same loop.
 score_fn (optional): gate score from the per-position fire flags (BOS included as False), compared with `tau`;
 default None = rho (fraction of firing positions), the DSG rule. E.g. the window gate (MT-Bench, session 11):
 lambda fires: gates.score_window(torch.tensor(fires), len(fires), 16) with the threshold from gates.calibrate.
+token_fn (optional): per-position value from the per-feature fire pattern ([L, k] bool -> [L]) stored instead of
+the any-fire flag, so score_fn can use it; e.g. the CUSUM gate's per-token LLR (gates.stream_gate builds both).
+The clamp positions stay "any selected feature fires".
 
 The clamp rule is DSG-faithful: on an active sequence every selected feature is set to
 -multiplier at every position where any selected feature fires; the SAE error is added back.
@@ -35,9 +38,10 @@ class GenResult:
 
 
 class _GateHook:
-    def __init__(self, sae, features, multiplier, tau, score_fn=None):
+    def __init__(self, sae, features, multiplier, tau, score_fn=None, token_fn=None):
         self.sae = sae
         self.score_fn = score_fn
+        self.token_fn = token_fn
         self.feats = list(int(f) for f in features)
         self.mult = float(multiplier)
         self.tau = float(tau)
@@ -59,7 +63,7 @@ class _GateHook:
         err = resid - sae.decode(acts)
         tgt = acts[:, :, feats]
         any_fire = (tgt > 0).any(dim=2)[0]
-        new = any_fire.tolist()
+        new = any_fire.tolist() if self.token_fn is None else [float(v) for v in self.token_fn(tgt[0] > 0)]
         all_f = (self.fires if not full else []) + new
         rho = sum(all_f) / len(all_f) if self.score_fn is None else float(self.score_fn(all_f))
         gate = (rho > self.tau) if self.forced is None else self.forced
@@ -88,7 +92,7 @@ def _end_ids(model):
 
 @torch.no_grad()
 def generate(model, prompt: str, bundle=None, features=None, multiplier=500.0, tau=None,
-             mode: str = "stream", max_new: int = 64, score_fn=None) -> GenResult:
+             mode: str = "stream", max_new: int = 64, score_fn=None, token_fn=None) -> GenResult:
     """Greedy generation (batch 1). `prompt` must already contain the chat template and <bos>."""
     from transformer_lens.cache.key_value_cache import TransformerLensKeyValueCache
 
@@ -98,7 +102,7 @@ def generate(model, prompt: str, bundle=None, features=None, multiplier=500.0, t
     hook = None
     model.reset_hooks()
     if mode != "none":
-        hook = _GateHook(bundle.sae, features, multiplier, tau, score_fn)
+        hook = _GateHook(bundle.sae, features, multiplier, tau, score_fn, token_fn)
         model.add_hook(bundle.hook_name, hook)
 
     def full_pass(seq):

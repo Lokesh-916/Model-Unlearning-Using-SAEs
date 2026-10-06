@@ -291,6 +291,26 @@ def calibrate(bundle, gate: Gate, case: str, fpr: float = 0.05, n_max: int = 100
     return rec
 
 
+def stream_gate(gate: Gate):
+    """(features, threshold, score_fn, token_fn) for dsgx.gen.stream.generate, so a calibrated rho / window /
+    cusum gate decides exactly as Gate.score does on the same positions (position 0 = BOS, never firing).
+    The threshold must be set (calibrate first)."""
+    assert gate.threshold is not None, "calibrate the gate first"
+    if gate.type == "rho":
+        return gate.features, float(gate.threshold), None, None
+    if gate.type == "window":
+        w = int(gate.spec.get("w", 24))
+        return gate.features, float(gate.threshold), (lambda v: score_window(torch.tensor(v), len(v), w)), None
+    if gate.type == "cusum":
+        drift = float(gate.spec.get("drift", 0.0))
+
+        def token_fn(fire_feat):
+            return token_llr(fire_feat, gate.w1, gate.w0).tolist()
+
+        return gate.features, float(gate.threshold), (lambda v: score_cusum(torch.tensor(v), len(v), drift)[0]), token_fn
+    raise ValueError(f"gate type {gate.type} has no streaming form")
+
+
 # ----------------------------------------------------------------------------- interventions
 class Intervention:
     def __init__(self, spec: dict, gate: Gate):
