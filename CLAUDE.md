@@ -398,7 +398,7 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   release watcher as `WAIT_USER=anish EVERY=120 CLEAR_CHECKS=1 nohup cluster/release_when_free.sh >> ~/release_after_anish.log`
   (new `WAIT_USER` option, ssh timeouts, empty-reply retry); `q2_rerun_when_ready.sh`. gpuws: anish 149 R; ours 134–137, 150–163 held.
 
-### Session 16 — 2026-10-06 10:20–xx:xx (end state)
+### Session 16 — 2026-10-06 10:20–10:45 (end state)
 - **Re-run chain did not run:** 154–155 tofu-full-v3 and 157–159 muse-v2 refused at their in-job disk guard (free 65 GB − 16 GB
   < 50 GB floor: the MT-Bench judge 18 GB and a6-baked inputs were staged at the same time); 156 figs-hl was a no-op (no TOFU model).
   134–137 mtbench and 150 validate (EXACT) done; 151 a6-baked running (27 of 33 cells done at 10:35), 152/160–163 behind anish's jobs.
@@ -413,4 +413,5 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
 - **Found:** T3, A8-tables and N10-cards ran 2026-10-04 10:41 right after the Wave-1 resume and read only smoke runs; T5 found no
   traces (n_series 0); T4 is a stub. Re-queue them at the end (`doctor --requeue T-T3 A8-tables N10-cards`). A7: DSG and the window
   gate leave Gemma 3 1B/4B/12B accuracy exactly unchanged although the gate fires on 16–32 % of WMDP items (undiagnosed).
-- Report: `$DSG_RESULTS/IMPROVEMENTS_REPORT.md` (every experiment, both machines, verdicts, presentation list).
+- Report: `$DSG_RESULTS/IMPROVEMENTS_REPORT.md` (copy `docs/IMPROVEMENTS_REPORT.md`): every experiment, both machines, verdicts, presentation list.
+- **Next:** after 163: `fetch a6-baked`, `verify`, `cleanup a6-baked --yes` (before MUSE 171 starts); after 169/170/173: runbook 5.6; digest.
