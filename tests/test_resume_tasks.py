@@ -28,7 +28,7 @@ def _h(s: str) -> int:
     return int(hashlib.sha256(s.encode()).hexdigest()[:8], 16)
 
 
-def _fake_generate(model, prompt, bundle=None, features=None, multiplier=500.0, tau=None, mode="stream", max_new=64):
+def _fake_generate(model, prompt, bundle=None, features=None, multiplier=500.0, tau=None, mode="stream", max_new=64, **kw):
     """Deterministic per (prompt, mode); SIGKILLs the process at the kill_at-th generation."""
     STATE["generated"] += 1
     if STATE["generated"] == STATE["kill_at"]:
