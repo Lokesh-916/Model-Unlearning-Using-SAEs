@@ -305,3 +305,11 @@ Tests: 107 pass on CPU.
 - **A7-scaled** (exp/A7-gemma3 2b9e9f4, job A7-scaled-000, deps all 33 X1 jobs, ~28 min): Gemma 3 1B, clamp −51,650
   (= 500 × 33.573 / 0.325) vs DSG default and base, 300 WMDP-Bio TEST + 211 utility items, labpc. Exploratory, exp id
   outside C-H7. DEVIATIONS: 2 rows.
+
+## Session 19 (2026-10-06 17:1x): a6-baked fetched + cleaned, re-run chain resubmitted at nice 0
+- Chain 167–173 had refused at the in-job disk guard (free 60 GB, ours 50 GB). a6-baked (151/152/160–163) was COMPLETE (33/33 DONE):
+  conf now has `FETCH_EXCLUDE="last/trainer.pt"` (d938305; 13 GB LoRA optimizer state, lab only 57 GB free); fetched + verified
+  428 files (bbe95b8a…, 31 MB), `cleanup a6-baked --yes`: D1 9.9 G, D2 5.0 G, code-A6-c2472e5, 27 trainer.pt (DONE runs). Lab keeps
+  the D1/D2 weights. Ours 47 → 20 GB, `/` free 56 → 83 GB.
+- **Chain (nice 0, not held):** 174 validate EXACT → 175–176 tofu-full-v3 (175 R 17:23, guard ok: free 89, need 16) → 177 figs-hl
+  → 178–180 muse-v2. Next: runbook §5.6. `q2_rerun_when_ready.sh` was not running: restart it for the Q2 re-run.
