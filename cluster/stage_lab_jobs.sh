@@ -54,6 +54,14 @@ for j in sorted(specs, key=key):
     visit(j)
 snap = f"{specs[order[0]]['exp_id']}-{commit[:7]}"
 for j, s in specs.items():
+    # a hand-enqueued job may carry an absolute lab config_path (A7-scaled-000, job 188): make it relative to the
+    # worktree, else the worker's leakage check opens a lab-PC path on gpuws
+    cp = s.get("config_path") or ""
+    if cp.startswith("/"):
+        wt = (s.get("worktree") or "").rstrip("/") + "/"
+        if not cp.startswith(wt):
+            sys.exit(f"{j}: absolute config_path outside its worktree: {cp}")
+        s["config_path"] = cp[len(wt):]
     s = dict(s, pinned_commit=commit, commit=None, worktree=f"/home/suraj/dsg_cluster/code-{snap}",
              moved_to_server={"group": group, "lab_worktree": s.get("worktree"), "lab_commit": s.get("commit"),
                               "replica": replica})

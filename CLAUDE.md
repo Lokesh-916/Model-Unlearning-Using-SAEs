@@ -492,3 +492,12 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
 - **gpuws:** `cluster/after_muse_submit.sh` running (nohup, lab PC): MT-Bench cusum + Q2 watcher start by themselves after MUSE-v2.
   Snapshot code-later10 staged. Restart the watcher after a reboot (runbook §5.9).
 
+
+### Session 25 — 2026-10-07 00:10–00:3x (end state)
+- **X1 replica on gpuws COMPLETE** (33/33 DONE, 192/192 runs + attack-success): 184 ran 20 jobs (INCOMPLETE by budget, as designed),
+  185 finished the other 13 at 00:00:53 (not a timeout); 186/189 were no-ops ("33 done"). Fetched + verified (1276 files, listing
+  53e52880…); not cleaned (after_muse_submit.sh cleans x1). Digest regenerated: **C-H5 gpuws Not supported** (cusum wins B1/B2/B5, not all).
+- **188 A7-scaled failed in 6 s:** spec `config_path` was an absolute lab-PC path (hand-enqueued in session 18); the worker's leakage
+  check opened it on gpuws. Fix: `stage_lab_jobs.sh` makes it relative; staged spec patched (backup `labjobs/a7-scaled/*.bak-188`);
+  `check_job` → 0 errors on the login node. Resubmitted **190 a7-scaled** (nice 0, afterany:178); **179 re-pointed to afterany:190**.
+- **Queue:** 178 muse-v2 R → 190 a7-scaled → 179 → 180; after_muse_submit.sh then appends MT-Bench cusum behind the tail (stays last).
