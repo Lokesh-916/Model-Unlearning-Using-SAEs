@@ -326,10 +326,63 @@ def server_jobs_section(root: Path) -> list[str]:
         L += [f"**D1 v2 DEV selection** (rule: {sel.get('rule')}): selected α = {sel.get('selected_alpha')}, "
               f"bound met: {sel.get('bound_met')}. Base DEV forget {sel['base_dev']['forget']:.3f}, utility {sel['base_dev']['utility']:.3f}.", ""]
         L += md_table(["α", "DEV forget", "DEV utility (excl. hs_geography)", "utility drop", "eligible"], rows)
+    L += mtbench_section(jobs)
     v = read(jobs / "validate" / "validate.json")
     if v:
         L += [f"**Server sanity gate (sanity-gpuws, exact):** last validate `{json.dumps(v.get('got', v))[:260]}`", ""]
     return L
+
+
+def mtbench_section(jobs: Path, n_boot=2000) -> list[str]:
+    """BM3 MT-Bench: judge score per condition (summary.json) and paired differences vs base on the same
+    (question, turn); only the `score` field of the judgment files is read."""
+    s = read(jobs / "mtbench" / "summary.json")
+    if not s:
+        return []
+    L = [f"**MT-Bench (BM3, gpuws):** judge `{s.get('judge')}`, same-family judge: {s.get('same_family_judge')} "
+         f"(self-preference possible; absolute scores not comparable with the paper's GPT-4-judged 7.78). Score 1–10, "
+         "bootstrap CI over (question, turn).", ""]
+    sc = s.get("scores") or {}
+    L += md_table(["condition", "all", "turn 1", "turn 2", "unparsed"],
+                  [[k, ci(v.get("all"), 2), ci(v.get("turn1"), 2), ci(v.get("turn2"), 2), v.get("unparsed")] for k, v in sc.items()
+                   if isinstance(v, dict) and "all" in v])
+    by = {}
+    for f in sorted((jobs / "mtbench").glob("judgments_*.jsonl")):
+        cond = f.name[len("judgments_"):].split("__")[0]
+        d = {}
+        for line in f.read_text().splitlines():
+            try:
+                r = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(r.get("score"), (int, float)) and r["score"] >= 0:
+                d[(r["question_id"], r["turn"])] = float(r["score"])
+        by[cond] = d
+    rows = []
+    for cond in sorted(c for c in by if c != "base"):
+        keys = sorted(set(by[cond]) & set(by.get("base", {})))
+        diffs = np.asarray([by[cond][k] - by["base"][k] for k in keys])
+        if len(diffs):
+            b = boot(diffs, n_boot)
+            m = diffs[np.random.default_rng(0).integers(0, len(diffs), (n_boot, len(diffs)))].mean(1)
+            p = float(min(1.0, 2 * min((m <= 0).mean(), (m >= 0).mean())))
+            rows.append([f"{cond} − base", f"{b['mean']:+.3f} [{b['lo']:+.3f}, {b['hi']:+.3f}]", f"{p:.3g}",
+                         int((diffs != 0).sum()), len(diffs)])
+    if rows:
+        L += ["Paired difference vs base (same question and turn; two-sided bootstrap p):", ""]
+        L += md_table(["comparison", "Δ score", "bootstrap p", "pairs that differ", "n"], rows)
+    return L
+
+
+def x1_status() -> tuple[str, dict]:
+    """(one-line X1 combination-wave status, selected slots) from the lab DEV selection, if it exists."""
+    sel = read(paths.results_dir() / "runs" / "X1-screen" / "select" / "COMBINE_SELECTION.json")
+    if not sel:
+        return "X1 (combination wave): DEV selection not run yet.", {}
+    slots = sel.get("slots") or {}
+    picked = ", ".join(f"{k} = {v or 'default'}" for k, v in slots.items())
+    return (f"X1 DEV selection done {str(sel.get('time', ''))[:16]} (labpc): {picked}. The combined method's TEST runs "
+            "(X1 on labpc) decide the verdict once they finish."), slots
 
 
 # ----------------------------------------------------------------------------- claims
@@ -381,7 +434,9 @@ def claims_section(lab, gpu, lab_paired, gpu_paired, a6, tofu, st_lab, st_gpu) -
     if not any("dsg" in x for x in ev["C-H3"]):
         ev["C-H3"].append("The rule also needs the DSG-guarded probe (A4/D3, not finished yet).")
     g = [r for r in (gpu or []) if r.base_exp == "C3" and r.name == "auroc"]
-    ev["C-H5"].append("X1 (combination wave) not run. Ingredients so far (gpuws): C3 gate AUROC by layer (table above); RMU v2 "
+    x1_line, _ = x1_status()
+    ev["C-H5"].append(x1_line)
+    ev["C-H5"].append("Ingredients so far (gpuws): C3 gate AUROC by layer (table above); RMU v2 "
                       "matches DSG's TEST forget accuracy without a gate (paired Δ in the RMU v2 table) at a significant "
                       "full-MMLU cost; FP-static / FP-multitopic tables above.")
     for (exp, cond), xs in sorted(a6.items()):
@@ -411,7 +466,7 @@ def claims_section(lab, gpu, lab_paired, gpu_paired, a6, tofu, st_lab, st_gpu) -
         ev["C-H7"].append("TOFU (labpc, A2): model utility " + ", ".join(
             f"{k} {v.get('model_utility'):.3f}" for k, v in c.items() if isinstance(v, dict) and v.get("model_utility") is not None)
             + f"; conditions {', '.join(c)}"
-            + ("." if any("gate" in k or "fix" in k for k in c) else " (no best-fix condition yet: X1 not run)."))
+            + ("." if any("gate" in k or "fix" in k for k in c) else " (no best-fix condition yet: X1 TEST not finished)."))
     a7 = have("A7", "A7-1b", "A7-4b", "A7-12b")
     ev["C-H7"].append(f"A7 (Gemma 3) results present on {', '.join(a7)}." if a7 else
                       "No A7 (Gemma 3) result yet (job 110 failed offline; fixed and queued on gpuws in session 10).")

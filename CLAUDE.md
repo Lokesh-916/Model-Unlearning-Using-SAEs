@@ -41,7 +41,7 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
 `calibrate(..., rule="conformal")` (cache key unchanged for the default quantile rule); `dsgx/attacks/transforms.py`
 rewrite_cache / suffix accept `exp:` to read another experiment's private artifacts (used by X1).
-Tests: `CUDA_VISIBLE_DEVICES= ~/miniconda3/envs/mechunlearn2/bin/python -m pytest -q tests` = 112 pass on CPU (~9 min; `tests/test_prep_*.py`; server jobs run with a
+Tests: `CUDA_VISIBLE_DEVICES= ~/miniconda3/envs/mechunlearn2/bin/python -m pytest -q tests` = 114 pass on CPU (~9 min; `tests/test_prep_*.py`; server jobs run with a
 tiny random Gemma-2 via `DSG_TINY=1`). Before submitting, also check real (non-tiny) configs on CPU: resolve + `check_runs` (session 8 found
 the multi-topic union-tau bug this way: an activation cache stores fire bits only for its own 2048 candidate features).
 Gotchas found: Neuronpedia's `3-gemmascope-res-16k` is the canonical **l0_59** SAE, not DSG's l0_142 (Q1 only queries
@@ -389,3 +389,28 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   **C-H2 labpc Supported** by its unchanged rule (5 conditions; max B2 decompose split k3 0.694 [0.642, 0.751], B3 spaced 0.449
   [0.389, 0.509], n 265). C-H7 Inconclusive on both machines (no best-fix TOFU condition: X1 not run).
 - **Next:** session 13's runbook §5.6 items; digest after every session.
+
+### Session 15 — 2026-10-05 21:29–21:4x (end state)
+- **Lab power cut ~14:00, rebooted ~20:35.** `scripts/reboot_recover.sh`: tmux back (dsg-monitor/queue/workers); doctor re-queued
+  X1-screen-000 (interrupted) + X1-screen-select (blocked). Canary sanity PASS (labpc); preflight --skip-sanity all PASS except the
+  canary's own GPU process. X1-screen-000 running again (fresh heartbeat). Lab ETA ~14h32m. Lab free 60 GiB (at the line).
+- **Watchers:** a6_baked_d1 and x1_enqueue had finished before the cut (chain 160–163 submitted; X1 enqueued 13:46). Restarted:
+  release watcher as `WAIT_USER=anish EVERY=120 CLEAR_CHECKS=1 nohup cluster/release_when_free.sh >> ~/release_after_anish.log`
+  (new `WAIT_USER` option, ssh timeouts, empty-reply retry); `q2_rerun_when_ready.sh`. gpuws: anish 149 R; ours 134–137, 150–163 held.
+
+### Session 16 — 2026-10-06 10:20–xx:xx (end state)
+- **Re-run chain did not run:** 154–155 tofu-full-v3 and 157–159 muse-v2 refused at their in-job disk guard (free 65 GB − 16 GB
+  < 50 GB floor: the MT-Bench judge 18 GB and a6-baked inputs were staged at the same time); 156 figs-hl was a no-op (no TOFU model).
+  134–137 mtbench and 150 validate (EXACT) done; 151 a6-baked running (27 of 33 cells done at 10:35), 152/160–163 behind anish's jobs.
+- **Fetched + verified:** mtbench (7 files, 525d7a71…); `cleanup mtbench --yes` (judge 18 GB) → ours 44 GB, free 68 GB.
+  MT-Bench (judge gemma-2-9b-it, same family): base 7.46 [7.07, 7.83], DSG 7.36, window-w16 7.37 (n 158); paired Δ −0.09/−0.09
+  (p 0.29/0.30): only 2–3 of 158 (question, turn) scores differ, i.e. the gate almost never fires on MT-Bench.
+- **Resubmitted** (`--nice=10000`, not held) behind 163: **167 validate → 168–169 tofu-full-v3 → 170 figs-hl → 171–173 muse-v2**.
+  MUSE needs a6-baked cleaned first (else its guard refuses again): after 163, `fetch a6-baked`, `verify`, `cleanup a6-baked --yes`.
+  q2_rerun_when_ready.sh restarted (it had exited at 01:05 when 154–159 left without train_version-2 metrics).
+- **X1 DEV selection** (09:19): detector = **cusum**; features, threshold, intervention, baked = default. X1 TEST running (2/33).
+- Digest: MT-Bench table + paired Δ, X1 status line (`results_digest.mtbench_section`, `x1_status`; 2 tests).
+- **Found:** T3, A8-tables and N10-cards ran 2026-10-04 10:41 right after the Wave-1 resume and read only smoke runs; T5 found no
+  traces (n_series 0); T4 is a stub. Re-queue them at the end (`doctor --requeue T-T3 A8-tables N10-cards`). A7: DSG and the window
+  gate leave Gemma 3 1B/4B/12B accuracy exactly unchanged although the gate fires on 16–32 % of WMDP items (undiagnosed).
+- Report: `$DSG_RESULTS/IMPROVEMENTS_REPORT.md` (every experiment, both machines, verdicts, presentation list).
