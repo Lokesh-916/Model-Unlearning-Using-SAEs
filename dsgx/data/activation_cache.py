@@ -32,13 +32,20 @@ PARTS = ("forget", "retain")
 
 
 def model_tag(bundle) -> str:
-    """Cache identity of the model: name, plus the checkpoint basename for alternate weights."""
+    """Cache identity of the model: name, plus the checkpoint basename for alternate weights.
+    A checkpoint of a smoke experiment (parent folder '<EXP>-smoke') is tagged '<EXP>-smoke.<basename>': before
+    2026-10-06 the basename alone made $DSG_CACHE/models/A2-smoke/tofu_full and models/A2/tofu_full share one cache,
+    so the real A2 TOFU runs read features built on the 4-step smoke model. Keys of non-smoke checkpoints are unchanged."""
     w = (getattr(bundle, "meta", None) or {}).get("weights")
     if not w:
         return bundle.model_name
     import os
 
-    return f"{bundle.model_name}@{os.path.basename(str(w).rstrip('/'))}"
+    p = str(w).rstrip("/")
+    base, parent = os.path.basename(p), os.path.basename(os.path.dirname(p))
+    if parent.endswith("-smoke"):
+        base = f"{parent}.{base}"
+    return f"{bundle.model_name}@{base}"
 
 
 def cache_key(model_name, sae_release, sae_id, forget, retain, seed, dataset_size, seq_len) -> str:
