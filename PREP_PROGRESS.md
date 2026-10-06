@@ -360,7 +360,7 @@ Tests: 107 pass on CPU.
   selection, already in X1-suite.yaml, the gate threshold cached from MMLU DEV, recomputed if absent, and DSG computed in the same
   runs, not any lab X1 TEST run); X1-suite-paired keeps X1-022 + X1-023 (the combined-hardneg TEST runs it compares) →
   (b) X1-022, X1-023 (wave 6), then the other lab X1 jobs (second-machine replication of gpuws) → (c) A8 (wave 8), T3, D3, A5,
-  N2–N4 (deps / should) → (d) C4, N8 (stretch: run last). Doctor: 0 deadlocks. Simulated (estimates): (a) ~07:35 Wed,
-  paired ~11:20, (b) ~18:30, (c) ~20:15, (d) ~22:05.
+  N2–N4 (deps / should) → (d) C4, N8 (stretch: run last). Doctor: 0 deadlocks. Simulated at 22:20 (estimates; X1-012 had finished, A2-tofu-metrics running): (a) ~05:35 Wed,
+  paired ~09:25, (b) ~16:30, (c) ~18:20, (d) ~20:10.
 - **gpuws:** `cluster/after_muse_submit.sh` (nohup) — after MUSE-v2: fetch/verify/cleanup x1, a7-scaled, muse → stage + submit
   mtbench-x1 (validate → 2 × mtbench-x1) behind our chain → start the Q2 watcher. Snapshot code-later10 staged.
