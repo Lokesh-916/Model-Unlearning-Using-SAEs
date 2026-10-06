@@ -294,3 +294,14 @@ Tests: 107 pass on CPU.
   macros (values unchanged; the Section 8 cross-GPU numbers were recomputed from the two sanity runs and reproduce exactly);
   abstract, Results I–IV and conclusion drafted from the digest, `\interimnote` on X1 TEST (C-H5), a6-baked (C-H6),
   TOFU/MUSE re-runs (C-H7). Digest regenerated.
+
+## Session 18 (2026-10-06): item-level resume (power cuts), A7-scaled follow-up
+- **Resume:** v2-harness caa43d6, `dsgx.run.run` checkpoints every ~200 items (whole batches) to `<run>/partial/*.pkl`
+  (atomic, fsync), reused on restart if the fingerprint matches (dataset, ids, prompt hashes, batch size, bounds); removed
+  at DONE; `DSGX_RESUME_EVERY=0` disables. Tests: SIGKILL mid-forget and mid-utility vs an uninterrupted run (items.parquet,
+  traces.npz, metrics minus timing identical) + stale-chunk test; real Gemma-2-2B + DSG on CPU bit-identical.
+  Queue paused only between jobs (X1-004 finished, not restarted) → `sync_harness.sh` merged all 35 exp worktrees,
+  re-pinned waiting jobs (X1 → 93625f5) → resumed; X1-002 writes chunks. Merged into prep (0a62385). 120 tests pass.
+- **A7-scaled** (exp/A7-gemma3 2b9e9f4, job A7-scaled-000, deps all 33 X1 jobs, ~28 min): Gemma 3 1B, clamp −51,650
+  (= 500 × 33.573 / 0.325) vs DSG default and base, 300 WMDP-Bio TEST + 211 utility items, labpc. Exploratory, exp id
+  outside C-H7. DEVIATIONS: 2 rows.

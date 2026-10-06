@@ -40,6 +40,9 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | A7 Gemma 3 diagnosis (clamp scale vs residual norm; a finding, not a bug) | `docs/A7_GEMMA3_DIAGNOSIS.md`, `scripts/diag_gemma3_clamp.py` (CPU) |
 | session 13 re-runs (Trainer accumulation fix): TOFU-full, FP-highlight, MUSE, Q2; `train_version 2` guards | `tofu-full-v3`, `figs-hl`, `muse-v2`, `q2-graphs-v2` sbatch (snapshot code-later8); `cluster/q2_rerun_when_ready.sh`; `cluster/chain_tail.sh` (end of our gpuws chain, for watchers); runbook §5.6 |
 
+| item-level eval resume (power cuts): chunks in `<run>/partial/`, `DSGX_RESUME_EVERY` (default 200, 0 = off) | `dsgx/run.py` `_score_resumable` (v2-harness caa43d6; `tests/test_resume_items.py`) |
+| A7-scaled: Gemma 3 1B with the norm-scaled clamp (exploratory, lab queue after X1) | `exp/A7-gemma3 configs/experiments/A7-scaled.yaml`, job `A7-scaled-000` |
+
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
 `calibrate(..., rule="conformal")` (cache key unchanged for the default quantile rule); `dsgx/attacks/transforms.py`
 rewrite_cache / suffix accept `exp:` to read another experiment's private artifacts (used by X1).
@@ -427,3 +430,9 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   remove interim marks. Paper commit 563dec7 (draft).
 - Note: prep commit "Paper update command documented…" carries both co-author trailers although it is docs/tests only (pushed; left
   as is, rule 4).
+
+### Session 18 — 2026-10-06 14:15–15:0x (end state)
+- **Item-level resume** live in every exp worktree (sync at a between-jobs pause; X1-004 not restarted). A killed eval
+  restarts from its last 200-item chunk with identical per-item outputs. Finished runs need no re-run.
+- **A7-scaled-000** queued (lab, after all X1): Gemma 3 1B, clamp −51,650 vs DSG default + base. Exploratory, not a claim input.
+- **Next:** after A7-scaled-000: compare forget/utility of the three runs (labpc only); digest; paper_update after X1 TEST.
