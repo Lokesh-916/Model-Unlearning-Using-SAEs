@@ -470,7 +470,7 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
 - **Lab queue:** X1-suite (6 jobs, deps = all 33 X1 jobs) at exp/X1-suite d150011 (new worktree `dsg_worktrees/exp/X1-suite`):
   open-ended benign bio + B6 leakage/gibberish + TOFU metrics/QA (lab A2 models) + paired tests (incl. X1 hardneg MCQ per seed).
   Harness: streaming gate for any calibrated gate (`stream.generate token_fn`, `gates.stream_gate`, openqa `gated`), f987859.
-- **Found + fixed:** lab A2 TOFU DSG used a cache built on the A2-smoke model (basename key collision); `model_tag` fix 1ad6454; stale cache
+- **Found + fixed:** lab A2 TOFU DSG used a cache built on the A2-smoke model (basename key collision); `model_tag` fix 14e23fe (exp/X1-suite 1ad6454); stale cache
   moved to `actcache/_superseded/`; X1-suite recomputes full+dsg. Re-running A2 tofu-metrics/qa = user decision. DEVIATIONS (2 rows).
 - **gpuws:** nothing staged or submitted. MT-Bench cusum (conf mtbench-x1, snapshot later10) after MUSE-v2 (runbook §5.9). Latency of the
   identical gate already measured (FP-latency): overhead 1.6% vs DSG 2.2% at 512 tokens.
