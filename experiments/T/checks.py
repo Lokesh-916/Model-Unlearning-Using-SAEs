@@ -58,6 +58,9 @@ def t3(ctx):
     """Gate FPR/FNR on every evaluated set vs the leakage<=FNR, damage<=FPR relations (from gate stats)."""
     rows = []
     for d, df, cfg in _runs("*/*gated*", ["gate_fired", "dataset", "correct", "in_dsg_subset"]):
+        # real runs only: skip *-smoke experiments, archived/superseded dirs and unfinished runs
+        if d.parent.name.endswith("-smoke") or d.parent.name.startswith("_") or not (d / "DONE").exists():
+            continue
         fd = set(cfg.get("forget_datasets", ["wmdp-bio", "wmdp-cyber"]))
         for ds, g in df.groupby("dataset"):
             benign = ds not in fd
