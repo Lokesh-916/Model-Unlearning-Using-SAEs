@@ -7,9 +7,15 @@ A config here is one *resolved run config* (see dsgx.config.expand for experimen
 Two evaluation views are always computed when possible: raw accuracy on the split, and the
 DSG subset (items the base model gets right under all 24 answer permutations).
 """
+import hashlib
 import json
+import os
+import pickle
+import re
 import resource
+import shutil
 import time
+from pathlib import Path
 
 import numpy as np
 
@@ -22,6 +28,7 @@ from dsgx.eval.mcq_eval import prob_features, score_prompts
 from dsgx.logging.run_logger import RunLogger
 from dsgx.methods.registry import make_method
 from dsgx.models.loader import LOAD_COUNTS, get_bundle
+from dsgx.util import atomic_write_bytes
 
 DEFAULT_MODEL = {"name": "gemma-2-2b-it", "sae_release": "gemma-scope-2b-pt-res",
                  "sae_id": "layer_3/width_16k/average_l0_142", "dtype": "bfloat16"}
@@ -157,6 +164,49 @@ def _acc_block(correct_by_ds: dict, forget: list[str], n_boot: int) -> dict:
     return out
 
 
+PARTIAL_DIR = "partial"
+
+
+def _resume_chunk(batch_size: int) -> int:
+    """Items per checkpoint: ~DSGX_RESUME_EVERY (default 200), rounded up to whole batches so the
+    batches (and their padding) are the same as in an uninterrupted run. 0 = no checkpoints."""
+    every = int(os.environ.get("DSGX_RESUME_EVERY", "200"))
+    return -(-every // batch_size) * batch_size if every > 0 else 0
+
+
+def _score_resumable(pdir, ds, ids, prompts, model, batch_size, method, on_batch=None):
+    """score_prompts in chunks; each finished chunk is written atomically to <run>/partial/ and
+    reused on restart when its fingerprint (dataset, item ids, prompt hashes, batch size, chunk
+    bounds) matches. Batches never straddle chunks, so outputs equal one uninterrupted call."""
+    chunk = _resume_chunk(batch_size)
+    if not chunk or not prompts:
+        return score_prompts(model, list(prompts), batch_size, method, on_batch=on_batch)
+    tag = hashlib.sha256(json.dumps([ds, list(map(int, ids)), batch_size, chunk,
+                                     [hashlib.sha256(p.encode()).hexdigest() for p in prompts]]).encode()).hexdigest()
+    probs, recs, lens = [], [], []
+    for s in range(0, len(prompts), chunk):
+        e = min(s + chunk, len(prompts))
+        f = Path(pdir) / f"{re.sub(r'[^A-Za-z0-9.+-]+', '-', ds)}__{s:06d}.pkl"
+        part = None
+        try:
+            part = pickle.loads(f.read_bytes())
+            if part.get("tag") != tag or (part["start"], part["end"]) != (s, e):
+                part = None
+        except (OSError, pickle.UnpicklingError, EOFError, KeyError, AttributeError, ValueError):
+            part = None
+        if part is None:
+            p, r, n = score_prompts(model, list(prompts[s:e]), batch_size, method,
+                                    on_batch=(lambda k, s=s: on_batch(s + k)) if on_batch else None)
+            part = {"tag": tag, "start": s, "end": e, "probs": p, "recs": r, "lens": n}
+            atomic_write_bytes(f, pickle.dumps(part, protocol=4))
+        elif on_batch:
+            on_batch(e)
+        probs.append(part["probs"])
+        recs.extend(part["recs"])
+        lens.extend(part["lens"])
+    return np.concatenate(probs).astype(np.float32, copy=False), recs, lens
+
+
 def run(cfg: dict, progress=None, force: bool = False):
     """Run one resolved config; returns the run directory. Skips runs already DONE."""
     import torch
@@ -203,8 +253,8 @@ def run(cfg: dict, progress=None, force: bool = False):
             ids = [i for i, _, _ in pairs]
             prompts, infos = [p for _, p, _ in pairs], [inf for _, _, inf in pairs]
             base = progress.state["items_done"] if progress else 0
-            probs, recs, lens = score_prompts(
-                bundle.model, list(prompts), c["batch_size"], method,
+            probs, recs, lens = _score_resumable(
+                log.dir / PARTIAL_DIR, ds, ids, prompts, bundle.model, int(c["batch_size"]), method,
                 on_batch=(lambda k: progress.update(items_done=base + k)) if progress else None)
             n_prompt_tokens += sum(lens)
             ent, margin = prob_features(probs) if len(ids) else ([], [])
@@ -268,6 +318,7 @@ def run(cfg: dict, progress=None, force: bool = False):
                 "utility_unweighted": (view["utility"] or {}).get("unweighted"),
                 "view": "dsg_subset" if "dsg_subset" in metrics["views"] else "raw"}
     log.mark_done(headline)
+    shutil.rmtree(log.dir / PARTIAL_DIR, ignore_errors=True)
     if progress:
         progress.update(current_metric=_fmt_headline(headline), force=True)
         progress.drop_path(str(log.dir / "progress.json"))
