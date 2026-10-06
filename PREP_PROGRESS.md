@@ -325,3 +325,11 @@ Tests: 107 pass on CPU.
 - **Chain:** 175 R → 176 → 177 figs-hl → 183 validate → 184–186 x1 → 188 a7-scaled → 189 x1 catch-up → 178–180 muse-v2.
   Slurm refused a 4th consecutive x1 ("Circular job dependency"), hence 189 after a7-scaled. Est.: X1 ≈ 21:30 → ~03:00,
   A7-scaled ~03:15, MUSE done by ~12:30 on 10-07 (upper bound from time limits). Disk at MUSE start ≈ 72 GB free (guard needs 66).
+
+## Session 21 (2026-10-06): digest, SRW version, arXiv build, release package
+- Digest regenerated: C-H6 (gpuws) Not supported; `results_digest` prints the "needs a6-baked cells" line only while they are missing.
+- `paper-srw` (EACL 2027 SRW, ACL template, anonymous; `build.sh` checks refs, overfull boxes, content pages, anonymity, sections,
+  fonts); `scripts/paper_update.sh` rebuilds it after the TMLR PDF.
+- `paper/scripts/arxiv_build.sh` ([preprint], stripped comments/todos, arXiv-style recompile, scan; no upload).
+- `scripts/build_release.py` + `scripts/release_scan.py` → `~/projects/mechunlearn-project/release` (scan OK, incl. private-content check).
+

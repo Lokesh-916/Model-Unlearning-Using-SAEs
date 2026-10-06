@@ -4,6 +4,7 @@
 #      (a side folder: $DSG_RESULTS/summary.json stays the N10 watcher's; lab PC and gpuws never mixed)
 #   2. dsgx.analysis.paper_numbers -> paper/numbers.tex (one \newcommand per number, with CI and n)
 #   3. latexmk -pdf in the paper repo -> paper/main.pdf
+#   4. if ../paper-srw exists (EACL SRW version): its build.sh syncs numbers.tex/figures and rebuilds + checks it
 #   scripts/paper_update.sh [--no-pdf]
 # Then check `git -C $PAPER diff numbers.tex` and commit numbers.tex in the paper repo.
 set -euo pipefail
@@ -23,4 +24,8 @@ if [ "${1:-}" != "--no-pdf" ]; then
   (cd "$PAPER" && latexmk -pdf -silent main.tex >/dev/null 2>&1) || { echo "latexmk failed: see $PAPER/main.log"; exit 1; }
   echo "LaTeX warnings: $(grep -c "Warning" "$PAPER/main.log" || true)"
   echo "built $PAPER/main.pdf ($(grep -o 'Output written on main.pdf ([0-9]* pages' "$PAPER/main.log" | grep -o '[0-9]* pages' || echo '? pages'))"
+fi
+SRW="${SRW:-$P/paper-srw}"
+if [ "${1:-}" != "--no-pdf" ] && [ -x "$SRW/build.sh" ]; then
+  PAPER="$PAPER" "$SRW/build.sh" | tail -n 3 || { echo "SRW build failed: see $SRW/main.log"; exit 1; }
 fi

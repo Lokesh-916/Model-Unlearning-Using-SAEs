@@ -490,8 +490,9 @@ def claims_section(lab, gpu, lab_paired, gpu_paired, a6, tofu, st_lab, st_gpu) -
     for c, xs in sorted(lora.items()):
         d = [after - bef for bef, after, _, _ in xs]
         ev["C-H6"].append(f"A6 LoRA {c}: Δ forget {min(d):+.3f} to {max(d):+.3f} over {len(xs)} (k, rank) cells.")
-    ev["C-H6"].append("The rule needs matched d1/d2 + student cells (`a6-baked`, staged when the lab D1/D2 weights exist); "
-                      "until then C-H6 stays Inconclusive.")
+    if not {"d1", "d2", "student"} <= set(lora):
+        ev["C-H6"].append("The rule needs matched d1/d2 + student cells (`a6-baked`, staged when the lab D1/D2 weights exist); "
+                          "until then C-H6 stays Inconclusive.")
     if tofu:
         f = {k: (v.get("forget") or {}).get("answer_prob") for k, v in tofu.items()}
         u = {k: v.get("model_utility") for k, v in tofu.items()}

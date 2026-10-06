@@ -42,6 +42,9 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | item-level eval resume (power cuts): chunks in `<run>/partial/`, `DSGX_RESUME_EVERY` (default 200, 0 = off) | `dsgx/run.py` `_score_resumable` (v2-harness caa43d6; `tests/test_resume_items.py`) |
 | A7-scaled: Gemma 3 1B with the norm-scaled clamp (exploratory; MOVED-TO-SERVER in session 20, runs on gpuws after X1) | `exp/A7-gemma3 configs/experiments/A7-scaled.yaml`, job `A7-scaled-000`, conf a7-scaled |
 | X1 TEST replica on gpuws (same 33 jobs, own comparators, per-machine claims, "X1 replicated on two machines" digest line) | conf `x1` (`cluster/stage_x1.sh`, `lab_jobs.py --group x1`); runbook §5.8 |
+| EACL 2027 SRW version (ACL template, anonymous, numbers.tex macros; mentorship 6 Nov, submission 15 Dec) | `~/projects/mechunlearn-project/paper-srw` (`./build.sh`: sync + compile + page/anonymity/fonts checks; also run by `scripts/paper_update.sh`) |
+| arXiv tarball of the TMLR paper ([preprint], authors in `paper/arxiv/authors.tex`, TODO-CONFIRM; never uploads) | `paper/scripts/arxiv_build.sh` → `paper/build-arxiv/arxiv-<date>.tar.gz` |
+| public release package (harness, GuardBreak, configs, aggregate results; not pushed) + exclusion scan | `python scripts/build_release.py` → `~/projects/mechunlearn-project/release`; there `python scan_release.py --private-check --private-root $DSG_PRIVATE --forget-corpus <bio-forget-corpus.jsonl>` |
 
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
 `calibrate(..., rule="conformal")` (cache key unchanged for the default quantile rule); `dsgx/attacks/transforms.py`
@@ -446,4 +449,16 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   (178 re-pointed to afterany:189). Ours 35 GB, free 68 GB at submit.
 - Digest/claims: X1 per machine; `claims.evaluate` raises on mixed hardware; replication line once both complete.
 - **Next:** runbook §5.8 (fetch/verify/cleanup x1 after 189, a7-scaled after 188), then §5.6 for tofu/figs/muse.
+
+### Session 21 — 2026-10-06 (end state)
+- No queue or server changes. Digest regenerated (401 lab, 297 gpuws runs): **C-H6 gpuws Not supported** (0/8 cells D1 and D2);
+  stale "until then C-H6 stays Inconclusive" evidence line now printed only while d1/d2/student cells are missing.
+  `paper_update.sh`: 43 pages, 0 warnings; 6 pending (B4/B5 attack-success macros, unused in the text).
+- **SRW** (`paper-srw`, own repo, no remote): ACL style files unmodified (acl-org/acl-style-files d5adc82); condensed paper (thesis,
+  Break, Explain, CUSUM fix, negatives), content ends p.4 (fits short 4 p. or long 8 p.), Limitations + Ethical Considerations,
+  claims appendix; build OK. Open: 1 `[Interim]` (X1 TEST), TODO-VERIFY bib note prints in the bibliography.
+- **arXiv:** `paper/scripts/arxiv_build.sh` builds the tarball (79 files, 43 pages) and FAILS its TODO check on purpose until the
+  `TODO-VERIFY` notes in references.bib are resolved; author names/order TODO-CONFIRM ("Amar" vs "S. Amarnath Reddy" may be one person).
+- **Release** (`release`, own repo, no remote): 329 files; scan OK in both modes (WMDP bio+cyber, forget corpus, $DSG_PRIVATE);
+  negative test (injected WMDP question, .jsonl, home path) fails as expected. LICENSE is a placeholder. "gpuws" kept as hardware label.
 
