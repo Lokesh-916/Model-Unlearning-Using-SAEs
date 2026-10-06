@@ -260,3 +260,14 @@ Tests: 107 pass on CPU.
 - DEVIATIONS: 2 rows. Stale BLOCKED A5/N2/N3/N4 re-queued. 112 tests pass.
 - Result: clean runs + attack-success DONE 13:33; **C-H2 (labpc) Supported** (B2 decompose split k3 0.694 [0.642, 0.751], B3 spaced
   0.449 [0.389, 0.509], n 265; 5 conditions meet the rule). C-H7 Inconclusive on both machines (no TOFU best-fix condition yet).
+
+## Session 16 (2026-10-06): server fetch, re-runs resubmitted, X1 selection, improvements report
+- **Server:** MT-Bench (134–137) fetched, verified, judge cleaned (ours 61 → 44 GB). The re-run chain 154–159 had refused at its
+  in-job disk guard (judge + a6-baked inputs staged together); resubmitted as 167 validate → 168–169 tofu-full-v3 → 170 figs-hl →
+  171–173 muse-v2 behind a6-baked (151 running, 27/33 cells; rest behind another user's jobs). Clean a6-baked before 171.
+- **X1 DEV selection:** detector = CUSUM (dilution Δ −0.401 [−0.447, −0.357], utility cost 0.0002, FPR 0.045); other slots default.
+- **Digest:** MT-Bench table + paired Δ (judge scores differ on 2–3 of 158 pairs), X1 status line; 2 tests (114 pass).
+- **Report:** `$DSG_RESULTS/IMPROVEMENTS_REPORT.md` (copy in `docs/`): every experiment on both machines with what / why / how /
+  result / verdict / lesson, overview table, claims, and the presentation list.
+- **Found while writing it:** T3, A8-tables, N10-cards ran on smoke runs only (re-queue at the end); A7 gate fires on Gemma 3 but
+  changes no answer (undiagnosed); attack success for leetspeak is near the chance level of the base model under the same encoding.
