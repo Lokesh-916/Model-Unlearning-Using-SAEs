@@ -40,6 +40,7 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | A7 Gemma 3 diagnosis (clamp scale vs residual norm; a finding, not a bug) | `docs/A7_GEMMA3_DIAGNOSIS.md`, `scripts/diag_gemma3_clamp.py` (CPU) |
 | session 13 re-runs (Trainer accumulation fix): TOFU-full, FP-highlight, MUSE, Q2; `train_version 2` guards | `tofu-full-v3`, `figs-hl`, `muse-v2`, `q2-graphs-v2` sbatch (snapshot code-later8); `cluster/q2_rerun_when_ready.sh`; `cluster/chain_tail.sh` (end of our gpuws chain, for watchers); runbook §5.6 |
 | item-level eval resume (power cuts): chunks in `<run>/partial/`, `DSGX_RESUME_EVERY` (default 200, 0 = off) | `dsgx/run.py` `_score_resumable` (v2-harness caa43d6; `tests/test_resume_items.py`) |
+| item-level resume of task loops (open-ended generation, X1-suite TOFU): `dsgx.itemckpt.ItemCheckpoints`, chunks in the private dir (openqa) / run dir | v2-harness a445289; `tests/test_resume_tasks.py`, exp/X1-suite `tests/test_x1suite_tofu_resume.py` |
 | A7-scaled: Gemma 3 1B with the norm-scaled clamp (exploratory; MOVED-TO-SERVER in session 20, runs on gpuws after X1) | `exp/A7-gemma3 configs/experiments/A7-scaled.yaml`, job `A7-scaled-000`, conf a7-scaled |
 | X1 TEST replica on gpuws (same 33 jobs, own comparators, per-machine claims, "X1 replicated on two machines" digest line) | conf `x1` (`cluster/stage_x1.sh`, `lab_jobs.py --group x1`); runbook §5.8 |
 | EACL 2027 SRW version (ACL template, anonymous, numbers.tex macros; mentorship 6 Nov, submission 15 Dec) | `~/projects/mechunlearn-project/paper-srw` (`./build.sh`: sync + compile + page/anonymity/fonts checks; also run by `scripts/paper_update.sh`) |
@@ -474,4 +475,12 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   moved to `actcache/_superseded/`; X1-suite recomputes full+dsg. Re-running A2 tofu-metrics/qa = user decision. DEVIATIONS (2 rows).
 - **gpuws:** nothing staged or submitted. MT-Bench cusum (conf mtbench-x1, snapshot later10) after MUSE-v2 (runbook §5.9). Latency of the
   identical gate already measured (FP-latency): overhead 1.6% vs DSG 2.2% at 512 tokens.
+
+### Session 23 — 2026-10-06 21:2x–22:xx (end state)
+- **Task-level resume** (v2-harness a445289/39cf610) synced to 34 idle exp worktrees; X1-suite merged by hand (b933e20, its 6 jobs
+  re-pinned); X1-combine untouched (X1-013 was running; waiting X1 jobs already resume). Prep merge 62c3c29. Exp branches not pushed.
+- **A2 TOFU re-run queued** (A2-tofu-metrics / -qa at exp/A2 1b9cbb2, after all X1, before all X1-suite); old outputs in
+  `runs/A2/_superseded/smoke-cache-2026-10-06/`. Digest needs the metrics re-run for the C-H7 lab input. DEVIATIONS: 2 rows.
+- **gpuws:** 175–177, 183 OK; tofu-full, figs, validate fetched + verified (nothing to clean). 184 x1 running → 185–186 → 188 → 189 → 178–180.
+- **Next:** runbook §5.8 (x1, a7-scaled) then §5.6 items 3–4 (muse, q2); after A2 re-run + X1-suite: digest, `scripts/paper_update.sh`.
 

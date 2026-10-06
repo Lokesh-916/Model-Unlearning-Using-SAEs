@@ -29,8 +29,11 @@ CLUSTER = Path(os.environ.get("DSG_RESULTS_CLUSTER", Path.home() / "projects/mec
 SKIP_EXP = ("_archive", "canary", "watchdog-test", "sanity_job73_backup")
 # Lab A2 TOFU result accepted as a C-H7 input of the gpuws verdict (2026-10-05, DEVIATIONS) only when its two
 # fine-tunes and the metrics job ran at the fixed Trainer loop with the same optimizer (exp/A2 ef5eb17), the
-# metrics job started after both fine-tunes ended, and all three are DONE.
+# metrics job started after both fine-tunes ended, and all three are DONE. Since 2026-10-06 (session 23) the metrics job
+# must be the re-run at exp/A2 1b9cbb2 (= ef5eb17 + the activation-cache tag fix): the ef5eb17 metrics run read DSG
+# features from the smoke model's cache (superseded, runs/A2/_superseded/smoke-cache-2026-10-06).
 A2_FAIR_COMMIT = "ef5eb17"
+A2_METRICS_COMMIT = "1b9cbb2"
 A2_FAIR_JOBS = ("A2-tofu-finetune-full", "A2-tofu-finetune-retain", "A2-tofu-metrics")
 
 
@@ -38,15 +41,17 @@ def lab_a2_tofu_fair(lab) -> tuple[list, str]:
     """(lab A2 tofu-metrics runs usable as the gpuws C-H7 TOFU input, one-line provenance note)."""
     qd = paths.results_dir() / "queue"
     jobs = {j: (read(qd / "jobs" / f"{j}.json") or {}, read(qd / "state" / f"{j}.json") or {}) for j in A2_FAIR_JOBS}
+    want = {j: A2_METRICS_COMMIT if j == "A2-tofu-metrics" else A2_FAIR_COMMIT for j in jobs}
     bad = [j for j, (job, st) in jobs.items()
-           if st.get("status") != "DONE" or not str(job.get("commit", "")).startswith(A2_FAIR_COMMIT)]
+           if st.get("status") != "DONE" or not str(job.get("commit", "")).startswith(want[j])]
     if bad:
-        return [], f"lab A2 TOFU not used: {', '.join(bad)} not DONE at exp/A2 {A2_FAIR_COMMIT}"
+        return [], "lab A2 TOFU not used: " + ", ".join(f"{j} not DONE at exp/A2 {want[j]}" for j in bad)
     ft_end = max(jobs[j][1].get("end", 0) for j in A2_FAIR_JOBS[:2])
     if jobs["A2-tofu-metrics"][1].get("start", 0) < ft_end:
         return [], "lab A2 TOFU not used: tofu-metrics started before a fine-tune ended"
     runs = [r for r in lab if r.base_exp == "A2" and r.name == "tofu-metrics"]
-    return runs, (f"lab A2 TOFU (exp/A2 {A2_FAIR_COMMIT}: fixed Trainer loop, 8-bit AdamW for full and retain) "
+    return runs, (f"lab A2 TOFU (exp/A2 {A2_FAIR_COMMIT}: fixed Trainer loop, 8-bit AdamW for full and retain; "
+                  f"metrics re-run at {A2_METRICS_COMMIT} with features from the real model) "
                   f"{'used' if runs else 'missing'}")
 
 

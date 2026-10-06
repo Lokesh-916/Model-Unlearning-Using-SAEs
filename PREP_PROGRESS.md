@@ -338,3 +338,18 @@ Tests: 107 pass on CPU.
 - Lab A2 TOFU DSG features came from the smoke model's cache (key collision); fixed, cache moved aside, DEVIATIONS.
 - Tests: `tests/test_prep_stream_gate.py` (incremental rho/window/cusum = full-sequence score; clamp positions; model_tag).
 
+
+## Session 23 (2026-10-06 21:2x–22:xx): task-level resume, A2 TOFU re-run queued, gpuws fetch, digest
+- **Resume for task jobs** (MCQ runs had it since session 18): v2-harness a445289 + 39cf610, `dsgx.itemckpt.ItemCheckpoints`
+  (~200-item chunks, atomic, fingerprint = job commit + run identity + item keys, cleared at the end); `openqa.task` uses it
+  (chunks in the private dir; a restart reloads finished methods). exp/X1-suite: merge 1f2c4d6 (openqa conflict resolved by hand,
+  gated stream args kept) + `tofu_fix.metrics` per condition/part. SIGKILL tests: `tests/test_resume_tasks.py` (openqa, generic),
+  `tests/test_x1suite_tofu_resume.py` (X1-suite). Queue paused only for the sync (X1-013 kept running); 34 idle worktrees merged
+  by `sync_harness.sh`, X1-combine skipped (running; its waiting jobs already resume at 93625f5). Prep merge 62c3c29.
+- **A2 TOFU re-run:** A2-tofu-metrics / A2-tofu-qa re-queued at exp/A2 1b9cbb2 (cache-tag fix), deps = all 33 X1 jobs; all 6
+  X1-suite jobs also depend on both. Old outputs in `runs/A2/_superseded/smoke-cache-2026-10-06/` (+ private). Digest
+  `lab_a2_tofu_fair` requires metrics at 1b9cbb2. DEVIATIONS: 2 rows.
+- **gpuws:** 175 tofu-full-v3 done (train_version 2, metric_version 2), 176 no-op skip, 177 FP-highlight recomputed on the v2 model,
+  183 VALIDATE EXACT. Fetched + verified: tofu-full (12 files, 43f692f7…), figs (585, 7063f56d…), validate (7). Cleanup dry-runs:
+  nothing left to delete (`A2-tofu-full/full` stays for Q2). gpuws TOFU-full v2: model utility retain 0.794, full 0.799,
+  full+dsg 0.479, full+best-gate 0.785; forget quality KS p 0.0002 (dsg), ~0 (gate). Queue: 184 x1 R → 185–186 → 188 → 189 → 178–180.
