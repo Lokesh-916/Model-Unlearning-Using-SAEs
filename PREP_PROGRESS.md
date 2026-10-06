@@ -333,3 +333,8 @@ Tests: 107 pass on CPU.
 - `paper/scripts/arxiv_build.sh` ([preprint], stripped comments/todos, arXiv-style recompile, scan; no upload).
 - `scripts/build_release.py` + `scripts/release_scan.py` → `~/projects/mechunlearn-project/release` (scan OK, incl. private-content check).
 
+## Session 22 (2026-10-06): fix-first framing, X1-suite, TOFU cache finding
+- X1-suite queued behind X1 (6 jobs); MT-Bench cusum prepared (gpuws, after MUSE-v2); FIX_FRAMING.tex (two versions) + check script.
+- Lab A2 TOFU DSG features came from the smoke model's cache (key collision); fixed, cache moved aside, DEVIATIONS.
+- Tests: `tests/test_prep_stream_gate.py` (incremental rho/window/cusum = full-sequence score; clamp positions; model_tag).
+

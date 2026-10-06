@@ -438,6 +438,137 @@ def x1_numbers(N):
            "X1-screen/select/COMBINE_SELECTION.json: slots left at the default")
 
 
+# ----------------------------------------------------------------------------- the final method (fix framing)
+FIX_AXES = (("Dil", "dilution-pad400-positionbefore-sourcewikitext"), ("Biofill", "dilution-pad1600-positionaround-sourcebenign_bio"),
+            ("Decomp", "decompose"), ("Fr", "translate-langfr-min_chrf40"), ("Hi", "translate-langhi-min_chrf40"),
+            ("Zh", "translate-langzh-min_chrf40"), ("Bsixfour", "encode-encodingbase64"), ("Leet", "encode-encodingleet"),
+            ("Rewrite", "rewrite_cache-expB4-index0-pathrewrites"), ("Suffix", "suffix-expB5-pathsuffix-200/suffix.json"))
+
+
+def _x1(s, label, attack_part=None):
+    """X1 TEST row of a condition label (combined / dsg / default / base), clean or under one attack."""
+    for r in (s or {}).get("experiments", {}).get("X1", []):
+        parts = r["condition"].split("/")
+        if attack_part is None and parts[-1] == label:
+            return r
+        if attack_part is not None and f"/{label}-forget/" in r["condition"] and r["condition"].endswith(attack_part):
+            return r
+    return None
+
+
+def _x1_pair(s, label, vs, attack_part=None):
+    for p in (s or {}).get("paired_tests", []):
+        if p["exp"] != "X1" or p["vs"] != vs:
+            continue
+        c = p["condition"]
+        if (attack_part is None and c.split("/")[-1] == label) or \
+           (attack_part is not None and f"/{label}-forget/" in c and c.endswith(attack_part)):
+            return p
+    return None
+
+
+def fix_numbers(N, lab, gpu, lab_runs: Path, gpu_runs: Path, jobs: Path):
+    """Numbers for the fix-first framing (paper/FIX_FRAMING.tex): the X1 combined gate (CUSUM detector) on TEST against
+    DSG on the same machine; the X1-suite runs (open-ended benign biology, B6 leakage, TOFU); latency and MT-Bench (gpuws);
+    the conformal threshold (N6); the Cyber retain-corpus fix (A1-test); the norm-scaled clamp (A7-scaled). Missing
+    sources print [pending]."""
+    src = "lab summary.json X1 (TEST)"
+    N.comment("---- the final method: X1 combined gate (CUSUM) vs DSG, lab PC")
+    N.ci("LabFixForget", rci(_x1(lab, "combined"), "raw_forget"), f"{src} combined, clean")
+    N.ci("LabFixUtil", rci(_x1(lab, "combined"), "raw_util"), f"{src} combined, clean (full-MMLU utility)")
+    N.ci("LabFixFpr", rci(_x1(lab, "combined"), "benign_fpr"), f"{src} combined, clean (benign fire rate)")
+    N.ci("LabXDsgForget", rci(_x1(lab, "dsg"), "raw_forget"), f"{src} dsg, clean")
+    N.ci("LabXDsgUtil", rci(_x1(lab, "dsg"), "raw_util"), f"{src} dsg, clean")
+    N.diff("LabFixVsDsgForget", pt(_x1_pair(lab, "combined", "dsg")), f"{src} paired combined vs dsg (forget)")
+    N.diff("LabFixVsDsgUtil", pt(_x1_pair(lab, "combined", "dsg"), "utility"), f"{src} paired combined vs dsg (utility)")
+    for w, a in FIX_AXES:
+        N.ci(f"LabFix{w}Forget", rci(_x1(lab, "combined", a), "raw_forget"), f"{src} combined under {a}")
+        N.ci(f"LabXDsg{w}Forget", rci(_x1(lab, "dsg", a), "raw_forget"), f"{src} dsg under {a}")
+        N.diff(f"LabFixVsDsg{w}", pt(_x1_pair(lab, "combined", "dsg", a)), f"{src} paired combined vs dsg under {a}")
+    c5 = claim(lab, "C-H5")
+    axes = ((c5 or {}).get("numbers") or {}).get("axes")
+    N.text("LabFixAxesWon", len(axes) if axes else None, "lab summary.json claims C-H5 numbers.axes (only when Supported)")
+
+    N.comment("---- X1-suite (lab PC): the final method vs DSG on open-ended benign biology, B6 leakage, TOFU")
+    pj = _read(lab_runs / "X1-suite" / "paired" / "paired.json") if (lab_runs / "X1-suite" / "paired" / "DONE").exists() else None
+    for task, w in (("benign-open", "Open"), ("leak", "Leak")):
+        for tag, who in (("cusum-stream", "Fix"), ("dsg-faithful-stream", "SuiteDsg")):
+            d = lab_runs / "X1-suite" / f"{task}__{tag}"
+            m = _read(d / "metrics.json") if (d / "DONE").exists() else None
+            for key, kw in (("match", "Match"), ("gibberish", "Gib"), ("gate_fired", "Fired")):
+                N.ci(f"Lab{who}{w}{kw}", (m or {}).get(key), f"runs/X1-suite/{task}__{tag}/metrics.json {key}")
+        for key, kw in (("match", "Match"), ("gibberish", "Gib"), ("gate_fired", "Fired")):
+            r = ((pj or {}).get(task) or {}).get(key) or {}
+            d = dict(r.get("paired_bootstrap") or {}) or None
+            if d:
+                d["mcnemar"] = r.get("mcnemar")
+            N.diff(f"LabFix{w}VsDsg{kw}", d, f"runs/X1-suite/paired/paired.json {task}.{key} (gate - DSG)")
+    hn = (pj or {}).get("hardneg") or {}
+    s0 = (hn.get("seeds") or {}).get("0") or {}
+    for key, kw in (("correct", "Util"), ("gate_fired", "Fired")):
+        r = s0.get(key) or {}
+        d = dict(r.get("paired_bootstrap") or {}) or None
+        if d:
+            d["mcnemar"] = r.get("mcnemar")
+        N.diff(f"LabFixHardneg{kw}VsDsg", d, f"runs/X1-suite/paired/paired.json hardneg seed 0 {key} (gate - DSG)")
+        N.text(f"LabFixHardneg{kw}SigSeeds", (hn.get("mean_over_seeds") or {}).get(key, {}).get("significant_seeds") if hn.get("n_seeds") else None,
+               f"paired.json hardneg: seeds with significant {key} difference (of {hn.get('n_seeds')})")
+    tm_dir = lab_runs / "X1-suite" / "tofu-metrics"
+    tm = _read(tm_dir / "metrics.json") if (tm_dir / "DONE").exists() else None
+    conds = (tm or {}).get("conditions") or {}
+    for cond, w in (("retain-model", "Retain"), ("full", "Full"), ("full+dsg", "Dsg"), ("full+gate-cusum", "Fix")):
+        c = conds.get(cond) or {}
+        N.text(f"LabSuiteTofuUtil{w}", f3(c["model_utility"]) if _ok(c.get("model_utility")) else None,
+               f"runs/X1-suite/tofu-metrics {cond} model_utility")
+        if cond != "retain-model":
+            p = c.get("forget_quality_ks_p")
+            if _ok(p) and p > 0:
+                m_, e = f"{p:.1e}".split("e")
+                N.text(f"LabSuiteTofuFq{w}", f"${m_} \\times 10^{{{int(e)}}}$", f"runs/X1-suite/tofu-metrics {cond} forget_quality_ks_p")
+            else:
+                N.missing(f"LabSuiteTofuFq{w}", f"no forget quality for {cond}", ("",))
+    pr = ((tm or {}).get("paired") or {}).get("full+gate-cusum vs full+dsg") or {}
+    N.diff("LabSuiteTofuFixVsDsgForgetProb", pr.get("ans_forget"), "tofu-metrics paired full+gate-cusum vs full+dsg ans_forget", has_p=False)
+    N.diff("LabSuiteTofuFixVsDsgRetainProb", pr.get("ans_retain"), "tofu-metrics paired full+gate-cusum vs full+dsg ans_retain", has_p=False)
+
+    N.comment("---- the final method on gpuws: latency (FP-latency), MT-Bench (mtbench, mode cusum)")
+    lat = _read(gpu_runs / "FP-latency" / "latency" / "metrics.json")
+    ok = lat and lat.get("protocol") == "interleaved-v2"
+    for name, w in (("gate-cusum", "Fix"), ("dsg", "Dsg")):
+        vals = [lat["latency"][str(L)][name]["overhead_vs_base"] for L in lat["lengths"]] if ok else []
+        N.text(f"GpuLat{w}Overhead", f"{100 * lat['latency']['512'][name]['overhead_vs_base']:.1f}\\%" if ok else None,
+               f"FP-latency (interleaved-v2) {name} overhead vs base at 512 tokens, bs 1")
+        N.text(f"GpuLat{w}OverheadRange", f"{100 * min(vals):.1f}--{100 * max(vals):.1f}\\%" if vals else None,
+               f"FP-latency {name} overhead vs base over {lat['lengths'] if ok else []} tokens")
+    mt = _read(jobs / "mtbench" / "summary.json") or {}
+    N.ci("GpuMtFix", ((mt.get("scores") or {}).get("cusum") or {}).get("all"), "jobs/mtbench/summary.json scores.cusum.all", digits=2)
+    from dsgx.analysis.results_digest import mtbench_paired
+
+    d = mtbench_paired(jobs, ref="dsg").get("cusum") if mt else None
+    N.diff("GpuMtFixVsDsg", d and {"diff": d["mean"], "lo": d["lo"], "hi": d["hi"], "n": d["n"], "p": d["p"]},
+           "jobs/mtbench judgments (paired bootstrap cusum vs dsg, same question and turn)", digits=2)
+
+    N.comment("---- supporting fixes: conformal threshold (N6), Cyber retain corpus (A1-test), norm-scaled clamp (A7-scaled)")
+    import ast
+    for gate, w in (("rho", "Rho"), ("window", "Window")):
+        m = _read(lab_runs / "N6" / f"conformal-{gate}" / "metrics.json")
+        cov = (m or {}).get("coverage")
+        cov = ast.literal_eval(cov) if isinstance(cov, str) else cov
+        c = (cov or {}).get("0.05") or {}
+        N.text(f"LabConformal{w}HeldoutFpr", f3(c["empirical_fpr_heldout"]) if _ok(c.get("empirical_fpr_heldout")) else None,
+               f"runs/N6/conformal-{gate} coverage[0.05].empirical_fpr_heldout (target 0.05)")
+        N.text(f"LabConformal{w}HeldoutN", (m or {}).get("n_heldout"), f"runs/N6/conformal-{gate} n_heldout")
+    cy = {r["condition"]: r for r in (lab or {}).get("experiments", {}).get("A1-test", []) if r["case"] == "cyber"}
+    for cond, w in (("base/forget+utility", "Base"), ("dsg-faithful/n100/r90/m1000/forget+utility", "Wiki"),
+                    ("dsg-faithful/n200/r95/m1000/chatretain", "Chat")):
+        N.ci(f"LabCyber{w}Util", rci(cy.get(cond), "raw_util"), f"lab summary.json A1-test cyber {cond} (full-MMLU utility)")
+        N.ci(f"LabCyber{w}Forget", rci(cy.get(cond), "raw_forget"), f"lab summary.json A1-test cyber {cond}")
+    sc = next((p for p in (gpu or {}).get("paired_tests", []) if p["exp"] == "A7-scaled" and p["vs"] == "base"
+               and "51650" in p["condition"]), None)
+    N.diff("GpuScaledVsBaseForget", pt(sc), "gpuws summary.json paired A7-scaled clamp -51650 vs base (forget)")
+    N.diff("GpuScaledVsBaseUtil", pt(sc, "utility"), "gpuws summary.json paired A7-scaled clamp -51650 vs base (utility)")
+
+
 def build(lab_summary: Path, gpu_summary: Path, jobs: Path, lab_runs: Path, gpu_runs: Path, a7_diag: Path) -> Numbers:
     N = Numbers()
     lab, gpu = _read(lab_summary), _read(gpu_summary)
@@ -453,6 +584,7 @@ def build(lab_summary: Path, gpu_summary: Path, jobs: Path, lab_runs: Path, gpu_
     cross_gpu_numbers(N, lab_runs, gpu_runs)
     a7_diag_numbers(N, a7_diag)
     x1_numbers(N)
+    fix_numbers(N, lab, gpu, lab_runs, gpu_runs, jobs)
     return N
 
 

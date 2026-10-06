@@ -7,6 +7,9 @@ Phase gen (gemma-2-2b-it, TransformerLens, greedy, max 1024 new tokens per turn,
   window-w16  our window gate (same 20 features and clamp; score = max fire fraction over 16-token windows,
               gates.score_window; threshold = gates.calibrate on MMLU DEV prompts at 5% FPR, as A7's best fix),
               re-evaluated at every generated token like dsg
+  cusum       the final method (X1 combined gate, session 22): DSG's 20 features + clamp, CUSUM detector
+              (gates.stream_gate: per-token LLR, score = max CUSUM), threshold = gates.calibrate at 5% FPR on MMLU DEV
+              (the X1 MCQ gate's cached threshold); paired vs dsg and vs base in summary.json
   80 questions x 2 turns; turn 2 sees the model's own turn-1 answer.
 Phase judge (FIXED, never change between conditions):
   judge model  JUDGE = google/gemma-2-9b-it (bf16, ~18 GB; user decision 2026-10-04, BM3). Same model family
@@ -35,7 +38,7 @@ from dsgx.eval import stats
 
 NAME = "mtbench"
 JUDGE = "google/gemma-2-9b-it"
-MODES = ["base", "dsg", "window-w16"]
+MODES = ["base", "dsg", "window-w16", "cusum"]
 GEN_MIN, JUDGE_MIN = 2.0, 0.5   # minutes reserved per answer / per judgment before starting it (budget check)
 NEED_REF = {"math", "reasoning", "coding"}
 DATA = paths.REPO_ROOT / "mtbench" / "data"
@@ -59,6 +62,15 @@ def window_gate(b, w=16):
     return g.features, float(cal["threshold"]), (lambda fires: gates.score_window(torch.tensor(fires), len(fires), w)), cal
 
 
+def cusum_gate(b):
+    """(features, threshold, score_fn, token_fn, calib) of the X1 combined gate (CUSUM detector) for streaming."""
+    from dsgx.methods import gates
+
+    g = gates.Gate({"type": "cusum", "n_features": 20, "retain_pct": 95, "case": "bio"}, b)
+    cal = gates.calibrate(b, g, "bio", 0.05, 1000, "mmlu-dev")
+    return (*gates.stream_gate(g), cal)
+
+
 def generate_all(modes, max_new, limit, budget):
     out = jc.job_dir(NAME)
     qs = rows(DATA / "question.jsonl")[: limit or None]
@@ -77,11 +89,17 @@ def generate_all(modes, max_new, limit, budget):
         b = get_bundle()
         tok = b.model.tokenizer
         feats, tau = jc.dsg_features()
-        win = None
+        win, cus = None, None
 
         def gen(text, mode):
-            nonlocal win
-            if mode.startswith("window-w"):
+            nonlocal win, cus
+            if mode == "cusum":
+                if cus is None:
+                    cus = cusum_gate(b)
+                    jc.log(NAME, f"cusum gate: {len(cus[0])} features, threshold {cus[1]:.4f} ({cus[4].get('source')}, "
+                                 f"empirical FPR {cus[4].get('empirical_fpr')})")
+                r = generate(b.model, text, b, cus[0], 500.0, cus[1], "stream", max_new, score_fn=cus[2], token_fn=cus[3])
+            elif mode.startswith("window-w"):
                 if win is None:
                     win = window_gate(b, int(mode.split("-w")[1]))
                     jc.log(NAME, f"window gate: {len(win[0])} features, threshold {win[1]:.4f} ({win[3].get('source')}, "
@@ -189,6 +207,10 @@ def summarise(modes, tag):
         if "base" in sc:
             keys = [k for k in sc["base"] if sc["base"][k] is not None and sc[m].get(k) is not None]
             res[f"{m}_minus_base"] = stats.paired_bootstrap([sc[m][k] for k in keys], [sc["base"][k] for k in keys])
+    for m in [x for x in sc if x not in ("base", "dsg")]:
+        if "dsg" in sc:
+            keys = [k for k in sc["dsg"] if sc["dsg"][k] is not None and sc[m].get(k) is not None]
+            res[f"{m}_minus_dsg"] = stats.paired_bootstrap([sc[m][k] for k in keys], [sc["dsg"][k] for k in keys])
     return res
 
 

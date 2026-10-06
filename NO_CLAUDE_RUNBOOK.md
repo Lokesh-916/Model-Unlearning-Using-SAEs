@@ -258,6 +258,21 @@ in their own **gpuws** tables and never mixed with lab-PC numbers:
 
 ---
 
+### 5.9 Session 22 (2026-10-06): final method (X1 combined gate = CUSUM) — X1-suite (lab) and MT-Bench cusum (gpuws)
+1. Lab, nothing to do: `X1-suite-*` (6 jobs) start by themselves after all 33 X1 jobs. Check:
+   `python -m dsgx.queue.status | grep X1-suite`. **You should see:** WAITING until X1 is done, then benign-open, leak,
+   tofu-metrics, tofu-qa-forget/-retain (GPU, ~6 h in all) and paired (CPU). Results: `$DSG_RESULTS/runs/X1-suite/`
+   (`paired/paired.json` = gate − DSG on identical items).
+2. gpuws MT-Bench `cusum` mode, **only after MUSE-v2 (178–180) has left the queue** (the 18 GB judge staged earlier makes
+   MUSE's disk guard refuse, session 16):
+   `cluster/stage_code_snapshot.sh later10` → `cluster/server.sh plan mtbench-x1` (free ≥ 50 GB after staging) →
+   `cluster/server.sh stage mtbench-x1` → `cluster/server.sh submit mtbench-x1 --after-any <last job of ours>` →
+   when done: `fetch mtbench-x1`, `verify mtbench-x1`, `cleanup mtbench-x1 --yes`.
+   **You should see** in `dsg_results_cluster/jobs/mtbench/`: `answers_cusum.jsonl` (160 rows) and
+   `judgments_cusum__gemma-2-9b-it.jsonl`; base/dsg/window rows unchanged (skipped as done).
+3. Then `scripts/paper_update.sh` and `paper/scripts/fix_framing_check.sh` (lists the macros still [pending]); choose the
+   version in `paper/FIX_FRAMING.tex` by `\resLabVerdictCHFive` and apply it by hand.
+
 ## 6. Combination wave (after Waves 1–3 and N6 are DONE)
 
 Prerequisites: C1 (feature files), C3 (layer ranking), D1 and D2 (checkpoints) DONE. `--enqueue` refuses

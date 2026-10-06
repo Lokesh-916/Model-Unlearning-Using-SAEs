@@ -333,8 +333,8 @@ def server_jobs_section(root: Path) -> list[str]:
     return L
 
 
-def mtbench_paired(jobs: Path, n_boot=2000) -> dict:
-    """{condition: {mean, lo, hi, p, n_differ, n}}: paired judge-score difference vs base on the same
+def mtbench_paired(jobs: Path, n_boot=2000, ref: str = "base") -> dict:
+    """{condition: {mean, lo, hi, p, n_differ, n}}: paired judge-score difference vs `ref` (default base) on the same
     (question, turn), two-sided bootstrap p. Only the `score` field of the judgment files is read."""
     by = {}
     for f in sorted((jobs / "mtbench").glob("judgments_*.jsonl")):
@@ -349,9 +349,9 @@ def mtbench_paired(jobs: Path, n_boot=2000) -> dict:
                 d[(r["question_id"], r["turn"])] = float(r["score"])
         by[cond] = d
     out = {}
-    for cond in sorted(c for c in by if c != "base"):
-        keys = sorted(set(by[cond]) & set(by.get("base", {})))
-        diffs = np.asarray([by[cond][k] - by["base"][k] for k in keys])
+    for cond in sorted(c for c in by if c != ref):
+        keys = sorted(set(by[cond]) & set(by.get(ref, {})))
+        diffs = np.asarray([by[cond][k] - by[ref][k] for k in keys])
         if len(diffs):
             b = boot(diffs, n_boot)
             m = diffs[np.random.default_rng(0).integers(0, len(diffs), (n_boot, len(diffs)))].mean(1)

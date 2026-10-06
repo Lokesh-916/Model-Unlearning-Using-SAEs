@@ -44,6 +44,7 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | X1 TEST replica on gpuws (same 33 jobs, own comparators, per-machine claims, "X1 replicated on two machines" digest line) | conf `x1` (`cluster/stage_x1.sh`, `lab_jobs.py --group x1`); runbook §5.8 |
 | EACL 2027 SRW version (ACL template, anonymous, numbers.tex macros; mentorship 6 Nov, submission 15 Dec) | `~/projects/mechunlearn-project/paper-srw` (`./build.sh`: sync + compile + page/anonymity/fonts checks; also run by `scripts/paper_update.sh`) |
 | arXiv tarball of the TMLR paper ([preprint], authors in `paper/arxiv/authors.tex`, TODO-CONFIRM; never uploads) | `paper/scripts/arxiv_build.sh` → `paper/build-arxiv/arxiv-<date>.tar.gz` |
+| final method = X1 combined gate (CUSUM), name StreamGuard (proposal): full benchmark vs DSG (lab X1-suite after X1; MT-Bench cusum prepared for gpuws) | exp/X1-suite `configs/experiments/X1-suite.yaml` (jobs X1-suite-*); conf `mtbench-x1` (runbook §5.9); `paper/FIX_FRAMING.tex` + `paper/scripts/fix_framing_check.sh` |
 | public release package (harness, GuardBreak, configs, aggregate results; not pushed) + exclusion scan | `python scripts/build_release.py` → `~/projects/mechunlearn-project/release`; there `python scan_release.py --private-check --private-root $DSG_PRIVATE --forget-corpus <bio-forget-corpus.jsonl>` |
 
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
@@ -461,4 +462,16 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   `TODO-VERIFY` notes in references.bib are resolved; author names/order TODO-CONFIRM ("Amar" vs "S. Amarnath Reddy" may be one person).
 - **Release** (`release`, own repo, no remote): 329 files; scan OK in both modes (WMDP bio+cyber, forget corpus, $DSG_PRIVATE);
   negative test (injected WMDP question, .jsonl, home path) fails as expected. LICENSE is a placeholder. "gpuws" kept as hardware label.
+
+### Session 22 — 2026-10-06 (end state)
+- **Fix-first reframing prepared** (faculty: the main contribution must be an improved method): `paper/FIX_FRAMING.tex`, two versions by
+  C-H5 (title, abstract, contributions; macros only, not applied); names StreamGuard (default), TripWire, SAEntry.
+  `paper_numbers.fix_numbers` adds ~120 macros (X1 TEST per axis, X1-suite, latency, MT-Bench cusum, N6, Cyber retain, A7-scaled).
+- **Lab queue:** X1-suite (6 jobs, deps = all 33 X1 jobs) at exp/X1-suite d150011 (new worktree `dsg_worktrees/exp/X1-suite`):
+  open-ended benign bio + B6 leakage/gibberish + TOFU metrics/QA (lab A2 models) + paired tests (incl. X1 hardneg MCQ per seed).
+  Harness: streaming gate for any calibrated gate (`stream.generate token_fn`, `gates.stream_gate`, openqa `gated`), f987859.
+- **Found + fixed:** lab A2 TOFU DSG used a cache built on the A2-smoke model (basename key collision); `model_tag` fix 1ad6454; stale cache
+  moved to `actcache/_superseded/`; X1-suite recomputes full+dsg. Re-running A2 tofu-metrics/qa = user decision. DEVIATIONS (2 rows).
+- **gpuws:** nothing staged or submitted. MT-Bench cusum (conf mtbench-x1, snapshot later10) after MUSE-v2 (runbook §5.9). Latency of the
+  identical gate already measured (FP-latency): overhead 1.6% vs DSG 2.2% at 512 tokens.
 
