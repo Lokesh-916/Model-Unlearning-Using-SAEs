@@ -105,6 +105,17 @@ def test_lab_jobs_refuses_wrong_snapshot(tmp_path):
     assert r.returncode == 2 and "ABORT" in r.stdout
 
 
+def test_lab_jobs_offline_sae_shapes_bootstrap(tmp_path):
+    """--offline-sae-shapes: the worker runs as __main__ with its --job argument and the sae_lens shape reader patched."""
+    dsgc = _labjobs_env(tmp_path, [{"id": "X-1", "exp_id": "X", "est_minutes": 1, "deps": []}])
+    w = dsgc / "code-X-c0ffeec" / "dsgx" / "queue" / "worker.py"
+    w.write_text("from sae_lens.loading import pretrained_sae_loaders as L\n"
+                 "assert __name__ == '__main__' and L.get_safetensors_tensor_shapes.__name__ == 'shapes'\n" + STUB)
+    r = _labjobs(dsgc, "--offline-sae-shapes")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (Path(os.environ["DSG_RESULTS"]) / "runs" / "X" / "_jobs" / "X-1" / "DONE").exists()
+
+
 # ----------------------------------------------------------------------------- d1_v2
 def test_d1_v2_train_tiny_and_budget_stop(tiny, monkeypatch):
     from dsgx import paths

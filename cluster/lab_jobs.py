@@ -1,6 +1,6 @@
 """Run MOVED-TO-SERVER lab-queue jobs on gpuws with the exact experiment-branch code they were pinned to.
 
-    python cluster/lab_jobs.py --group c3 [--budget-min 165] [--plan]
+    python cluster/lab_jobs.py --group c3 [--budget-min 165] [--plan] [--offline-sae-shapes]
 
 Inputs (staged from the lab PC by cluster/stage_lab_jobs.sh):
   $DSGC/labjobs/<group>/ORDER          job ids in run order (one per line)
@@ -16,6 +16,9 @@ results are exactly what the lab scheduler would have produced, in the same run-
     the script exits 0 with "INCOMPLETE" and the next chained sbatch of the same group continues;
   * runs/<exp>/HARDWARE.json {"label": "gpuws"} is written: exp-branch code predates the hardware label, and the
     report must never mix these runs with lab-PC runs (collect.Run.hardware reads the marker).
+--offline-sae-shapes: sae_lens 6.x reads Gemma Scope 2 tensor shapes over HTTP (gpuws has no internet; job 110); the
+worker then starts through a bootstrap that reads them from the local HF cache (same patch as jobcommon.offline_sae_shapes,
+inlined because the snapshot's PYTHONPATH has no cluster/). Used by the Gemma 3 groups (a7-scaled).
 Status: $DSG_RESULTS/jobs/labjobs-<group>/status.json. Exit 1 if a job failed (the others still ran).
 """
 import argparse
@@ -28,6 +31,17 @@ from pathlib import Path
 
 DSGC = Path(os.environ.get("DSGC", Path.home() / "dsg_cluster"))
 SPEED = 0.3  # gpuws time / lab-PC time (sanity 57 s vs 228 s; training ~0.3)
+BOOT_OFFLINE_SAE = """import json, runpy, sys
+from huggingface_hub import hf_hub_download
+from sae_lens.loading import pretrained_sae_loaders as L
+def shapes(repo_id, filename):
+    with open(hf_hub_download(repo_id, filename, local_files_only=True), "rb") as fh:
+        meta = json.loads(fh.read(int.from_bytes(fh.read(8), "little")))
+    return {k: v["shape"] for k, v in meta.items() if k != "__metadata__"}
+L.get_safetensors_tensor_shapes = shapes
+sys.argv = ["dsgx.queue.worker", "--job", sys.argv[1]]
+runpy.run_module("dsgx.queue.worker", run_name="__main__", alter_sys=True)
+"""
 
 
 def rjson(p, default=None):
@@ -66,6 +80,7 @@ def main(argv=None) -> int:
     ap.add_argument("--group", required=True)
     ap.add_argument("--budget-min", type=float, default=float(os.environ.get("DSG_BUDGET_MIN", 165)))
     ap.add_argument("--plan", action="store_true", help="print what would run (CPU, no GPU work)")
+    ap.add_argument("--offline-sae-shapes", action="store_true", help="Gemma Scope 2 shapes from the local HF cache")
     a = ap.parse_args(argv)
     t0 = time.time()
     gdir = DSGC / "labjobs" / a.group
@@ -115,7 +130,9 @@ def main(argv=None) -> int:
             with open(jd / "job.log", "a") as fh:
                 fh.write(f"=== {time.strftime('%F %T')} start {j} on gpuws (lab_jobs.py, {snap.name}) attempt {attempt + 1}\n")
                 fh.flush()
-                rc = subprocess.run([sys.executable, "-u", "-m", "dsgx.queue.worker", "--job", j], cwd=snap,
+                cmd = [sys.executable, "-u", "-c", BOOT_OFFLINE_SAE, j] if a.offline_sae_shapes else \
+                    [sys.executable, "-u", "-m", "dsgx.queue.worker", "--job", j]
+                rc = subprocess.run(cmd, cwd=snap,
                                     env={**env, "DSGX_BATCH_FACTOR": factor}, stdout=fh, stderr=subprocess.STDOUT).returncode
             (jd / "exit_code").write_text(f"{rc}\n")
             status["jobs"][j] = {"rc": rc, "minutes": round((time.time() - ts) / 60, 1), "attempt": attempt + 1,

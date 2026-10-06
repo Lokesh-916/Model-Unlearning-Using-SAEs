@@ -283,6 +283,10 @@ def ch7(runs, paired, tofu_extra=None):
 
 
 def evaluate(runs, paired, tofu_extra=None) -> list[dict]:
+    """runs: ONE machine's runs (per-GPU baselines: lab PC and gpuws are never pooled, e.g. X1 runs on both)."""
+    hw = sorted({getattr(r, "hardware", None) or "labpc" for r in runs})
+    if len(hw) > 1:
+        raise ValueError(f"claims.evaluate got runs of several hardware labels {hw}; evaluate each machine separately")
     out = []
     for f in (ch1, ch2, ch3, ch4):
         try:

@@ -10,7 +10,7 @@ import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 JOBS = ["d1-full", "a6-full", "tofu-full", "a7-12b", "muse", "mtbench", "q2-graphs", "rmu-v2",
-        "c3", "a6-lora", "a6-baked", "a7-small", "d1-v2", "figs"]
+        "c3", "a6-lora", "a6-baked", "a7-small", "d1-v2", "figs", "x1", "a7-scaled"]
 
 
 @pytest.fixture

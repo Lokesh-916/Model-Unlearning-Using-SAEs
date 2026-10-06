@@ -390,7 +390,36 @@ def x1_status() -> tuple[str, dict]:
     slots = sel.get("slots") or {}
     picked = ", ".join(f"{k} = {v or 'default'}" for k, v in slots.items())
     return (f"X1 DEV selection done {str(sel.get('time', ''))[:16]} (labpc): {picked}. The combined method's TEST runs "
-            "(X1 on labpc) decide the verdict once they finish."), slots
+            "decide each machine's verdict (X1 on labpc; the gpuws replica of the same jobs on gpuws)."), slots
+
+
+X1_TEST_RUNS = 192  # configs/experiments/X1.yaml: base 12 + (DSG, default gate, combined gate) x 5 seeds x 12 rows
+
+
+def x1_progress(runs) -> dict:
+    """X1 TEST progress of ONE machine's runs: finished MCQ runs, attack-success task, complete."""
+    n = sum(1 for r in runs if r.base_exp == "X1" and r.is_mcq)
+    succ = any(r.base_exp == "X1" and r.name == "attack-success" for r in runs)
+    return {"runs": n, "attack_success": succ, "complete": n >= X1_TEST_RUNS and succ}
+
+
+def x1_machine_lines(lab, gpu, vl=None, vg=None) -> list[str]:
+    """Per-machine X1 TEST status (labpc and gpuws separately, never pooled) and, once both machines have the full
+    X1 TEST wave, the "X1 replicated on two machines" line with each machine's own C-H5 verdict."""
+    out, prog = [], {"labpc": x1_progress(lab or []), "gpuws": x1_progress(gpu or [])}
+    for hw, p in prog.items():
+        if p["runs"] or p["attack_success"]:
+            out.append(f"X1 TEST ({hw}): {p['runs']}/{X1_TEST_RUNS} runs, attack-success "
+                       f"{'done' if p['attack_success'] else 'not yet'}" + (" (complete)." if p["complete"] else "."))
+        else:
+            out.append(f"X1 TEST ({hw}): no run yet.")
+    if all(p["complete"] for p in prog.values()):
+        v = {hw: (d or {}).get("C-H5", {}).get("verdict", "?") for hw, d in (("labpc", vl), ("gpuws", vg))}
+        out.append(f"**X1 replicated on two machines** (labpc and gpuws, same 33 jobs and pinned code): C-H5 is "
+                   f"{v['labpc']} on labpc and {v['gpuws']} on gpuws ("
+                   + ("same verdict" if v["labpc"] == v["gpuws"] else "verdicts differ") +
+                   "); each machine is its own hardware baseline, numbers are never pooled or paired across machines.")
+    return out
 
 
 # ----------------------------------------------------------------------------- claims
@@ -404,6 +433,8 @@ def claims_section(lab, gpu, lab_paired, gpu_paired, a6, tofu, st_lab, st_gpu) -
     rows = [[cid, claims.CLAIMS[cid], f"{vl[cid]['verdict']}: {vl[cid]['evidence'][0][:90] if vl[cid]['evidence'] else ''}",
              f"{vg[cid]['verdict']}: {vg[cid]['evidence'][0][:90] if vg[cid]['evidence'] else ''}"] for cid in claims.CLAIMS]
     L += md_table(["claim", "statement", "lab PC (labpc)", "server (gpuws)"], rows)
+    rep = [x for x in x1_machine_lines(lab, gpu, vl, vg) if x.startswith("**X1 replicated")]
+    L += rep + [""] if rep else []
 
     def row(st, exp, cond_sub, split="test"):
         if st is None or len(st) == 0:
@@ -444,6 +475,8 @@ def claims_section(lab, gpu, lab_paired, gpu_paired, a6, tofu, st_lab, st_gpu) -
     g = [r for r in (gpu or []) if r.base_exp == "C3" and r.name == "auroc"]
     x1_line, _ = x1_status()
     ev["C-H5"].append(x1_line)
+    x1_lines = x1_machine_lines(lab, gpu, vl, vg)
+    ev["C-H5"] += x1_lines
     ev["C-H5"].append("Ingredients so far (gpuws): C3 gate AUROC by layer (table above); RMU v2 "
                       "matches DSG's TEST forget accuracy without a gate (paired Δ in the RMU v2 table) at a significant "
                       "full-MMLU cost; FP-static / FP-multitopic tables above.")
