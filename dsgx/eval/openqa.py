@@ -141,6 +141,7 @@ def task(ctx):
     from dsgx.data import activation_cache as ac
     from dsgx.eval import stats
     from dsgx.gen.stream import decode, generate
+    from dsgx.itemckpt import ItemCheckpoints
     from dsgx.methods import dsg
     from dsgx.models.loader import get_bundle
 
@@ -157,7 +158,7 @@ def task(ctx):
     case = a.get("case", "bio")
     total = len(items) * len(a["methods"])
     ctx.progress.update(items_total=total, items_done=0, force=True)
-    summary = {}
+    summary, cks = {}, []
     for mcfg in a["methods"]:
         tag = mcfg.get("tag") or f"{mcfg['name']}-{mcfg.get('mode', 'stream')}"
         ctx.write_config(tag, items=a["items"], n_items=len(items), method=mcfg)
@@ -170,24 +171,30 @@ def task(ctx):
                                                                float(mcfg.get("retain_pct", 95)))
             tau = mcfg.get("tau") or dsg.calibrate_tau(cache, feats, 95)
         mode = "none" if mcfg["name"] == "base" else mcfg.get("mode", "stream")
-        rows, texts = [], []
-        priv = ctx.private_dir(tag) / "generations.jsonl"
-        with priv.open("w") as f:
-            for it in items:
-                r = generate(b.model, open_prompt(it.question), b, feats, float(mcfg.get("multiplier", 500)),
-                             tau, mode, int(a.get("max_new", 64)))
-                text = decode(b.model, r.tokens)
-                texts.append(text)
+        priv = ctx.private_dir(tag)
+        ck = ItemCheckpoints(priv / "partial", {"commit": ctx.job.get("commit"), "items": a["items"],
+                                                "split": a.get("split", "test"), "n": len(items), "model": mc,
+                                                "method": mcfg, "mode": mode, "features": feats, "tau": tau,
+                                                "max_new": int(a.get("max_new", 64))})
+
+        def one(it):
+            r = generate(b.model, open_prompt(it.question), b, feats, float(mcfg.get("multiplier", 500)),
+                         tau, mode, int(a.get("max_new", 64)))
+            text = decode(b.model, r.tokens)
+            g = gibberish(text, r.tokens)
+            return text, {"item_id": it.item_id, "dataset": it.dataset, "subject": it.subject,
+                          "split": a.get("split", "test"), "text_hash": text_hash(text), "n_tokens": len(r.tokens),
+                          "prompt_len": r.prompt_len, "gate_fired": bool(any(r.gate_trace) or r.prompt_gate),
+                          "prompt_gate": r.prompt_gate, "first_fire_token": r.first_gate_step,
+                          "n_rebuilds": r.n_rebuilds, "rho_final": r.rho_trace[-1] if r.rho_trace else None,
+                          "tau": tau, "stop": r.stop_reason, **g,
+                          "_ids": r.tokens}
+
+        done = ck.map(items, one, key=lambda it: it.item_id, on_done=ctx.progress.advance)
+        texts, rows = [t for t, _ in done], [r for _, r in done]
+        with (priv / "generations.jsonl").open("w") as f:
+            for it, text in zip(items, texts):
                 f.write(json.dumps({"item_id": it.item_id, "text": text}) + "\n")
-                g = gibberish(text, r.tokens)
-                rows.append({"item_id": it.item_id, "dataset": it.dataset, "subject": it.subject,
-                             "split": a.get("split", "test"), "text_hash": text_hash(text), "n_tokens": len(r.tokens),
-                             "prompt_len": r.prompt_len, "gate_fired": bool(any(r.gate_trace) or r.prompt_gate),
-                             "prompt_gate": r.prompt_gate, "first_fire_token": r.first_gate_step,
-                             "n_rebuilds": r.n_rebuilds, "rho_final": r.rho_trace[-1] if r.rho_trace else None,
-                             "tau": tau, "stop": r.stop_reason, **g,
-                             "_ids": r.tokens})
-                ctx.progress.advance(1)
         grades = grade(texts, [it.reference for it in items]) if items else []
         for row, gr in zip(rows, grades):
             row.update(gr)
@@ -210,5 +217,8 @@ def task(ctx):
             m[col] = stats.bootstrap_ci(df[col].values) if len(df) else None
         ctx.write_metrics(m, tag)
         ctx.finish({"forget": m["match"], "view": f"open:{tag}"}, tag)
+        cks.append(ck)
         summary[tag] = m["match"]
+    for ck in cks:  # at the end, so a restart reloads finished methods instead of regenerating them
+        ck.clear()
     return summary
