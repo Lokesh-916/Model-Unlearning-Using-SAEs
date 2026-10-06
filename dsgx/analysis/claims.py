@@ -282,11 +282,22 @@ def ch7(runs, paired, tofu_extra=None):
     return _claim("C-H7", "Supported" if ok_all else "Inconclusive", ev)
 
 
+POSTHOC_PURPOSE = "posthoc-exploratory"  # DEVIATIONS 2026-10-07 (PH-X1-conformal): set in the run config base.purpose
+
+
+def is_posthoc(r) -> bool:
+    return (getattr(r, "config", None) or {}).get("purpose") == POSTHOC_PURPOSE
+
+
 def evaluate(runs, paired, tofu_extra=None) -> list[dict]:
     """runs: ONE machine's runs (per-GPU baselines: lab PC and gpuws are never pooled, e.g. X1 runs on both)."""
     hw = sorted({getattr(r, "hardware", None) or "labpc" for r in runs})
     if len(hw) > 1:
         raise ValueError(f"claims.evaluate got runs of several hardware labels {hw}; evaluate each machine separately")
+    # post-hoc exploratory runs (e.g. PH-X1-conformal, decided after the X1 TEST verdict) never feed a claim rule
+    ph = {r.name for r in runs if is_posthoc(r)}
+    runs = [r for r in runs if r.name not in ph]
+    paired = [p for p in paired if p.get("run") not in ph]
     out = []
     for f in (ch1, ch2, ch3, ch4):
         try:

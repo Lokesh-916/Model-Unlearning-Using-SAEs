@@ -117,6 +117,9 @@ def mcq_section(runs, hw, n_boot) -> tuple[list[str], list, list]:
     for exp in sorted(set(st["exp"])):
         g = st[st["exp"] == exp].sort_values(["split", "case", "condition"])
         L += [f"#### {exp} ({hw})", ""]
+        if any(claims.is_posthoc(r) for r in mcq if r.base_exp == exp):
+            L += ["**POST-HOC, EXPLORATORY** (decided after the X1 TEST verdict; DEVIATIONS 2026-10-07): "
+                  "not a claim-rule input, reported only as a labelled exploratory comparison.", ""]
         rows = []
         for _, r in g.iterrows():
             seeds = r.get("seeds") or []

@@ -501,3 +501,16 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   check opened it on gpuws. Fix: `stage_lab_jobs.sh` makes it relative; staged spec patched (backup `labjobs/a7-scaled/*.bak-188`);
   `check_job` → 0 errors on the login node. Resubmitted **190 a7-scaled** (nice 0, afterany:178); **179 re-pointed to afterany:190**.
 - **Queue:** 178 muse-v2 R → 190 a7-scaled → 179 → 180; after_muse_submit.sh then appends MT-Bench cusum behind the tail (stays last).
+
+### Session 26 — 2026-10-07 00:3x–01:xx (end state)
+- **C-H5 gpuws detail:** CUSUM wins (paired hi < 0, McNemar p < 0.05, all 5 seeds) on B1 dilution pad400 (0.298 vs DSG 0.609),
+  B2 decompose (0.289 vs 0.444), B5 suffix (4/5 seeds, 0.290 vs 0.312); no win on B3 (translate hi is significantly WORSE,
+  +0.067) or B4. 3 axes >= 3, so the verdict fails on utility/FPR: the rule's clean-run match `label().startswith(cond)` uses
+  the attacked key `…/combined-forget`, which matches NO clean run (clean = `…/combined`), so u_ok/f_ok are False by default.
+  Measured: clean FPR 0.043–0.045 (<= 0.05), utility 0.548–0.550 vs X1 DSG 0.559–0.561 (−0.011..−0.012; rule's pooled DSG
+  utility 0.510 mixes hard-neg/static runs). Rule NOT changed (needs a user decision + DEVIATIONS row).
+- **POST-HOC, EXPLORATORY** `PH-X1-conformal` (branch exp/PH-X1-conformal 02f9b58; `cluster/x1_posthoc.py`, conf `x1-posthoc`):
+  CUSUM + conformal alpha 0.05 + DSG comparators, same TEST items/attacks/seeds (120 runs, 20 jobs). Jobs **191–193** after 190,
+  179 re-pointed to afterany:193. claims.evaluate drops purpose posthoc-exploratory; DEVIATIONS row.
+- **Next:** after 193: `server.sh fetch x1-posthoc`, `verify`, `cleanup x1-posthoc --yes` (after_muse_submit.sh does NOT handle
+  it; it cleans x1 inputs only after MUSE, i.e. after 193). Then digest.
