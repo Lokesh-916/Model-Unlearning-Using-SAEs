@@ -227,6 +227,59 @@ def lab_numbers(N, s, src):
         N.text(f"LabVerdictCH{w}", (claim(s, cid) or {}).get("verdict"), f"{src} claims {cid} (fixed rules, claims.py)")
 
 
+def rowp(summary, exp, cond, pad, case="bio", split="test"):
+    """A row whose attack is dilution with the given pad (C2 detector runs carry the pad in attack_params)."""
+    for r in (summary or {}).get("experiments", {}).get(exp, []):
+        if r["condition"] == cond and r["case"] == case and r["split"] == split and \
+                json.loads(r.get("attack_params") or "{}").get("pad") == pad:
+            return r
+    return None
+
+
+def lab_extra_numbers(N, s, src, lab_runs: Path):
+    """Secondary lab numbers used in the main text: hard negatives (A3), B4/B5 raw accuracies, the C2 detectors under
+    dilution and the open-ended runs (A2/A3/B6 task metrics, read from each DONE run's metrics.json)."""
+    hn = "dsg-faithful/n20/r95/m500/hardneg"
+    N.ci("LabHardnegBaseUtil", rci(row(s, "A3", "base/hardneg"), "raw_util"), f"{src} A3 base hard negatives")
+    N.ci("LabHardnegDsgUtil", rci(row(s, "A3", hn), "raw_util"), f"{src} A3 DSG hard negatives")
+    N.ci("LabHardnegDsgFpr", rci(row(s, "A3", hn), "benign_fpr"), f"{src} A3 DSG hard negatives (gate fire rate)")
+    N.diff("LabHardnegVsBase", pt(paired(s, "A3", hn, "base"), "utility"), f"{src} paired A3 DSG vs base (utility)")
+    dsg = "dsg-faithful/n20/r95/m500/forget"
+    rw = [row(s, "B4", f"{dsg}/rewrite_cache-index{i}-pathrewrites", attack="rewrite_cache") for i in range(5)]
+    N.ci("LabBFourDsg", rci(rw[0], "raw_forget"), f"{src} B4 DSG rewrite 0")
+    vals = [r["raw_forget"] for r in rw if r and _ok(r.get("raw_forget"))]
+    N.text("LabBFourRange", f"{f3(min(vals))}--{f3(max(vals))}" if len(vals) == 5 else None, f"{src} B4 DSG rewrites 0-4 (min--max)")
+    N.ci("LabBFourBase", rci(row(s, "B4", "base/forget/rewrite_cache-index0-pathrewrites", attack="rewrite_cache"), "raw_forget"),
+         f"{src} B4 base rewrite 0")
+    N.ci("LabBFiveDsg", rci(row(s, "B5", f"{dsg}/suffix-pathsuffix-200/suffix.json", attack="suffix"), "raw_forget"), f"{src} B5 DSG 200-step suffix")
+    N.ci("LabBFiveBase", rci(row(s, "B5", "base/forget/suffix-pathsuffix-200/suffix.json", attack="suffix"), "raw_forget"),
+         f"{src} B5 base 200-step suffix")
+    langs = ("ar", "es", "fr", "hi", "ru", "ta", "te", "zh")
+    tr = {l: row(s, "B3", f"{dsg}/translate-lang{l}-min_chrf40", attack="translate") for l in langs}
+    vals = [r["raw_forget"] for r in tr.values() if r and _ok(r.get("raw_forget"))]
+    N.text("LabBThreeLangRange", f"{f3(min(vals))}--{f3(max(vals))}" if len(vals) == len(langs) else None,
+           f"{src} B3 DSG translations, 8 languages (min--max raw forget accuracy)")
+    for l, w in (("fr", "Fr"), ("hi", "Hi")):
+        N.ci(f"LabBThree{w}Dsg", rci(tr[l], "raw_forget"), f"{src} B3 DSG translate {l}")
+        N.ci(f"LabBThree{w}Base", rci(row(s, "B3", f"base/forget/translate-lang{l}-min_chrf40", attack="translate"), "raw_forget"),
+             f"{src} B3 base translate {l}")
+    N.ci("LabBThreeBsixfourBase", rci(row(s, "B3", "base/forget/encode-encodingbase64", attack="encode"), "raw_forget"),
+         f"{src} B3 base base64")
+    for cond, w in (("dsg-faithful/n20/r95/m500/forget+dsg4", "Dsg"), ("gated/cusum/forget+dsg4", "Cusum"),
+                    ("gated/window-w16/forget+dsg4", "Window")):
+        for pad, pw in ((0, "Clean"), (400, "Pad")):
+            r = rowp(s, "C2", f"{cond}/dilution-pad{pad}", pad)
+            N.ci(f"LabCTwo{w}{pw}Forget", rci(r, "raw_forget"), f"{src} C2 {cond} pad {pad}")
+            N.ci(f"LabCTwo{w}{pw}Fpr", rci(r, "benign_fpr"), f"{src} C2 {cond} pad {pad} (benign fire rate, DSG 4-subject set)")
+    for run, w in (("B6/leak__base-stream", "BSixBase"), ("B6/leak__dsg-faithful-stream", "BSixStream"),
+                   ("B6/leak__dsg-faithful-prompt_only", "BSixPrompt"), ("A3/benign-open__base-stream", "BenignOpenBase"),
+                   ("A3/benign-open__dsg-faithful-stream", "BenignOpenDsg")):
+        d = lab_runs / run
+        m = _read(d / "metrics.json") if (d / "DONE").exists() else None
+        for key, kw in (("match", "Match"), ("gibberish", "Gib"), ("gate_fired", "Fired")):
+            N.ci(f"Lab{w}{kw}", (m or {}).get(key), f"runs/{run}/metrics.json {key}")
+
+
 def gpu_numbers(N, s, src, jobs: Path, runs_root: Path):
     N.comment(f"---- server (gpuws): {src}")
     N.ci("GpuBaseForget", rci(row(s, "RMU-v2-test", "base/base"), "raw_forget"), f"{src} RMU-v2-test base")
@@ -278,7 +331,7 @@ def gpu_numbers(N, s, src, jobs: Path, runs_root: Path):
     a6 = (s or {}).get("paper", {}).get("a6", {})
     for key, w in (("A6-full/dsg-hook", "FullDsgHook"), ("A6-full/dsg-nohook", "FullDsgNohook"), ("A6-full/d1-a0.1", "FullDOne"),
                    ("A6-full/rmu-v2", "FullRmuTwo"), ("A6-full-d1v2/d1v2", "FullDOneTwo"), ("A6/dsg-hook", "LoraDsgHook"),
-                   ("A6/dsg-nohook", "LoraDsgNohook")):
+                   ("A6/dsg-nohook", "LoraDsgNohook"), ("A6/d1", "LoraDOne"), ("A6/d2", "LoraDTwo"), ("A6/student", "LoraStudent")):
         a = a6.get(key)
         if not a:
             N.missing(f"GpuAsix{w}Delta", f"no {key} cells", ("",))
@@ -288,6 +341,11 @@ def gpu_numbers(N, s, src, jobs: Path, runs_root: Path):
         N.text(f"GpuAsix{w}Delta", f"{sgn(lo)} to {sgn(hi)}" if abs(hi - lo) > 1e-9 else sgn(lo),
                f"{src} paper.a6.{key} (forget accuracy after - before, over {a['n_cells']} cells, k {a['k']})")
         N.text(f"GpuAsix{w}Before", f3(a["before"][0]), f"{src} paper.a6.{key}.before")
+
+    cells = ((claim(s, "C-H6") or {}).get("numbers") or {}).get("cells") or {}
+    for baked, w in (("d1", "DOne"), ("d2", "DTwo")):
+        c = cells.get(baked)
+        N.text(f"GpuCHSix{w}Cells", f"{c[0]}/{c[1]}" if c else None, f"{src} claims C-H6 numbers.cells.{baked} (wins/matched cells)")
 
     mt = _read(jobs / "mtbench" / "summary.json")
     sc = (mt or {}).get("scores") or {}
@@ -390,6 +448,7 @@ def build(lab_summary: Path, gpu_summary: Path, jobs: Path, lab_runs: Path, gpu_
     N.comment(f"gpuws summary {gpu_summary} generated {(gpu or {}).get('generated')} interim {(gpu or {}).get('interim')}")
     sanity_numbers(N)
     lab_numbers(N, lab, "lab summary.json")
+    lab_extra_numbers(N, lab, "lab summary.json", lab_runs)
     gpu_numbers(N, gpu, "gpuws summary.json", jobs, gpu_runs)
     cross_gpu_numbers(N, lab_runs, gpu_runs)
     a7_diag_numbers(N, a7_diag)

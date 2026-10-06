@@ -40,7 +40,9 @@ def setup(paper=False):
 
 
 def series_style(i):
-    return {"color": PALETTE[i % len(PALETTE)], "marker": MARKERS[i % len(MARKERS)]}
+    if i >= len(PALETTE):  # beyond the palette: neutral ink with a marker no coloured series uses
+        return {"color": INK2, "marker": ["h", "p", "d", "<", ">"][(i - len(PALETTE)) % 5]}
+    return {"color": PALETTE[i], "marker": MARKERS[i % len(MARKERS)]}
 
 
 def save(fig, outdir: Path, stem: str, size=None):
@@ -53,6 +55,7 @@ def save(fig, outdir: Path, stem: str, size=None):
         tw = WIDE_IN if w > 6 else COL_IN
         fig.set_size_inches(tw, h * tw / w)
         exts = ("pdf",)
+        _paper_layout(fig)
     fig.tight_layout()
     for ext in exts:
         fig.savefig(outdir / f"{stem}.{ext}", dpi=200 if ext == "png" else None)
@@ -62,6 +65,35 @@ def save(fig, outdir: Path, stem: str, size=None):
     return stem
 
 
+def _paper_layout(fig):
+    """Paper mode: the LaTeX caption replaces the title of a single-panel figure, and every legend moves below the
+    panels (one figure legend), so no legend covers data or runs off the canvas at column width."""
+    axes = [a for a in fig.axes if a.get_visible() and a.axison]
+    if len(axes) == 1:
+        axes[0].set_title("")
+    handles, labels = [], []
+    for a in axes:
+        leg = a.get_legend()
+        if leg is None:
+            continue
+        for h, l in zip(*a.get_legend_handles_labels()):
+            if l not in labels:
+                handles.append(h)
+                labels.append(l)
+        leg.remove()
+    if not labels:
+        return
+    w, h = fig.get_size_inches()
+    ncol = max(1, min(len(labels), 3 if w < 5 else 4, max(1, int(w / max(len(l) for l in labels) * 13))))
+    rows = (len(labels) + ncol - 1) // ncol
+    extra = 0.16 * rows + 0.1
+    fig.set_size_inches(w, h + extra)
+    fig.legend(handles, labels, loc="lower center", ncol=ncol, fontsize=6.5, frameon=False, handlelength=1.8,
+               columnspacing=1.0, borderaxespad=0.2)
+    fig.tight_layout(rect=(0, extra / (h + extra), 1, 1))
+    fig.tight_layout = lambda *a, **k: None  # keep the reserved legend band in save()
+
+
 def _forget_acc(r):
     f = r.forget("raw") or {}
     return f.get("mean"), f.get("lo"), f.get("hi")
@@ -69,31 +101,41 @@ def _forget_acc(r):
 
 # ----------------------------------------------------------------------------- 1. accuracy vs padding
 def acc_vs_padding(runs, out, ctx):
+    """One panel per padding position (before / after / around the question), one line per filler source, the
+    unguarded base model (dashed) in every panel; pads are evenly spaced (they roughly double)."""
     plt = setup(ctx.get("paper"))
     rs = [r for r in runs if r.base_exp == "B1" and r.is_mcq and r.attack.get("name") == "dilution"]
     if not rs:
         raise Skip("no B1 runs")
-    fig, ax = plt.subplots(figsize=(5.5, 3.4))
-    groups = {}
-    for r in rs:
-        key = "base" if r.is_base else f"DSG, {r.attack.get('position', 'before')}, {r.attack.get('source', 'wikitext')}"
-        groups.setdefault(key, []).append(r)
-    for i, (k, g) in enumerate(sorted(groups.items(), key=lambda kv: (kv[0] != "base", kv[0]))):
-        g = sorted(g, key=lambda r: int(r.attack.get("pad", 0) or 0))
-        x = [int(r.attack.get("pad", 0) or 0) for r in g]
-        m = np.array([_forget_acc(r) for r in g], dtype=float)
-        st = series_style(i)
-        ax.plot(x, m[:, 0], label=k, linestyle="--" if k == "base" else "-", **st)
-        ax.fill_between(x, m[:, 1], m[:, 2], color=st["color"], alpha=0.12, linewidth=0)
-    ax.axhline(0.25, color=INK2, linewidth=1, linestyle=":")
     pads = sorted({int(r.attack.get("pad", 0) or 0) for r in rs})
-    ax.set_xscale("symlog", linthresh=50, linscale=0.5)
-    ax.set_xticks(pads, [str(p) for p in pads])
-    ax.minorticks_off()
-    ax.set_xlabel("padding tokens (symlog scale)")
-    ax.set_ylabel("WMDP-Bio TEST accuracy (raw)")
-    ax.set_title("Accuracy vs padding (B1); dotted = chance")
-    ax.legend(ncol=2 if len(groups) > 4 else 1)
+    pos = {p: i for i, p in enumerate(pads)}
+    base = sorted([r for r in rs if r.is_base], key=lambda r: int(r.attack.get("pad", 0) or 0))
+    dsg = [r for r in rs if not r.is_base]
+    positions = [p for p in ("before", "after", "around") if any(r.attack.get("position", "before") == p for r in dsg)]
+    sources = sorted({r.attack.get("source", "wikitext") for r in dsg})
+    fig, axs = plt.subplots(1, len(positions), figsize=(2.3 * len(positions), 2.4), squeeze=False, sharey=True)
+
+    def line(ax, g, label, **kw):
+        g = sorted(g, key=lambda r: int(r.attack.get("pad", 0) or 0))
+        x = [pos[int(r.attack.get("pad", 0) or 0)] for r in g]
+        m = np.array([_forget_acc(r) for r in g], dtype=float)
+        ax.plot(x, m[:, 0], label=label, markersize=3.5, linewidth=1.3, **kw)
+        ax.fill_between(x, m[:, 1], m[:, 2], color=kw["color"], alpha=0.10, linewidth=0)
+
+    for ax, p in zip(axs[0], positions):
+        if base:
+            line(ax, base, "base model (no gate)", color=INK2, marker="o", linestyle="--")
+        for i, src in enumerate(sources):
+            g = [r for r in dsg if r.attack.get("position", "before") == p and r.attack.get("source", "wikitext") == src]
+            if g:
+                line(ax, g, f"DSG, {src.replace('benign_bio', 'benign bio')} filler", **series_style(i))
+        ax.axhline(0.25, color=INK2, linewidth=0.8, linestyle=":")
+        ax.set_xticks(range(len(pads)), [str(q) for q in pads], rotation=45)
+        ax.minorticks_off()
+        ax.set_title(f"padding {p} the question")
+        ax.set_xlabel("padding tokens")
+    axs[0][0].set_ylabel("WMDP-Bio accuracy")
+    axs[0][0].legend(fontsize=6)
     return [save(fig, out, "b1_accuracy_vs_padding")]
 
 
@@ -287,11 +329,11 @@ def probes_by_layer(runs, out, ctx):
         m = [r.metrics["layers"][str(l)]["probe"]["mean"] for l in L]
         c = [r.metrics["layers"][str(l)]["control"]["mean"] for l in L]
         st = series_style(i)
-        ax.plot(L, m, label=f"{r.base_exp} {r.name.split('__', 1)[1]} probe", **st)
+        ax.plot(L, m, label=f"{r.name.split('__', 1)[1]} probe", markersize=4, **st)
         ax.plot(L, c, color=st["color"], linestyle=":", linewidth=1.2, label=f"{r.name.split('__', 1)[1]} control")
     ax.axhline(0.25, color=INK2, linewidth=1, linestyle="--")
     ax.set_xlabel("layer")
-    ax.set_ylabel("answer-probe TEST accuracy")
+    ax.set_ylabel("probe accuracy (test)")
     ax.set_title("Linear answer probes by layer (dashed = chance)")
     ax.legend(fontsize=6, ncol=2)
     return [save(fig, out, "probe_accuracy_by_layer")]
@@ -300,15 +342,19 @@ def probes_by_layer(runs, out, ctx):
 # ----------------------------------------------------------------------------- 6. relearning curves
 def relearning_curves(runs, out, ctx):
     plt = setup(ctx.get("paper"))
-    rl = [r for r in runs if r.base_exp in ("A6", "A6-full") and r.metrics.get("curve")]
+    rl = [r for r in runs if (r.base_exp == "A6" or r.base_exp.startswith("A6-full")) and r.metrics.get("curve")]
+    if ctx.get("full_only"):
+        rl = [r for r in rl if str(r.metrics.get("rank")) == "full"]
     if not rl:
         raise Skip("no A6 relearning results")
-    ks = sorted({(r.metrics.get("k"), r.metrics.get("rank")) for r in rl}, key=str)
+    rank_order = {"full": 0, "64": 1, "8": 2}
+    ks = sorted({(r.metrics.get("k"), r.metrics.get("rank")) for r in rl},
+                key=lambda kr: (rank_order.get(str(kr[1]), 9), int(kr[0] or 0)))
     n = len(ks)
     cols = min(n, 4)
     rows = (n + cols - 1) // cols
     fig, axs = plt.subplots(rows, cols, figsize=(3.0 * cols, 2.5 * rows), squeeze=False, sharey=True)
-    conds = sorted({r.metrics["condition"] for r in rl})
+    conds = sorted({r.metrics["condition"] for r in rl}, key=lambda c: (list(A6_NAMES).index(c) if c in A6_NAMES else 99, c))
     for ai, (k, rank) in enumerate(ks):
         ax = axs[ai // cols][ai % cols]
         for ci, cnd in enumerate(conds):
@@ -317,14 +363,29 @@ def relearning_curves(runs, out, ctx):
                 m = r.metrics
                 x = [0] + [p["step"] for p in m["curve"]]
                 y = [m["before"]["forget_acc"]] + [p["forget_acc"] for p in m["curve"]]
-                ax.plot(x, y, label=cnd, **series_style(ci))
-        ax.set_title(f"k={k}, rank={rank}")
+                name = A6_NAMES.get(cnd, cnd)
+                if cnd == "d1":
+                    name = "D1-full, beta 0.3 (utility at chance)" if str(rank) == "full" else "D1 low-rank, beta 0.3"
+                ax.plot(x, y, label=name, markersize=4, linewidth=1.5, **series_style(ci))
+        ax.set_title(f"k = {k}, " + ("full FT" if str(rank) == "full" else f"LoRA r{rank}"))
         ax.set_xlabel("relearn steps")
     axs[0][0].set_ylabel("forget accuracy")
     for j in range(n, rows * cols):
         axs[j // cols][j % cols].axis("off")
-    axs[0][0].legend(fontsize=6)
-    return [save(fig, out, "relearning_curves")]
+    for a in (axs.flat if ctx.get("paper") else [axs[0][0]]):
+        if a.lines:
+            a.legend(fontsize=6)  # paper mode merges every panel's entries into one legend below
+    return [save(fig, out, "relearning_full" if ctx.get("full_only") else "relearning_curves")]
+
+
+A6_NAMES = {"dsg-hook": "DSG, hook kept", "dsg-nohook": "DSG, hook removed", "d1-a0.1": "D1-full, beta 0.1",
+            "d1v2": "D1 v2", "d1": "D1, beta 0.3", "d2": "D2 null-space edit", "student": "distilled control (beta 0)",
+            "rmu": "RMU v1", "rmu-v2": "RMU v2"}
+
+
+def relearning_full(runs, out, ctx):
+    """Main-text version of the relearning curves: full fine-tuning panels only (gpuws)."""
+    return relearning_curves(runs, out, {**ctx, "full_only": True})
 
 
 # ----------------------------------------------------------------------------- 7. conformal coverage
@@ -463,7 +524,7 @@ def gibberish_by_gate(runs, out, ctx):
     return [save(fig, out, "gibberish_by_gate")]
 
 
-ALL = [acc_vs_padding, rho_distributions, gate_roc, pareto, cyber_pareto, probes_by_layer, relearning_curves,
+ALL = [acc_vs_padding, rho_distributions, gate_roc, pareto, cyber_pareto, probes_by_layer, relearning_curves, relearning_full,
        conformal_coverage, per_language, n5_rounds, t1_rho, feature_overlap, gibberish_by_gate]
 
 
