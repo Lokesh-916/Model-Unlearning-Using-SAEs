@@ -333,6 +333,34 @@ def server_jobs_section(root: Path) -> list[str]:
     return L
 
 
+def mtbench_paired(jobs: Path, n_boot=2000) -> dict:
+    """{condition: {mean, lo, hi, p, n_differ, n}}: paired judge-score difference vs base on the same
+    (question, turn), two-sided bootstrap p. Only the `score` field of the judgment files is read."""
+    by = {}
+    for f in sorted((jobs / "mtbench").glob("judgments_*.jsonl")):
+        cond = f.name[len("judgments_"):].split("__")[0]
+        d = {}
+        for line in f.read_text().splitlines():
+            try:
+                r = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(r.get("score"), (int, float)) and r["score"] >= 0:
+                d[(r["question_id"], r["turn"])] = float(r["score"])
+        by[cond] = d
+    out = {}
+    for cond in sorted(c for c in by if c != "base"):
+        keys = sorted(set(by[cond]) & set(by.get("base", {})))
+        diffs = np.asarray([by[cond][k] - by["base"][k] for k in keys])
+        if len(diffs):
+            b = boot(diffs, n_boot)
+            m = diffs[np.random.default_rng(0).integers(0, len(diffs), (n_boot, len(diffs)))].mean(1)
+            p = float(min(1.0, 2 * min((m <= 0).mean(), (m >= 0).mean())))
+            out[cond] = {"mean": b["mean"], "lo": b["lo"], "hi": b["hi"], "p": p, "n_differ": int((diffs != 0).sum()),
+                         "n": len(diffs)}
+    return out
+
+
 def mtbench_section(jobs: Path, n_boot=2000) -> list[str]:
     """BM3 MT-Bench: judge score per condition (summary.json) and paired differences vs base on the same
     (question, turn); only the `score` field of the judgment files is read."""
@@ -346,28 +374,8 @@ def mtbench_section(jobs: Path, n_boot=2000) -> list[str]:
     L += md_table(["condition", "all", "turn 1", "turn 2", "unparsed"],
                   [[k, ci(v.get("all"), 2), ci(v.get("turn1"), 2), ci(v.get("turn2"), 2), v.get("unparsed")] for k, v in sc.items()
                    if isinstance(v, dict) and "all" in v])
-    by = {}
-    for f in sorted((jobs / "mtbench").glob("judgments_*.jsonl")):
-        cond = f.name[len("judgments_"):].split("__")[0]
-        d = {}
-        for line in f.read_text().splitlines():
-            try:
-                r = json.loads(line)
-            except ValueError:
-                continue
-            if isinstance(r.get("score"), (int, float)) and r["score"] >= 0:
-                d[(r["question_id"], r["turn"])] = float(r["score"])
-        by[cond] = d
-    rows = []
-    for cond in sorted(c for c in by if c != "base"):
-        keys = sorted(set(by[cond]) & set(by.get("base", {})))
-        diffs = np.asarray([by[cond][k] - by["base"][k] for k in keys])
-        if len(diffs):
-            b = boot(diffs, n_boot)
-            m = diffs[np.random.default_rng(0).integers(0, len(diffs), (n_boot, len(diffs)))].mean(1)
-            p = float(min(1.0, 2 * min((m <= 0).mean(), (m >= 0).mean())))
-            rows.append([f"{cond} − base", f"{b['mean']:+.3f} [{b['lo']:+.3f}, {b['hi']:+.3f}]", f"{p:.3g}",
-                         int((diffs != 0).sum()), len(diffs)])
+    rows = [[f"{cond} − base", f"{d['mean']:+.3f} [{d['lo']:+.3f}, {d['hi']:+.3f}]", f"{d['p']:.3g}", d["n_differ"], d["n"]]
+            for cond, d in mtbench_paired(jobs, n_boot).items()]
     if rows:
         L += ["Paired difference vs base (same question and turn; two-sided bootstrap p):", ""]
         L += md_table(["comparison", "Δ score", "bootstrap p", "pairs that differ", "n"], rows)

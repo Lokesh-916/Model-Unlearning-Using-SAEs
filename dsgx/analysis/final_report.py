@@ -300,6 +300,59 @@ def render(comp, df, st, paired, cl, figs, cards, meta) -> str:
     return "\n".join(L)
 
 
+def with_run_cis(st: pd.DataFrame, df: pd.DataFrame) -> pd.DataFrame:
+    """Single-seed conditions get the run's own item-level bootstrap CI (the seed table has none), exactly as
+    the results digest reports them; multi-seed rows keep the across-seed CI."""
+    cols = ("raw_forget", "raw_util", "dsg_subset_forget", "dsg_subset_util", "benign_fpr")
+    out = st.copy()
+    for i, r in st.iterrows():
+        if len(r.get("seeds") or []) > 1:
+            continue
+        m = df[(df["exp"] == r["exp"]) & (df["condition"] == r["condition"]) & (df["split"] == r["split"]) &
+               (df["case"] == r["case"]) & (df["attack_params"] == r["attack_params"]) & (df["hardware"] == r["hardware"])]
+        if len(m):
+            for c in cols:
+                for suf in ("_lo", "_hi"):
+                    if c + suf in m.columns and c + suf in out.columns:
+                        out.at[i, c + suf] = m.iloc[0][c + suf]
+    return out
+
+
+def paper_extras(runs, root: Path) -> dict:
+    """Numbers the paper quotes that are not MCQ condition rows (read by dsgx.analysis.paper_numbers):
+    strongest DSG attack per axis (attack-success tasks), A4/D3 probe best layers, A2 TOFU conditions,
+    A6 relearning ranges. Descriptive only; verdicts stay with claims.py."""
+    from dsgx.analysis import results_digest as rd
+
+    ex = {"attack_success_max": {}, "probes": {}, "tofu": {}, "a6": {}}
+    for exp in ("B1", "B2", "B3", "B4", "B5"):
+        recs = [r for r in claims.attack_success_records(runs, exp) if claims._is_dsg_rec(r) and r.get("attack_success")
+                and r["attack"].get("name") != "none" and (exp != "B1" or int(r["attack"].get("pad", 0) or 0) > 0)]
+        if recs:
+            b = max(recs, key=lambda r: r["attack_success"].get("mean") or -1)
+            ex["attack_success_max"][exp] = {**b["attack_success"], "n_conditions": len(recs),
+                                             "attack": {k: v for k, v in b["attack"].items() if k != "_exp_id"}}
+    for r in runs:
+        if r.base_exp in ("A4", "D3") and r.name.startswith("probe__") and r.metrics.get("layers"):
+            lay = {int(k): v for k, v in r.metrics["layers"].items() if isinstance(v, dict) and isinstance(v.get("probe"), dict)}
+            if lay:
+                bl = max(lay, key=lambda k: lay[k]["probe"]["mean"])
+                ex["probes"][f"{r.base_exp}/{r.name.split('__', 1)[1]}"] = {"best_layer": bl, "probe": lay[bl]["probe"],
+                                                                           "control": lay[bl].get("control")}
+        if r.base_exp == "A2" and r.name == "tofu-metrics":
+            for cond, c in (r.metrics.get("conditions") or {}).items():
+                if isinstance(c, dict):
+                    ex["tofu"][cond] = {k: c.get(k) for k in ("model_utility", "forget_quality_ks_p")}
+    if root.exists():
+        for (exp, cond), xs in rd.a6_section(root)[1].items():
+            d = [after - bef for bef, after, _, _ in xs]
+            ex["a6"][f"{exp}/{cond}"] = {"before": [min(x[0] for x in xs), max(x[0] for x in xs)],
+                                         "after": [min(x[1] for x in xs), max(x[1] for x in xs)],
+                                         "delta": [min(d), max(d)], "n_cells": len(xs),
+                                         "k": sorted({x[2] for x in xs if x[2] is not None})}
+    return ex
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="P4 final report in one command")
     ap.add_argument("--runs", help="runs root (default $DSG_RESULTS/runs)")
@@ -358,8 +411,9 @@ def main(argv=None) -> int:
             "anomalies_md": len(anp.read_text().splitlines()) if anp.exists() else 0}
     summary = {"generated": meta["time"], "hardware": hw, "interim": interim, "smoke": a.smoke,
                "completeness": comp, "claims": cl, "methods": methods,
-               "experiments": {e: g.to_dict("records") for e, g in st.groupby("exp")} if not st.empty else {},
-               "paired_tests": paired, "figures": figs, "anomalies": meta["anomalies"]}
+               "experiments": {e: g.to_dict("records") for e, g in with_run_cis(st, df).groupby("exp")} if not st.empty else {},
+               "paired_tests": paired, "figures": figs, "anomalies": meta["anomalies"],
+               "paper": paper_extras(runs, root)}
     atomic_write_json(out / "summary.json", summary)
     atomic_write_text(out / "FINAL_REPORT.md", render(comp, df, st, paired, cl, figs, cards, meta))
     nfig = sum(len(f.get("written", [])) for f in figs.values())
