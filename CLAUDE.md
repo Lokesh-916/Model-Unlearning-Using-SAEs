@@ -46,6 +46,7 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | EACL 2027 SRW version (ACL template, anonymous, numbers.tex macros; mentorship 6 Nov, submission 15 Dec) | `~/projects/mechunlearn-project/paper-srw` (`./build.sh`: sync + compile + page/anonymity/fonts checks; also run by `scripts/paper_update.sh`) |
 | arXiv tarball of the TMLR paper ([preprint], authors in `paper/arxiv/authors.tex`, TODO-CONFIRM; never uploads) | `paper/scripts/arxiv_build.sh` → `paper/build-arxiv/arxiv-<date>.tar.gz` |
 | final method = X1 combined gate (CUSUM), name StreamGuard (proposal): full benchmark vs DSG (lab X1-suite after X1; MT-Bench cusum prepared for gpuws) | exp/X1-suite `configs/experiments/X1-suite.yaml` (jobs X1-suite-*); conf `mtbench-x1` (runbook §5.9); `paper/FIX_FRAMING.tex` + `paper/scripts/fix_framing_check.sh` |
+| after MUSE-v2: fetch/verify/cleanup x1, a7-scaled, muse, then stage + submit MT-Bench cusum, then start the Q2 watcher (no manual step) | `nohup cluster/after_muse_submit.sh >> $P/dsg_results_cluster/after_muse_watch.log 2>&1 &` (runbook §5.9; restart after a reboot) |
 | public release package (harness, GuardBreak, configs, aggregate results; not pushed) + exclusion scan | `python scripts/build_release.py` → `~/projects/mechunlearn-project/release`; there `python scan_release.py --private-check --private-root $DSG_PRIVATE --forget-corpus <bio-forget-corpus.jsonl>` |
 
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
@@ -483,4 +484,11 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   `runs/A2/_superseded/smoke-cache-2026-10-06/`. Digest needs the metrics re-run for the C-H7 lab input. DEVIATIONS: 2 rows.
 - **gpuws:** 175–177, 183 OK; tofu-full, figs, validate fetched + verified (nothing to clean). 184 x1 running → 185–186 → 188 → 189 → 178–180.
 - **Next:** runbook §5.8 (x1, a7-scaled) then §5.6 items 3–4 (muse, q2); after A2 re-run + X1-suite: digest, `scripts/paper_update.sh`.
+
+### Session 24 — 2026-10-06 22:xx (end state)
+- **Lab queue reprioritised** (deadline Oct 7 afternoon): A2 TOFU re-run → X1-suite (no lab X1 TEST deps; paired waits only for
+  X1-022/023) → X1-022/023 → other lab X1 (replication) → A8/T3/D3/A5/N2–N4 → C4/N8. Done by waves (A2 5, X1-suite 5, X1-022/023 6,
+  X1 7, A8 8) + existing deps/priorities; archive `queue/_archive/manual-2026-10-06-reprioritise/`. Doctor clean.
+- **gpuws:** `cluster/after_muse_submit.sh` running (nohup, lab PC): MT-Bench cusum + Q2 watcher start by themselves after MUSE-v2.
+  Snapshot code-later10 staged. Restart the watcher after a reboot (runbook §5.9).
 

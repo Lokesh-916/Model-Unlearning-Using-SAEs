@@ -353,3 +353,14 @@ Tests: 107 pass on CPU.
   183 VALIDATE EXACT. Fetched + verified: tofu-full (12 files, 43f692f7…), figs (585, 7063f56d…), validate (7). Cleanup dry-runs:
   nothing left to delete (`A2-tofu-full/full` stays for Q2). gpuws TOFU-full v2: model utility retain 0.794, full 0.799,
   full+dsg 0.479, full+best-gate 0.785; forget quality KS p 0.0002 (dsg), ~0 (gate). Queue: 184 x1 R → 185–186 → 188 → 189 → 178–180.
+
+## Session 24 (2026-10-06 22:0x): queue reprioritised for the Oct 7 deadline, MT-Bench auto-submit after MUSE
+- **Lab order** (running X1-012 untouched; job files archived in `queue/_archive/manual-2026-10-06-reprioritise/`):
+  (a) A2-tofu-metrics/-qa (X1 deps removed) → 5 X1-suite GPU jobs (wave 7 → 5; **X1 deps dropped**: they need only the X1 DEV
+  selection, already in X1-suite.yaml, the gate threshold cached from MMLU DEV, recomputed if absent, and DSG computed in the same
+  runs, not any lab X1 TEST run); X1-suite-paired keeps X1-022 + X1-023 (the combined-hardneg TEST runs it compares) →
+  (b) X1-022, X1-023 (wave 6), then the other lab X1 jobs (second-machine replication of gpuws) → (c) A8 (wave 8), T3, D3, A5,
+  N2–N4 (deps / should) → (d) C4, N8 (stretch: run last). Doctor: 0 deadlocks. Simulated (estimates): (a) ~07:35 Wed,
+  paired ~11:20, (b) ~18:30, (c) ~20:15, (d) ~22:05.
+- **gpuws:** `cluster/after_muse_submit.sh` (nohup) — after MUSE-v2: fetch/verify/cleanup x1, a7-scaled, muse → stage + submit
+  mtbench-x1 (validate → 2 × mtbench-x1) behind our chain → start the Q2 watcher. Snapshot code-later10 staged.

@@ -268,6 +268,12 @@ in their own **gpuws** tables and never mixed with lab-PC numbers:
    `cluster/stage_code_snapshot.sh later10` → `cluster/server.sh plan mtbench-x1` (free ≥ 50 GB after staging) →
    `cluster/server.sh stage mtbench-x1` → `cluster/server.sh submit mtbench-x1 --after-any <last job of ours>` →
    when done: `fetch mtbench-x1`, `verify mtbench-x1`, `cleanup mtbench-x1 --yes`.
+   **Automatic since session 24:** `cluster/after_muse_submit.sh` (lab PC, nohup; log `dsg_results_cluster/after_muse_watch.log`)
+   does all of the above once MUSE has finished (it resubmits MUSE up to twice if it left the queue incomplete), after
+   fetch/verify/cleanup of x1, a7-scaled and muse, and then starts `q2_rerun_when_ready.sh`. Snapshot later10 is already staged.
+   **Restart it after a reboot** if its log has no `MT-Bench (cusum) submitted` line:
+   `nohup cluster/after_muse_submit.sh >> $P/dsg_results_cluster/after_muse_watch.log 2>&1 &`.
+   You still do by hand: `fetch/verify/cleanup mtbench-x1` when it is done.
    **You should see** in `dsg_results_cluster/jobs/mtbench/`: `answers_cusum.jsonl` (160 rows) and
    `judgments_cusum__gemma-2-9b-it.jsonl`; base/dsg/window rows unchanged (skipped as done).
 3. Then `scripts/paper_update.sh` and `paper/scripts/fix_framing_check.sh` (lists the macros still [pending]); choose the
