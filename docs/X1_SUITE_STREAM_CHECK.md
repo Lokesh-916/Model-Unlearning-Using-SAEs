@@ -57,3 +57,11 @@ On WMDP-Bio open-ended questions the direction reverses: StreamGuard fires more 
 
 **For the paper:** report the TOFU forget leak as a StreamGuard weakness (0.465 vs 0.350, lab PC). Do not quote
 0.7575 as a forget number. This is labpc only. The gpuws replica is X1-suite on gpuws (session 27, part 2c).
+
+## gpuws replica (session 27, jobs 197–201; gpuws TOFU-full v3 models, retain reference re-trained on gpuws)
+
+The same jobs on gpuws (paired, gate − DSG): TOFU forget match 0.690 vs 0.380 (+0.31, p < 0.001; base 0.935); gate fired 0.333 vs
+0.745. TOFU retain match 0.915 vs 0.782 (+0.13; base 0.930); fired 0.020 vs 0.390. WMDP open-ended leak 0.013 vs 0.029 (−0.017,
+p 0.008), gibberish 0.679 vs 0.637 (+0.042, p 0.02). Benign biology open-ended 0.079 vs 0.119 (−0.04, p 0.14). TOFU metrics:
+forget quality KS p 3.6e-11 (StreamGuard) vs 4.4e-4 (DSG); model utility 0.717 vs 0.661 (retain model 0.725, full 0.727).
+**The StreamGuard TOFU leak replicates, and is larger on gpuws:** its operating point favours retain utility over forgetting.

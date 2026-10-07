@@ -387,3 +387,7 @@ Tests: 107 pass on CPU.
 - **gpuws chain (nice 0):** 197 validate EXACT → 198 x1suite-models (retain reference re-trained, 10:40) → 199–201 x1-suite
   (lab X1-suite jobs at b933e20, replica; conf x1-suite, snapshot code-later11). Runbook 5.10.
 - Digest: new StreamGuard section (`dsgx/analysis/streamguard.py`).
+- **gpuws X1-suite done** (199, 13:59): fetched/verified/cleaned (+ cleanup x1). TOFU metrics: forget quality StreamGuard 3.6e-11 vs
+  DSG 4.4e-4, model utility 0.717 vs 0.661; streaming TOFU forget leak 0.690 vs 0.380 (replicates the lab finding); WMDP leak 0.013 vs
+  0.029; benign open 0.079 vs 0.119; hard-negative MCQ over-blocking 0.728 vs 0.606 fired. Digest + paper_update run; C-H5 Not supported
+  on both machines. Test suite 139 pass.

@@ -526,4 +526,7 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
 - **X1-suite check:** 0.7575 is the TOFU retain match (headline mislabelled "forget"). StreamGuard leaks MORE TOFU forget answers
   than DSG (0.465 vs 0.350, labpc) and less on WMDP open-ended (0.013 vs 0.029). `docs/X1_SUITE_STREAM_CHECK.md`.
 - **Lab queue:** T-T3 / A8-tables now wait only on X1-022/023 (+ X1-suite-paired); other lab X1 = replication, continues after.
-- **gpuws chain (nice 0):** 197 validate EXACT → 198 x1suite-models → 199–201 x1-suite. Next: runbook §5.10, then digest + paper_update.
+- **gpuws:** 197 validate EXACT → 198 x1suite-models → 199 x1-suite COMPLETE 13:59 (200/201 no-ops). Fetched + verified (85 files,
+  30dcdc23…), cleaned x1-suite and x1. Ours 26 GB, free 77 GB, nothing queued. TOFU leak replicates on gpuws (0.690 vs DSG 0.380).
+- Digest + paper_update done (43 pages, 0 warnings; numbers.tex 21bd013, framing unchanged). C-H5: Not supported on both machines
+  (labpc X1 still 113/192). Next: Q2 re-run (runbook 5.6, disk now fine); lab X1 replication finishes by itself; re-run digest after.
