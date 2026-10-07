@@ -560,6 +560,7 @@ def main(argv=None) -> int:
     L += ["## StreamGuard summary (X1 combined gate vs DSG, per machine; descriptive, C-H5 decides)", ""]
     L += streamguard.section(lab, lab_paired, "labpc")
     L += streamguard.section(gpu, gpu_paired, "gpuws", read(croot.parent / "jobs" / "mtbench" / "summary.json"))
+    L += streamguard.posthoc_section(gpu, gpu_paired, "gpuws")
     L += claims_section(lab, gpu, lab_paired, gpu_paired, a6s, tofu, st_lab, st_gpu)
     atomic_write_text(out, "\n".join(L) + "\n")
     print(f"wrote {out} ({len(lab)} lab runs, {len(gpu)} gpuws runs)")

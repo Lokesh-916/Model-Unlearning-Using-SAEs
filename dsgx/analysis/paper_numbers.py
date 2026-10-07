@@ -445,9 +445,9 @@ FIX_AXES = (("Dil", "dilution-pad400-positionbefore-sourcewikitext"), ("Biofill"
             ("Rewrite", "rewrite_cache-expB4-index0-pathrewrites"), ("Suffix", "suffix-expB5-pathsuffix-200/suffix.json"))
 
 
-def _x1(s, label, attack_part=None):
-    """X1 TEST row of a condition label (combined / dsg / default / base), clean or under one attack."""
-    for r in (s or {}).get("experiments", {}).get("X1", []):
+def _x1(s, label, attack_part=None, exp="X1"):
+    """TEST row of a condition label (combined / dsg / default / base / union ...) of `exp`, clean or under one attack."""
+    for r in (s or {}).get("experiments", {}).get(exp, []):
         parts = r["condition"].split("/")
         if attack_part is None and parts[-1] == label:
             return r
@@ -456,9 +456,9 @@ def _x1(s, label, attack_part=None):
     return None
 
 
-def _x1_pair(s, label, vs, attack_part=None):
+def _x1_pair(s, label, vs, attack_part=None, exp="X1"):
     for p in (s or {}).get("paired_tests", []):
-        if p["exp"] != "X1" or p["vs"] != vs:
+        if p["exp"] != exp or p["vs"] != vs:
             continue
         c = p["condition"]
         if (attack_part is None and c.split("/")[-1] == label) or \
@@ -467,42 +467,96 @@ def _x1_pair(s, label, vs, attack_part=None):
     return None
 
 
-def fix_numbers(N, lab, gpu, lab_runs: Path, gpu_runs: Path, jobs: Path):
-    """Numbers for the fix-first framing (paper/FIX_FRAMING.tex): the X1 combined gate (CUSUM detector) on TEST against
-    DSG on the same machine; the X1-suite runs (open-ended benign biology, B6 leakage, TOFU); latency and MT-Bench (gpuws);
-    the conformal threshold (N6); the Cyber retain-corpus fix (A1-test); the norm-scaled clamp (A7-scaled). Missing
-    sources print [pending]."""
-    src = "lab summary.json X1 (TEST)"
-    N.comment("---- the final method: X1 combined gate (CUSUM) vs DSG, lab PC")
-    N.ci("LabFixForget", rci(_x1(lab, "combined"), "raw_forget"), f"{src} combined, clean")
-    N.ci("LabFixUtil", rci(_x1(lab, "combined"), "raw_util"), f"{src} combined, clean (full-MMLU utility)")
-    N.ci("LabFixFpr", rci(_x1(lab, "combined"), "benign_fpr"), f"{src} combined, clean (benign fire rate)")
-    N.ci("LabXDsgForget", rci(_x1(lab, "dsg"), "raw_forget"), f"{src} dsg, clean")
-    N.ci("LabXDsgUtil", rci(_x1(lab, "dsg"), "raw_util"), f"{src} dsg, clean")
-    N.diff("LabFixVsDsgForget", pt(_x1_pair(lab, "combined", "dsg")), f"{src} paired combined vs dsg (forget)")
-    N.diff("LabFixVsDsgUtil", pt(_x1_pair(lab, "combined", "dsg"), "utility"), f"{src} paired combined vs dsg (utility)")
-    for w, a in FIX_AXES:
-        N.ci(f"LabFix{w}Forget", rci(_x1(lab, "combined", a), "raw_forget"), f"{src} combined under {a}")
-        N.ci(f"LabXDsg{w}Forget", rci(_x1(lab, "dsg", a), "raw_forget"), f"{src} dsg under {a}")
-        N.diff(f"LabFixVsDsg{w}", pt(_x1_pair(lab, "combined", "dsg", a)), f"{src} paired combined vs dsg under {a}")
-    c5 = claim(lab, "C-H5")
-    axes = ((c5 or {}).get("numbers") or {}).get("axes")
-    N.text("LabFixAxesWon", len(axes) if axes else None, "lab summary.json claims C-H5 numbers.axes (only when Supported)")
+def _x1_pairs(s, label, attack_part, exp):
+    """Every seed's paired test (label vs dsg) under one attack."""
+    return [p for p in (s or {}).get("paired_tests", []) if p["exp"] == exp and p["vs"] == "dsg"
+            and f"/{label}-forget/" in p["condition"] and p["condition"].endswith(attack_part)]
 
-    N.comment("---- X1-suite (lab PC): the final method vs DSG on open-ended benign biology, B6 leakage, TOFU")
-    pj = _read(lab_runs / "X1-suite" / "paired" / "paired.json") if (lab_runs / "X1-suite" / "paired" / "DONE").exists() else None
-    for task, w in (("benign-open", "Open"), ("leak", "Leak")):
-        for tag, who in (("cusum-stream", "Fix"), ("dsg-faithful-stream", "SuiteDsg")):
-            d = lab_runs / "X1-suite" / f"{task}__{tag}"
+
+def _axes_better(s, label, exp):
+    """Descriptive (the digest's rule, not a claim): axes B1-B5 where a majority of seeds is significantly better than
+    DSG (paired bootstrap hi < 0 and McNemar p < 0.05) on some variant."""
+    from dsgx.analysis import claims
+
+    won = set()
+    for _, a in FIX_AXES:
+        ps = [x for x in _x1_pairs(s, label, a, exp) if x.get("forget")]
+        sig = sum(x["forget"]["paired_bootstrap"]["hi"] < 0 and (x["forget"].get("mcnemar") or {}).get("p", 1) < claims.ALPHA
+                  for x in ps)
+        if ps and sig >= max(1, (len(ps) + 1) // 2):
+            won.add(claims.AXES.get(ps[0]["attack"].get("name"), "?"))
+    return sorted(won)
+
+
+WORDS = {0: "none", 1: "one", 2: "two", 3: "three", 4: "four", 5: "five"}
+
+
+def _and(xs):
+    return xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + " and " + xs[-1] if xs else None
+
+
+def _fix_mcq(N, P, s, src):
+    """X1 TEST, one machine (P = Lab | Gpu): the combined gate (StreamGuard) vs DSG, the operating-point ablation
+    (default gate = DSG's features and rho statistic with the same 5% benign-FPR threshold) and hard negatives."""
+    N.comment(f"---- the final method: X1 combined gate (CUSUM) vs DSG, {P}")
+    N.ci(f"{P}FixForget", rci(_x1(s, "combined"), "raw_forget"), f"{src} combined, clean")
+    N.ci(f"{P}FixUtil", rci(_x1(s, "combined"), "raw_util"), f"{src} combined, clean (full-MMLU utility)")
+    N.ci(f"{P}FixFpr", rci(_x1(s, "combined"), "benign_fpr"), f"{src} combined, clean (benign fire rate)")
+    N.ci(f"{P}XDsgForget", rci(_x1(s, "dsg"), "raw_forget"), f"{src} dsg, clean")
+    N.ci(f"{P}XDsgUtil", rci(_x1(s, "dsg"), "raw_util"), f"{src} dsg, clean")
+    N.ci(f"{P}XDsgFpr", rci(_x1(s, "dsg"), "benign_fpr"), f"{src} dsg, clean (benign fire rate)")
+    N.diff(f"{P}FixVsDsgForget", pt(_x1_pair(s, "combined", "dsg")), f"{src} paired combined vs dsg (forget)")
+    N.diff(f"{P}FixVsDsgUtil", pt(_x1_pair(s, "combined", "dsg"), "utility"), f"{src} paired combined vs dsg (utility)")
+    for w, a in FIX_AXES:
+        N.ci(f"{P}Fix{w}Forget", rci(_x1(s, "combined", a), "raw_forget"), f"{src} combined under {a}")
+        N.ci(f"{P}XDsg{w}Forget", rci(_x1(s, "dsg", a), "raw_forget"), f"{src} dsg under {a}")
+        N.diff(f"{P}FixVsDsg{w}", pt(_x1_pair(s, "combined", "dsg", a)), f"{src} paired combined vs dsg under {a}")
+    for w, a in (("Dil", FIX_AXES[0][1]), ("Decomp", "decompose")):
+        N.ci(f"{P}Def{w}Forget", rci(_x1(s, "default", a), "raw_forget"), f"{src} default gate (rho, 5% FPR threshold) under {a}")
+    N.ci(f"{P}DefUtil", rci(_x1(s, "default"), "raw_util"), f"{src} default gate, clean (full-MMLU utility)")
+    N.ci(f"{P}DefFpr", rci(_x1(s, "default"), "benign_fpr"), f"{src} default gate, clean (benign fire rate)")
+    for lab_, w in (("combined-hardneg", "Fix"), ("dsg-hardneg", "XDsg")):
+        N.ci(f"{P}{w}HardnegFired", rci(_x1(s, lab_), "benign_fpr"), f"{src} {lab_} (gate fire rate on A3 benign biology MCQ)")
+        N.ci(f"{P}{w}HardnegAcc", rci(_x1(s, lab_), "raw_util"), f"{src} {lab_} (accuracy on A3 benign biology MCQ)")
+    if P == "Lab":
+        c5 = claim(s, "C-H5")
+        axes = ((c5 or {}).get("numbers") or {}).get("axes")
+        N.text("LabFixAxesWon", len(axes) if axes else None, "lab summary.json claims C-H5 numbers.axes (only when Supported)")
+    # the C-H5 rule's own reading of the combined gate (evidence line of claims.ch5; descriptive here)
+    import re as _re
+    ev = next((e for e in (claim(s, "C-H5") or {}).get("evidence", []) if e.startswith("X1:gated/cusum")), None)
+    m = _re.search(r"wins on \[([^\]]*)\]", ev or "")
+    u = _re.search(r"paired utility vs DSG ([-+]?[0-9.]+)", ev or "")
+    axes = [x.strip(" '") for x in m.group(1).split(",") if x.strip(" '")] if m else None
+    N.text(f"{P}FixRuleAxes", _and(axes) if axes else None, f"{src} claims C-H5 evidence (X1 combined): axes won")
+    N.text(f"{P}FixRuleAxesCount", WORDS.get(len(axes)) if axes is not None else None, f"{src} claims C-H5 evidence: number of axes won")
+    du = float(u.group(1)) if u else None
+    N.text(f"{P}FixRuleUtilDiff", f"${du:+.4f}$" if du is not None else None, f"{src} claims C-H5 evidence: mean paired utility vs DSG")
+    N.text(f"{P}FixRuleUtilMiss", f"{-0.01 - du:.4f}" if du is not None and du < -0.01 else None,
+           f"{src} claims C-H5: utility shortfall below the DSG - 0.01 budget")
+
+
+def _fix_suite(N, P, runs_root, mach):
+    """X1-suite on one machine: open-ended benign biology, B6 leakage, streaming TOFU QA, hard negatives, TOFU metrics."""
+    N.comment(f"---- X1-suite ({mach}): the final method vs DSG on open-ended benign biology, B6 leakage, TOFU")
+    d0 = runs_root / "X1-suite"
+    pj = _read(d0 / "paired" / "paired.json") if (d0 / "paired" / "DONE").exists() else None
+    for task, w in (("benign-open", "Open"), ("leak", "Leak"), ("tofu-qa-forget", "TofuQaForget"), ("tofu-qa-retain", "TofuQaRetain")):
+        for tag, who in (("cusum-stream", "Fix"), ("dsg-faithful-stream", "SuiteDsg"), ("base-stream", "SuiteBase")):
+            if who == "SuiteBase" and not task.startswith("tofu"):
+                continue
+            d = d0 / f"{task}__{tag}"
             m = _read(d / "metrics.json") if (d / "DONE").exists() else None
             for key, kw in (("match", "Match"), ("gibberish", "Gib"), ("gate_fired", "Fired")):
-                N.ci(f"Lab{who}{w}{kw}", (m or {}).get(key), f"runs/X1-suite/{task}__{tag}/metrics.json {key}")
+                if who == "SuiteBase" and key != "match":
+                    continue
+                N.ci(f"{P}{who}{w}{kw}", (m or {}).get(key), f"{mach} runs/X1-suite/{task}__{tag}/metrics.json {key}")
         for key, kw in (("match", "Match"), ("gibberish", "Gib"), ("gate_fired", "Fired")):
             r = ((pj or {}).get(task) or {}).get(key) or {}
             d = dict(r.get("paired_bootstrap") or {}) or None
             if d:
                 d["mcnemar"] = r.get("mcnemar")
-            N.diff(f"LabFix{w}VsDsg{kw}", d, f"runs/X1-suite/paired/paired.json {task}.{key} (gate - DSG)")
+            N.diff(f"{P}Fix{w}VsDsg{kw}", d, f"{mach} runs/X1-suite/paired/paired.json {task}.{key} (gate - DSG)")
     hn = (pj or {}).get("hardneg") or {}
     s0 = (hn.get("seeds") or {}).get("0") or {}
     for key, kw in (("correct", "Util"), ("gate_fired", "Fired")):
@@ -510,26 +564,100 @@ def fix_numbers(N, lab, gpu, lab_runs: Path, gpu_runs: Path, jobs: Path):
         d = dict(r.get("paired_bootstrap") or {}) or None
         if d:
             d["mcnemar"] = r.get("mcnemar")
-        N.diff(f"LabFixHardneg{kw}VsDsg", d, f"runs/X1-suite/paired/paired.json hardneg seed 0 {key} (gate - DSG)")
-        N.text(f"LabFixHardneg{kw}SigSeeds", (hn.get("mean_over_seeds") or {}).get(key, {}).get("significant_seeds") if hn.get("n_seeds") else None,
-               f"paired.json hardneg: seeds with significant {key} difference (of {hn.get('n_seeds')})")
-    tm_dir = lab_runs / "X1-suite" / "tofu-metrics"
+        N.diff(f"{P}FixHardneg{kw}VsDsg", d, f"{mach} paired.json hardneg seed 0 {key} (gate - DSG)")
+        N.text(f"{P}FixHardneg{kw}SigSeeds", (hn.get("mean_over_seeds") or {}).get(key, {}).get("significant_seeds") if hn.get("n_seeds") else None,
+               f"{mach} paired.json hardneg: seeds with significant {key} difference (of {hn.get('n_seeds')})")
+    _tofu_metrics(N, f"{P}Suite", d0 / "tofu-metrics", (("retain-model", "Retain"), ("full", "Full"), ("full+dsg", "Dsg"),
+                                                         ("full+gate-cusum", "Fix")), mach)
+    tm = _read(d0 / "tofu-metrics" / "metrics.json") if (d0 / "tofu-metrics" / "DONE").exists() else None
+    pr = ((tm or {}).get("paired") or {}).get("full+gate-cusum vs full+dsg") or {}
+    N.diff(f"{P}SuiteTofuFixVsDsgForgetProb", pr.get("ans_forget"), f"{mach} tofu-metrics paired full+gate-cusum vs full+dsg ans_forget", has_p=False)
+    N.diff(f"{P}SuiteTofuFixVsDsgRetainProb", pr.get("ans_retain"), f"{mach} tofu-metrics paired full+gate-cusum vs full+dsg ans_retain", has_p=False)
+
+
+def _tofu_metrics(N, pre, tm_dir, conds, mach):
     tm = _read(tm_dir / "metrics.json") if (tm_dir / "DONE").exists() else None
-    conds = (tm or {}).get("conditions") or {}
-    for cond, w in (("retain-model", "Retain"), ("full", "Full"), ("full+dsg", "Dsg"), ("full+gate-cusum", "Fix")):
-        c = conds.get(cond) or {}
-        N.text(f"LabSuiteTofuUtil{w}", f3(c["model_utility"]) if _ok(c.get("model_utility")) else None,
-               f"runs/X1-suite/tofu-metrics {cond} model_utility")
+    cc = (tm or {}).get("conditions") or {}
+    for cond, w in conds:
+        c = cc.get(cond) or {}
+        N.text(f"{pre}TofuUtil{w}", f3(c["model_utility"]) if _ok(c.get("model_utility")) else None,
+               f"{mach} {tm_dir.parent.name}/tofu-metrics {cond} model_utility")
         if cond != "retain-model":
             p = c.get("forget_quality_ks_p")
             if _ok(p) and p > 0:
                 m_, e = f"{p:.1e}".split("e")
-                N.text(f"LabSuiteTofuFq{w}", f"${m_} \\times 10^{{{int(e)}}}$", f"runs/X1-suite/tofu-metrics {cond} forget_quality_ks_p")
+                N.text(f"{pre}TofuFq{w}", f"${m_} \\times 10^{{{int(e)}}}$", f"{mach} {tm_dir.parent.name}/tofu-metrics {cond} forget_quality_ks_p")
             else:
-                N.missing(f"LabSuiteTofuFq{w}", f"no forget quality for {cond}", ("",))
-    pr = ((tm or {}).get("paired") or {}).get("full+gate-cusum vs full+dsg") or {}
-    N.diff("LabSuiteTofuFixVsDsgForgetProb", pr.get("ans_forget"), "tofu-metrics paired full+gate-cusum vs full+dsg ans_forget", has_p=False)
-    N.diff("LabSuiteTofuFixVsDsgRetainProb", pr.get("ans_retain"), "tofu-metrics paired full+gate-cusum vs full+dsg ans_retain", has_p=False)
+                N.missing(f"{pre}TofuFq{w}", f"no forget quality for {cond}", ("",))
+
+
+def muse_numbers(N, jobs: Path):
+    """MUSE (BM1, gpuws, official muse_bench metrics; DSG and the best gate on the MUSE target model)."""
+    N.comment("---- MUSE (gpuws, jobs/muse/summary.json)")
+    res = (_read(jobs / "muse" / "summary.json") or {}).get("results") or {}
+    for corpus, cw in (("muse-news", "News"), ("muse-books", "Books")):
+        for cond, mw in (("retrain", "Retrain"), ("target", "Target"), ("target+dsg", "Dsg"), ("target+best-gate", "Gate")):
+            r = (res.get(corpus) or {}).get(cond) or {}
+            for key, kw in (("knowmem_forget", "KnowF"), ("knowmem_retain", "KnowR"), ("verbmem_forget", "Verb")):
+                N.text(f"GpuMuse{cw}{mw}{kw}", f3(r[key]) if _ok(r.get(key)) else None, f"jobs/muse/summary.json {corpus}.{cond}.{key}")
+            if cond != "retrain":
+                N.text(f"GpuMuse{cw}{mw}Priv", f"{r['privleak']:.1f}" if _ok(r.get("privleak")) else None,
+                       f"jobs/muse/summary.json {corpus}.{cond}.privleak")
+
+
+def posthoc_numbers(N, gpu, gpu_runs: Path):
+    """POST-HOC, EXPLORATORY (DEVIATIONS 2026-10-07; never claim inputs): PH-union (DSG rho gate OR CUSUM, one
+    conformal threshold) and PH-tofucal (StreamGuard calibrated on TOFU retain DEV), gpuws. \\resGpuPhUnionStatus /
+    \\resGpuPhTofucalStatus = done | pending (the paper prints the paragraph's numbers only when done)."""
+    N.comment("---- POST-HOC, EXPLORATORY follow-ups (gpuws): PH-union, PH-tofucal")
+    src = "gpuws summary.json PH-union (TEST)"
+    U = "PH-union"
+    rows = (gpu or {}).get("experiments", {}).get(U, [])
+    pj = lambda e: _read(gpu_runs / e / "paired" / "paired.json") if (gpu_runs / e / "paired" / "DONE").exists() else None  # noqa: E731
+    pu, ptc = pj(U), pj("PH-tofucal")
+    n_mcq = sum(1 for r in rows)
+    N.text("GpuPhUnionStatus", "done" if pu and n_mcq >= 24 else "pending", "PH-union paired DONE and its MCQ rows in the gpuws summary")
+    N.text("GpuPhTofucalStatus", "done" if ptc else "pending", "PH-tofucal paired DONE")
+    N.ci("GpuPhUnionUtil", rci(_x1(gpu, "union", exp=U), "raw_util"), f"{src} union, clean (full-MMLU utility)")
+    N.ci("GpuPhUnionFpr", rci(_x1(gpu, "union", exp=U), "benign_fpr"), f"{src} union, clean (benign fire rate)")
+    N.diff("GpuPhUnionVsDsgUtil", pt(_x1_pair(gpu, "union", "dsg", exp=U), "utility"), f"{src} paired union vs dsg (utility)")
+    for w, a in FIX_AXES:
+        N.ci(f"GpuPhUnion{w}Forget", rci(_x1(gpu, "union", a, exp=U), "raw_forget"), f"{src} union under {a}")
+        N.diff(f"GpuPhUnionVsDsg{w}", pt(_x1_pair(gpu, "union", "dsg", a, exp=U)), f"{src} paired union vs dsg under {a}")
+    won = _axes_better(gpu, "union", U) if rows else None
+    N.text("GpuPhUnionAxes", _and(won) if won else ("none" if won == [] else None), f"{src}: axes with a majority of seeds better than DSG")
+    N.ci("GpuPhUnionHardnegFired", rci(_x1(gpu, "union-hardneg", exp=U), "benign_fpr"), f"{src} union-hardneg fire rate")
+    for exp, task, tag, w in ((U, "leak", "union-stream", "UnionLeak"), (U, "benign-open", "union-stream", "UnionOpen"),
+                              (U, "tofu-qa-forget", "union-stream", "UnionTofuForget"),
+                              (U, "tofu-qa-retain", "union-stream", "UnionTofuRetain"),
+                              ("PH-tofucal", "tofu-qa-forget", "cusum-tofucal-stream", "TofucalTofuForget"),
+                              ("PH-tofucal", "tofu-qa-retain", "cusum-tofucal-stream", "TofucalTofuRetain")):
+        d = gpu_runs / exp / f"{task}__{tag}"
+        m = _read(d / "metrics.json") if (d / "DONE").exists() else None
+        N.ci(f"GpuPh{w}Match", (m or {}).get("match"), f"gpuws runs/{exp}/{task}__{tag} match")
+        N.ci(f"GpuPh{w}Fired", (m or {}).get("gate_fired"), f"gpuws runs/{exp}/{task}__{tag} gate_fired")
+        r = (((pu if exp == U else ptc) or {}).get(task) or {}).get("match") or {}
+        dd = dict(r.get("paired_bootstrap") or {}) or None
+        if dd:
+            dd["mcnemar"] = r.get("mcnemar")
+        N.diff(f"GpuPh{w}VsDsg", dd, f"gpuws runs/{exp}/paired/paired.json {task}.match (gate - DSG)")
+    _tofu_metrics(N, "GpuPhUnion", gpu_runs / U / "tofu-metrics", (("full+dsg", "Dsg"), ("full+union", "Gate")), "gpuws")
+    _tofu_metrics(N, "GpuPhTofucal", gpu_runs / "PH-tofucal" / "tofu-metrics",
+                  (("full+dsg", "Dsg"), ("full+gate-cusum-tofucal", "Gate")), "gpuws")
+    tm = _read(gpu_runs / "PH-tofucal" / "tofu-metrics" / "metrics.json") or {}
+    thr = (((tm.get("conditions") or {}).get("full+gate-cusum-tofucal") or {}).get("threshold"))
+    N.text("GpuPhTofucalThreshold", f"{thr:.2f}" if _ok(thr) else None, "PH-tofucal tofu-metrics full+gate-cusum-tofucal threshold")
+
+
+def fix_numbers(N, lab, gpu, lab_runs: Path, gpu_runs: Path, jobs: Path):
+    """Numbers for the fix-first framing: the X1 combined gate (StreamGuard, CUSUM detector) on TEST against DSG on the
+    same machine (both machines: Lab*, Gpu*); the X1-suite runs (open-ended benign biology, B6 leakage, TOFU) per
+    machine; latency and MT-Bench (gpuws); the conformal threshold (N6); the Cyber retain-corpus fix (A1-test); the
+    norm-scaled clamp (A7-scaled). Missing sources print [pending]."""
+    _fix_mcq(N, "Lab", lab, "lab summary.json X1 (TEST)")
+    _fix_mcq(N, "Gpu", gpu, "gpuws summary.json X1 (TEST)")
+    _fix_suite(N, "Lab", lab_runs, "labpc")
+    _fix_suite(N, "Gpu", gpu_runs, "gpuws")
 
     N.comment("---- the final method on gpuws: latency (FP-latency), MT-Bench (mtbench, mode cusum)")
     lat = _read(gpu_runs / "FP-latency" / "latency" / "metrics.json")
@@ -563,8 +691,10 @@ def fix_numbers(N, lab, gpu, lab_runs: Path, gpu_runs: Path, jobs: Path):
                     ("dsg-faithful/n200/r95/m1000/chatretain", "Chat")):
         N.ci(f"LabCyber{w}Util", rci(cy.get(cond), "raw_util"), f"lab summary.json A1-test cyber {cond} (full-MMLU utility)")
         N.ci(f"LabCyber{w}Forget", rci(cy.get(cond), "raw_forget"), f"lab summary.json A1-test cyber {cond}")
+    # the scaled run is the one with an explicit intervention (clamp_all, multiplier -51650) in its condition label;
+    # the other gated run is DSG's default clamp (-500)
     sc = next((p for p in (gpu or {}).get("paired_tests", []) if p["exp"] == "A7-scaled" and p["vs"] == "base"
-               and "51650" in p["condition"]), None)
+               and "/clamp_all/" in p["condition"]), None)
     N.diff("GpuScaledVsBaseForget", pt(sc), "gpuws summary.json paired A7-scaled clamp -51650 vs base (forget)")
     N.diff("GpuScaledVsBaseUtil", pt(sc, "utility"), "gpuws summary.json paired A7-scaled clamp -51650 vs base (utility)")
 
@@ -585,6 +715,8 @@ def build(lab_summary: Path, gpu_summary: Path, jobs: Path, lab_runs: Path, gpu_
     a7_diag_numbers(N, a7_diag)
     x1_numbers(N)
     fix_numbers(N, lab, gpu, lab_runs, gpu_runs, jobs)
+    muse_numbers(N, jobs)
+    posthoc_numbers(N, gpu, gpu_runs)
     return N
 
 
