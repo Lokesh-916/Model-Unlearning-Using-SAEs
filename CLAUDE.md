@@ -50,6 +50,7 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | public release package (harness, GuardBreak, configs, aggregate results; not pushed) + exclusion scan | `python scripts/build_release.py` → `~/projects/mechunlearn-project/release`; there `python scan_release.py --private-check --private-root $DSG_PRIVATE --forget-corpus <bio-forget-corpus.jsonl>` |
 | X1-suite on gpuws (StreamGuard vs DSG on the gpuws TOFU-full v3 model: TOFU metrics, streaming TOFU QA, A3 benign open-ended, B6 leak, paired incl. gpuws X1 hard negatives) | conf `x1-suite` (`cluster/x1suite_server.py models` re-trains the retain reference; `cluster/stage_x1suite.sh`); runbook §5.10 |
 | StreamGuard digest section (attacks per axis, clean utility/FPR paired, hard negatives, generation, TOFU, MT-Bench) | `dsgx/analysis/streamguard.py` (called by `results_digest`); X1-suite streaming check `docs/X1_SUITE_STREAM_CHECK.md` |
+| POST-HOC exploratory union gate (DSG rho OR CUSUM, one conformal threshold) + TOFU-calibrated StreamGuard (gpuws, session 28; not claim inputs) | branch exp/PH-union, `cluster/ph_union.py`, conf `ph-union`; watcher `cluster/after_ph_union.sh` (fetch/verify/cleanup, digest, paper update, local commits) |
 
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
 `calibrate(..., rule="conformal")` (cache key unchanged for the default quantile rule); `dsgx/attacks/transforms.py`
@@ -530,3 +531,20 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   30dcdc23…), cleaned x1-suite and x1. Ours 26 GB, free 77 GB, nothing queued. TOFU leak replicates on gpuws (0.690 vs DSG 0.380).
 - Digest + paper_update done (43 pages, 0 warnings; numbers.tex 21bd013, framing unchanged). C-H5: Not supported on both machines
   (labpc X1 still 113/192). Next: Q2 re-run (runbook 5.6, disk now fine); lab X1 replication finishes by itself; re-run digest after.
+
+### Session 28 — 2026-10-07 14:2x–15:xx (end state)
+- **PH-union / PH-tofucal (POST-HOC, EXPLORATORY; DEVIATIONS row; `claims.is_posthoc` drops every PH-* run):** branch
+  exp/PH-union 801b719 (gates.py type `union` = 1e9 if rho > DSG tau else cusum_max, one conformal threshold alpha 0.05 on
+  MMLU DEV; calib source `tofu-retain-dev`). Staged (ours 30 GB, free 73 GB). **Chain (nice 0): 202 validate EXACT → 203
+  x1suite-models (R at 15:0x) → 204–207 ph-union** (30 jobs: PH-tofucal 4, PH-union 26 incl. 120 grid runs). ETA ~21:00–22:00
+  (upper bound ~23:30). Watcher `cluster/after_ph_union.sh` (nohup, log `dsg_results_cluster/after_ph_union.log`) fetches,
+  verifies, cleans, regenerates the digest + both papers and commits numbers.tex locally; restart it after a reboot.
+- **Q2 re-run NOT staged:** lab PC 56 GB free (< 61 GB needed by `stage_q2_transcoders.sh`). After freeing lab space:
+  `cluster/server.sh stage q2-graphs && cluster/submit_chain.sh --after-any 207 --nice 0 q2-graphs-v2.sbatch`.
+- **Paper framing applied** (paper 379623f/0ad0990, paper-srw ee90665): title "StreamGuard: Breaking and Hardening Sparse
+  Autoencoder Guardrails for LLM Unlearning"; Break → Explain → Fix (gpuws X1: pad400 0.298 vs 0.609, decomposition 0.289 vs
+  0.444, suffix; FPR 0.044; utility −0.0117) → trade-offs (TOFU leak 0.690 vs 0.380, benign biology 0.728 vs 0.606, C-H5
+  miss 0.0017) → negatives (C-H3, C-H6, Gemma 3 incl. scaled clamp, MUSE). Post-hoc paragraph fills in via
+  `\ifresdone{\resGpuPhUnionStatus}`. Note in the text: the default rho gate at the same 5 % FPR also "wins" B1–B5 by the
+  rule with small margins (pad400 0.598) — the padding/decomposition closure is the detector's. arXiv authors confirmed
+  (K. Lokesh Babu, K. Chakreesh, S. Amarnath Reddy, M. Naresh Babu); TMLR/SRW anonymous.

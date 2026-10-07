@@ -402,3 +402,9 @@ Tests: 107 pass on CPU.
   **Chain (nice 0): 202 validate → 203 x1suite-models (gpuws TOFU retain reference re-trained) → 204–207 ph-union.**
 - **Q2 re-run NOT staged:** `stage_q2_transcoders.sh` refuses while the lab PC has <= 61 GB free (56 GB now; rule 6).
   When space is freed: `cluster/server.sh stage q2-graphs && cluster/submit_chain.sh --after-any 207 --nice 0 q2-graphs-v2.sbatch`.
+- **Part 2 (paper framing):** applied in paper (379623f) and paper-srw (ee90665); `paper_numbers` gains gpuws fix macros
+  (`Gpu{Fix,XDsg,Def}*`, `GpuFixRule*`, streaming TOFU QA, hard-negative fire rates), MUSE macros, PH macros with
+  `GpuPh{Union,Tofucal}Status` (done | pending); A7-scaled selector fixed (it had always been pending). FIX_FRAMING.tex
+  marked superseded. arXiv authors confirmed. Digest: post-hoc section (`streamguard.posthoc_section`).
+- **Part 3:** `scripts/paper_update.sh`: TMLR 45 pages, 0 LaTeX warnings, 0 [pending] in the PDF; SRW BUILD OK (8 pages,
+  content ends p.5, anonymous). Digest regenerated (487 lab, 629 gpuws runs). 140 tests pass.
