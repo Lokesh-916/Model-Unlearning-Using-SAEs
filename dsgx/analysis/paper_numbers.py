@@ -750,6 +750,9 @@ def build(lab_summary: Path, gpu_summary: Path, jobs: Path, lab_runs: Path, gpu_
     fix_numbers(N, lab, gpu, lab_runs, gpu_runs, jobs)
     muse_numbers(N, jobs)
     posthoc_numbers(N, gpu, gpu_runs)
+    from dsgx.analysis import b7_adaptive
+
+    b7_adaptive.macros(N, lab_runs)  # POST-HOC B7 adaptive attacks (lab PC)
     return N
 
 

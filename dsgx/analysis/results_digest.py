@@ -561,6 +561,10 @@ def main(argv=None) -> int:
     L += streamguard.section(lab, lab_paired, "labpc")
     L += streamguard.section(gpu, gpu_paired, "gpuws", read(croot.parent / "jobs" / "mtbench" / "summary.json"))
     L += streamguard.posthoc_section(gpu, gpu_paired, "gpuws")
+    if (paths.runs_dir() / "B7").exists():
+        from dsgx.analysis import b7_adaptive
+
+        L += b7_adaptive.markdown(b7_adaptive.summarize("B7"))
     L += claims_section(lab, gpu, lab_paired, gpu_paired, a6s, tofu, st_lab, st_gpu)
     atomic_write_text(out, "\n".join(L) + "\n")
     print(f"wrote {out} ({len(lab)} lab runs, {len(gpu)} gpuws runs)")

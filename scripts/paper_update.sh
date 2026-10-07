@@ -36,7 +36,7 @@ if [ "$NOPDF" = 0 ] && [ -x "$SRW/build.sh" ]; then
 fi
 # what is still open (the paper is final when all three lines read 0 / done)
 echo "open: $(sed -n 's/^% [0-9]* macros, \([0-9]*\) pending.*/\1/p' "$PAPER/numbers.tex") pending numbers in numbers.tex"
-for m in LabXOneStatus GpuPhUnionStatus GpuPhUnionTofuStatus GpuPhUnionOpenStatus GpuPhUnionPairedStatus GpuPhTofucalStatus; do
+for m in LabXOneStatus GpuPhUnionStatus GpuPhUnionTofuStatus GpuPhUnionOpenStatus GpuPhUnionPairedStatus GpuPhTofucalStatus LabBSevenStatus; do
   printf '  %-24s %s\n' "$m" "$(sed -n "s/^\\\\newcommand{\\\\res$m}{\\(.*\\)}$/\\1/p" "$PAPER/numbers.tex")"
 done
 if [ "$NOPDF" = 0 ] && command -v pdftotext >/dev/null; then
