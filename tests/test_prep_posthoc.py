@@ -11,8 +11,8 @@ def test_posthoc_runs_and_pairs_are_dropped(monkeypatch):
     for f in ("ch1", "ch2", "ch3", "ch4"):
         monkeypatch.setattr(claims, f, lambda runs, _f=f: claims._claim(_f.replace("ch", "C-H"), "Inconclusive", []))
     monkeypatch.setattr(claims, "ch7", lambda runs, paired, extra: claims._claim("C-H7", "Inconclusive", []))
-    ph = SimpleNamespace(name="PH-X1-conformal__gated", hardware="gpuws", config={"purpose": "posthoc-exploratory"})
-    x1 = SimpleNamespace(name="X1__gated", hardware="gpuws", config={"purpose": "report"})
+    ph = SimpleNamespace(name="PH-X1-conformal__gated", hardware="gpuws", config={"config": {"purpose": "posthoc-exploratory"}})
+    x1 = SimpleNamespace(name="X1__gated", hardware="gpuws", config={"config": {"purpose": "report"}})
     claims.evaluate([ph, x1], [{"run": ph.name}, {"run": x1.name}, {"other": 1}])
     assert [r.name for r in seen["runs"]] == ["X1__gated"]
     assert seen["paired"] == [{"run": "X1__gated"}, {"other": 1}]
