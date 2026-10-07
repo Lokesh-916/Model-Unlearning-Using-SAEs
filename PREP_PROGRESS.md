@@ -391,3 +391,14 @@ Tests: 107 pass on CPU.
   DSG 4.4e-4, model utility 0.717 vs 0.661; streaming TOFU forget leak 0.690 vs 0.380 (replicates the lab finding); WMDP leak 0.013 vs
   0.029; benign open 0.079 vs 0.119; hard-negative MCQ over-blocking 0.728 vs 0.606 fired. Digest + paper_update run; C-H5 Not supported
   on both machines. Test suite 139 pass.
+
+## Session 28 (2026-10-07 14:xx): post-hoc exploratory union gate + TOFU-calibrated StreamGuard, fix-first paper framing
+- **Part 1 (gpuws, POST-HOC EXPLORATORY, DEVIATIONS row, not claim inputs; `claims.is_posthoc` now drops every PH-* run):**
+  branch exp/PH-union 801b719 (= exp/X1-suite b933e20 + 637005f: `gates.py` type `union` = 1e9 if rho > DSG tau else
+  cusum_max, one conformal threshold alpha 0.05 on MMLU DEV; calib source `tofu-retain-dev` = 1000 retain90 QA pairs in
+  neither TOFU test set; stream token values (fire, LLR); paired `gate_label` / `hardneg`). CPU check on the real model:
+  union features = DSG's 20, dsg_tau 0.5458 = DSG tau; non-DSG-fired scores = CUSUM. `cluster/ph_union.py`, conf ph-union,
+  30 jobs (PH-tofucal 4, PH-union 26 incl. 120 grid runs = 60 DSG + 60 union). Staged (4 GB; ours 30 GB, free 73 GB).
+  **Chain (nice 0): 202 validate → 203 x1suite-models (gpuws TOFU retain reference re-trained) → 204–207 ph-union.**
+- **Q2 re-run NOT staged:** `stage_q2_transcoders.sh` refuses while the lab PC has <= 61 GB free (56 GB now; rule 6).
+  When space is freed: `cluster/server.sh stage q2-graphs && cluster/submit_chain.sh --after-any 207 --nice 0 q2-graphs-v2.sbatch`.
