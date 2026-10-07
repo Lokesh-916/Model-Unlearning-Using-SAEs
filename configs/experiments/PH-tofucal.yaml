@@ -4,10 +4,7 @@
 exp_id: PH-tofucal
 priority: stretch
 wave: 7
-base:
-  case: bio
-  split: test
-  purpose: posthoc-exploratory
+purpose: posthoc-exploratory
 tasks:
 - id: tofu-metrics
   entry: experiments.X1suite.tofu_fix:metrics

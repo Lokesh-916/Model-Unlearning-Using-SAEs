@@ -4,6 +4,7 @@
 exp_id: PH-union
 priority: stretch
 wave: 7
+purpose: posthoc-exploratory
 base:
   case: bio
   split: test
