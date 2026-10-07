@@ -548,3 +548,6 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   `\ifresdone{\resGpuPhUnionStatus}`. Note in the text: the default rho gate at the same 5 % FPR also "wins" B1–B5 by the
   rule with small margins (pad400 0.598) — the padding/decomposition closure is the detector's. arXiv authors confirmed
   (K. Lokesh Babu, K. Chakreesh, S. Amarnath Reddy, M. Naresh Babu); TMLR/SRW anonymous.
+- **Lab reboot 17:23:** reboot_recover re-queued X1-025 (+ X1-attack-success); after_ph_union.sh restarted 17:25. gpuws
+  unaffected: 204 running, PH-tofucal 4/4 + PH-union TOFU/open tasks rc 0. Interim (PH-tofucal, TOFU-retain-DEV threshold
+  9.90): streaming TOFU forget match 0.658 vs DSG 0.380 (still leaks more), retain 0.910 vs 0.783.
