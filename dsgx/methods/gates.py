@@ -12,6 +12,9 @@ Score types (per sequence, BOS excluded unless noted):
               (forget vs retain fire rates from the activation cache)
   probe_sae   logistic regression on per-sequence fire rates of K candidate features
   probe_resid logistic regression on the mean residual at the hook layer
+  union       POST-HOC, EXPLORATORY (PH-union): DSG's rho gate OR the cusum gate. score = UNION_BIG if
+              rho > DSG's tau (dsg.calibrate_tau, 95th pct of retain-cache rates, the dsg-faithful rule) else
+              cusum_max, so one threshold on the score (conformal at alpha) bounds the union's benign FPR
 
 Interventions (applied on active sequences, at positions where a selected feature fires):
   clamp_all          every selected feature -> -multiplier (DSG-faithful)
@@ -35,6 +38,7 @@ from dsgx.methods.registry import Method, register
 from dsgx.util import atomic_write_json
 
 EPS = 1e-4
+UNION_BIG = 1e9  # union score when DSG's rho gate fires (finite: JSON-safe)
 
 
 # ----------------------------------------------------------------------------- scores
@@ -98,10 +102,13 @@ class Gate:
                                                 float(spec.get("retain_pct", 95)))
         dev = bundle.sae.W_dec.device
         self.feat_t = torch.tensor(self.features, device=dev)
-        if self.type == "cusum":
+        if self.type in ("cusum", "union"):
             w1, w0 = llr_weights(self.cache, self.features)
             self.w1 = torch.tensor(w1, dtype=torch.float32, device=dev)
             self.w0 = torch.tensor(w0, dtype=torch.float32, device=dev)
+        if self.type == "union":
+            self.dsg_tau = float(spec["dsg_tau"]) if "dsg_tau" in spec else \
+                dsg.calibrate_tau(self.cache, self.features, float(spec.get("dsg_tau_pct", 95)))
         self.probe = None
         if self.type in ("probe_sae", "probe_resid"):
             self.probe = self._fit_probe()
@@ -201,6 +208,11 @@ class Gate:
             llr = token_llr(tgt, self.w1, self.w0)
             out["score"], _ = score_cusum(llr, n, float(self.spec.get("drift", 0.0)))
             out["cusum_max"] = out["score"]
+        elif self.type == "union":
+            llr = token_llr(tgt, self.w1, self.w0)
+            out["cusum_max"], _ = score_cusum(llr, n, float(self.spec.get("drift", 0.0)))
+            out["dsg_fired"] = out["rho"] > self.dsg_tau
+            out["score"] = UNION_BIG if out["dsg_fired"] else out["cusum_max"]
         elif self.type == "probe_sae":
             cand = torch.tensor(self.probe["cand"], device=acts_row.device)
             x = (acts_row[:n, cand] > 0).float().sum(0).cpu().numpy() / n
@@ -240,6 +252,20 @@ def benign_calibration_prompts(case: str, n_max: int = 1000, seed: int = 0) -> l
 
 
 @torch.no_grad()
+def tofu_retain_dev_prompts(n_max: int = 1000, seed: int = 0) -> list[str]:
+    """TOFU retain DEV (PH-tofucal): retain90 QA pairs whose question is in neither TOFU test set (retain_perturbed,
+    forget10_perturbed), as question + answer in the TOFU fine-tune chat format (the sequence a TOFU gate sees)."""
+    from datasets import load_dataset
+
+    from experiments.A2.tofu import CHAT
+
+    test = {x["question"] for c in ("retain_perturbed", "forget10_perturbed")
+            for x in load_dataset("locuslab/TOFU", c, split="train")}
+    pool = [x for x in load_dataset("locuslab/TOFU", "retain90", split="train") if x["question"] not in test]
+    pick = sorted(np.random.default_rng(seed).choice(len(pool), size=min(n_max, len(pool)), replace=False))
+    return [CHAT.format(q=pool[int(i)]["question"]) + pool[int(i)]["answer"] for i in pick]
+
+
 def gate_scores(bundle, gate: Gate, prompts: list[str]) -> np.ndarray:
     m = bundle.model
     out = []
@@ -278,6 +304,8 @@ def calibrate(bundle, gate: Gate, case: str, fpr: float = 0.05, n_max: int = 100
     else:
         if source == "cache-retain" and gate.type == "rho":
             s = gate.cache.seq_fire_rate("retain", gate.features)
+        elif source == "tofu-retain-dev":
+            s = gate_scores(bundle, gate, tofu_retain_dev_prompts(n_max))
         else:
             s = gate_scores(bundle, gate, benign_calibration_prompts(case, n_max))
         if rule == "conformal":
@@ -308,6 +336,18 @@ def stream_gate(gate: Gate):
             return token_llr(fire_feat, gate.w1, gate.w0).tolist()
 
         return gate.features, float(gate.threshold), (lambda v: score_cusum(torch.tensor(v), len(v), drift)[0]), token_fn
+    if gate.type == "union":
+        drift, tau_dsg = float(gate.spec.get("drift", 0.0)), float(gate.dsg_tau)
+
+        def token_fn(fire_feat):  # (any selected feature fires, cusum LLR) per position
+            return list(zip(fire_feat.any(dim=1).tolist(), token_llr(fire_feat, gate.w1, gate.w0).tolist()))
+
+        def score_fn(v):
+            if sum(f for f, _ in v) / len(v) > tau_dsg:
+                return UNION_BIG
+            return score_cusum(torch.tensor([x for _, x in v]), len(v), drift)[0]
+
+        return gate.features, float(gate.threshold), score_fn, token_fn
     raise ValueError(f"gate type {gate.type} has no streaming form")
 
 

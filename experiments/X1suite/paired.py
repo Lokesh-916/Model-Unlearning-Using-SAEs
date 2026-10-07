@@ -50,21 +50,23 @@ def task(ctx):
         idx = g.index.intersection(d.index)
         res[t] = {"n": int(len(idx)), **_compare(stats, g.loc[idx], d.loc[idx], cols)}
 
+    # gate_label: the gate's MCQ dataset_label prefix (X1 "combined"; PH-union "union"); hardneg: false skips the MCQ part
+    glabel = a.get("gate_label", "combined")
     x1 = ctx.results_of(a.get("x1_exp", "X1"))
-    pat = re.compile(r"__bio-(combined|dsg)-hardneg__test__s(\d+)__")
+    pat = re.compile(rf"__bio-({re.escape(glabel)}|dsg)-hardneg__test__s(\d+)__")
     by = {}
-    for p in sorted(x1.glob("*-hardneg__test__s*")):
+    for p in (sorted(x1.glob("*-hardneg__test__s*")) if a.get("hardneg", True) else []):
         m = pat.search(p.name)
         if m and (p / "DONE").exists():
             by.setdefault(int(m.group(2)), {})[m.group(1)] = p
     seeds = {}
     for s, pair in sorted(by.items()):
-        if set(pair) != {"combined", "dsg"}:
+        if set(pair) != {glabel, "dsg"}:
             continue
-        g = pd.read_parquet(pair["combined"] / "items.parquet").set_index("item_id")
+        g = pd.read_parquet(pair[glabel] / "items.parquet").set_index("item_id")
         d = pd.read_parquet(pair["dsg"] / "items.parquet").set_index("item_id")
         idx = g.index.intersection(d.index)
-        seeds[s] = {"n": int(len(idx)), "runs": [pair["combined"].name, pair["dsg"].name],
+        seeds[s] = {"n": int(len(idx)), "runs": [pair[glabel].name, pair["dsg"].name],
                     **_compare(stats, g.loc[idx], d.loc[idx], ("correct", "gate_fired"))}
     res["hardneg"] = {"seeds": seeds, "n_seeds": len(seeds)}
     if seeds:

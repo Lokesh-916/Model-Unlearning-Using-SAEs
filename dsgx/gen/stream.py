@@ -12,7 +12,8 @@ score_fn (optional): gate score from the per-position fire flags (BOS included a
 default None = rho (fraction of firing positions), the DSG rule. E.g. the window gate (MT-Bench, session 11):
 lambda fires: gates.score_window(torch.tensor(fires), len(fires), 16) with the threshold from gates.calibrate.
 token_fn (optional): per-position value from the per-feature fire pattern ([L, k] bool -> [L]) stored instead of
-the any-fire flag, so score_fn can use it; e.g. the CUSUM gate's per-token LLR (gates.stream_gate builds both).
+the any-fire flag, so score_fn can use it; e.g. the CUSUM gate's per-token LLR (gates.stream_gate builds both), or
+a (fire, LLR) pair per position for the union gate (PH-union).
 The clamp positions stay "any selected feature fires".
 
 The clamp rule is DSG-faithful: on an active sequence every selected feature is set to
@@ -63,7 +64,7 @@ class _GateHook:
         err = resid - sae.decode(acts)
         tgt = acts[:, :, feats]
         any_fire = (tgt > 0).any(dim=2)[0]
-        new = any_fire.tolist() if self.token_fn is None else [float(v) for v in self.token_fn(tgt[0] > 0)]
+        new = any_fire.tolist() if self.token_fn is None else list(self.token_fn(tgt[0] > 0))
         all_f = (self.fires if not full else []) + new
         rho = sum(all_f) / len(all_f) if self.score_fn is None else float(self.score_fn(all_f))
         gate = (rho > self.tau) if self.forced is None else self.forced
