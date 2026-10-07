@@ -20,6 +20,7 @@ def make_attack(cfg: dict | None, seed: int = 0):
     import importlib
 
     import dsgx.attacks.transforms  # noqa: F401  (registers the shared attack suite)
+    import dsgx.attacks.adaptive  # noqa: F401  (B7 adaptive attacks, exp/B7-adaptive only)
 
     cfg = cfg or {"name": "none"}
     if cfg.get("module"):

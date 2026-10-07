@@ -1,0 +1,59 @@
+# B7 adaptive attacks on StreamGuard (X1 CUSUM gate) vs DSG. POST-HOC, EXPLORATORY (decided 2026-10-08, after the
+# X1 TEST verdict; not a claim-rule input; DEVIATIONS 2026-10-08). Lab PC only. TEST forget items (WMDP-Bio test,
+# attack success = accuracy on each method's gated items), batch 1, seed 0. Methods = X1's base / DSG (A1-dev
+# selection) / combined CUSUM gate configs verbatim. Attacks: dsgx/attacks/adaptive.py.
+exp_id: B7
+priority: should
+wave: 5
+base:
+  case: bio
+  split: test
+  purpose: posthoc-exploratory
+  view: both
+  batch_size: 1
+  seed: 0
+  datasets:
+  - '@forget'
+grid:
+  attack:
+  - {name: none}
+  - {name: interleave, k: 1}
+  - {name: interleave, k: 2}
+  - {name: interleave, k: 4}
+  - {name: interleave, k: 8}
+  - {name: interleave, k: 2, turns: 3}
+  - {name: midpad, pad: 400}
+runs:
+- method:
+    name: base
+  dataset_label: base-forget
+- method:
+    name: dsg-faithful
+    select:
+      exp_id: A1-dev
+      keys: [n_features, retain_pct, multiplier]
+      max_utility_drop: 0.01
+  dataset_label: dsg-forget
+- method:
+    name: gated
+    gate: {type: cusum, n_features: 20, retain_pct: 95}
+    calib: {fpr: 0.05, n_max: 1000, source: mmlu-dev}
+    intervention: {type: clamp_all, multiplier: 500}
+  dataset_label: streamguard-forget
+smoke:
+  base:
+    limit: 10
+jobs:
+  group_size: 7
+  est_seconds_per_item: 0.4
+  est_vram_gb: 9.5
+  est_ram_gb: 22
+  overhead_minutes: 4
+tasks:
+- id: attack-success
+  entry: dsgx.analysis.attack_success:task
+  kind_slot: cpu
+  est_minutes: 5
+  est_ram_gb: 6
+  deps:
+  - exp:B7
