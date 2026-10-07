@@ -364,3 +364,26 @@ Tests: 107 pass on CPU.
   paired ~09:25, (b) ~16:30, (c) ~18:20, (d) ~20:10.
 - **gpuws:** `cluster/after_muse_submit.sh` (nohup) — after MUSE-v2: fetch/verify/cleanup x1, a7-scaled, muse → stage + submit
   mtbench-x1 (validate → 2 × mtbench-x1) behind our chain → start the Q2 watcher. Snapshot code-later10 staged.
+
+## Session 27 (2026-10-07 10:20–): server results, C-H5 lookup fix, X1-suite check, X1-suite on gpuws
+- **Fetched + verified + cleaned (gpuws):** muse (MUSE-v2 178–180, 21 files), a7-scaled (190, 23), x1-posthoc (191–193, 802),
+  mtbench-x1 (195–196, cusum answers + judgments), x1 (re-verified, 1277). Cleanup: a7-scaled (Gemma 3 1B + SAE + cache),
+  code-PHX1, MT-Bench judge (18 GB). Ours 49 → 29 GB, free 54 → 74 GB. x1 inputs kept until x1-suite is fetched.
+- **Results:** MUSE-v2 (gpuws, fixed Trainer): News DSG = best gate = target on KnowMem forget 0.319 (gate never changes
+  knowledge answers), VerbMem 0.208 / 0.196 vs target 0.222, PrivLeak −83.9 / −47.5 (target −99.5); Books DSG and gate
+  identical: KnowMem forget 0.030 vs target 0.308 but KnowMem retain 0.092 vs 0.379 (collapse), PrivLeak −24.0.
+  A7-scaled (Gemma 3 1B, clamp −51,650): WMDP 0.397 = base 0.397 (4 of 511 answers change; fires on 54/300 WMDP) → part 2b
+  (scaled DSG/StreamGuard on 1B/4B with attacks) NOT run (its condition, "the scaled clamp changes answers", is not met).
+  PH-X1-conformal: identical wins/utility to X1 CUSUM (B1, B2, B5; utility −0.0117) — the conformal threshold changes nothing.
+  MT-Bench cusum 7.29 [6.88, 7.70] vs DSG 7.36, base 7.46; paired −0.03 [−0.17, +0.08] p 0.65 (same-family judge).
+- **C-H5 fix** (2c70701, DEVIATIONS): clean runs found by method config (per-seed keys ignored) on the standard set, utility
+  paired vs DSG same exp/seed. Also `is_posthoc` read the wrong level (PH runs were claim inputs). gpuws: CUSUM wins B1/B2/B5,
+  utility −0.0117 (limit −0.01), FPR 0.045 → **still Not supported** (fails utility by 0.0017).
+- **X1-suite check** (`docs/X1_SUITE_STREAM_CHECK.md`): 0.7575 = TOFU **retain** match (headline key says forget). TOFU forget:
+  StreamGuard leaks more than DSG (0.465 vs 0.350; base 0.800): lower operating point (MMLU-DEV 5 % FPR threshold; DSG fires on
+  19 % of retain items vs 5 %) and later in-generation firing (median token 11 vs 4). WMDP open-ended: less leak (0.013 vs 0.029).
+- **Lab queue:** T-T3 → deps X1-022/023, wave 6, must; A8-tables → X1-022/023 + X1-suite-paired, wave 6 (DEVIATIONS; archive
+  `queue/_archive/manual-2026-10-07-x1-replication/`). X1-suite-paired already needed only X1-022/023. Doctor clean.
+- **gpuws chain (nice 0):** 197 validate EXACT → 198 x1suite-models (retain reference re-trained, 10:40) → 199–201 x1-suite
+  (lab X1-suite jobs at b933e20, replica; conf x1-suite, snapshot code-later11). Runbook 5.10.
+- Digest: new StreamGuard section (`dsgx/analysis/streamguard.py`).

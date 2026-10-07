@@ -48,6 +48,8 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | final method = X1 combined gate (CUSUM), name StreamGuard (proposal): full benchmark vs DSG (lab X1-suite after X1; MT-Bench cusum prepared for gpuws) | exp/X1-suite `configs/experiments/X1-suite.yaml` (jobs X1-suite-*); conf `mtbench-x1` (runbook §5.9); `paper/FIX_FRAMING.tex` + `paper/scripts/fix_framing_check.sh` |
 | after MUSE-v2: fetch/verify/cleanup x1, a7-scaled, muse, then stage + submit MT-Bench cusum, then start the Q2 watcher (no manual step) | `nohup cluster/after_muse_submit.sh >> $P/dsg_results_cluster/after_muse_watch.log 2>&1 &` (runbook §5.9; restart after a reboot) |
 | public release package (harness, GuardBreak, configs, aggregate results; not pushed) + exclusion scan | `python scripts/build_release.py` → `~/projects/mechunlearn-project/release`; there `python scan_release.py --private-check --private-root $DSG_PRIVATE --forget-corpus <bio-forget-corpus.jsonl>` |
+| X1-suite on gpuws (StreamGuard vs DSG on the gpuws TOFU-full v3 model: TOFU metrics, streaming TOFU QA, A3 benign open-ended, B6 leak, paired incl. gpuws X1 hard negatives) | conf `x1-suite` (`cluster/x1suite_server.py models` re-trains the retain reference; `cluster/stage_x1suite.sh`); runbook §5.10 |
+| StreamGuard digest section (attacks per axis, clean utility/FPR paired, hard negatives, generation, TOFU, MT-Bench) | `dsgx/analysis/streamguard.py` (called by `results_digest`); X1-suite streaming check `docs/X1_SUITE_STREAM_CHECK.md` |
 
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
 `calibrate(..., rule="conformal")` (cache key unchanged for the default quantile rule); `dsgx/attacks/transforms.py`
@@ -514,3 +516,14 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   179 re-pointed to afterany:193. claims.evaluate drops purpose posthoc-exploratory; DEVIATIONS row.
 - **Next:** after 193: `server.sh fetch x1-posthoc`, `verify`, `cleanup x1-posthoc --yes` (after_muse_submit.sh does NOT handle
   it; it cleans x1 inputs only after MUSE, i.e. after 193). Then digest.
+
+### Session 27 — 2026-10-07 10:20– (end state)
+- **Fetched/verified/cleaned:** muse (MUSE-v2), a7-scaled, x1-posthoc, mtbench-x1 (judge deleted), x1 re-verified (inputs kept for
+  x1-suite; `cleanup x1 --yes` after it). A7-scaled: the scaled clamp leaves Gemma 3 1B unchanged (WMDP 0.397 = base; 4/511 answers
+  change) → the scaled B1/B2 follow-up was not run. PH-X1-conformal = X1 CUSUM (same wins, same utility).
+- **C-H5 lookup fix** (DEVIATIONS): clean runs by method config, utility paired vs DSG same exp + seed; `is_posthoc` fixed (PH runs
+  had been claim inputs). gpuws stays **Not supported** (utility −0.0117 vs limit −0.01; wins B1, B2, B5; FPR 0.045).
+- **X1-suite check:** 0.7575 is the TOFU retain match (headline mislabelled "forget"). StreamGuard leaks MORE TOFU forget answers
+  than DSG (0.465 vs 0.350, labpc) and less on WMDP open-ended (0.013 vs 0.029). `docs/X1_SUITE_STREAM_CHECK.md`.
+- **Lab queue:** T-T3 / A8-tables now wait only on X1-022/023 (+ X1-suite-paired); other lab X1 = replication, continues after.
+- **gpuws chain (nice 0):** 197 validate EXACT → 198 x1suite-models → 199–201 x1-suite. Next: runbook §5.10, then digest + paper_update.
