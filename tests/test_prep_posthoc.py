@@ -17,3 +17,10 @@ def test_posthoc_runs_and_pairs_are_dropped(monkeypatch):
     assert [r.name for r in seen["runs"]] == ["X1__gated"]
     assert seen["paired"] == [{"run": "X1__gated"}, {"other": 1}]
     assert claims.is_posthoc(ph) and not claims.is_posthoc(x1)
+
+
+def test_ph_task_runs_without_purpose_are_posthoc():
+    # PH-union / PH-tofucal task runs (tofu-metrics, open-ended QA, paired) carry no base.purpose in config.json
+    t = SimpleNamespace(name="tofu-metrics", exp="PH-tofucal", config={"config": {}})
+    assert claims.is_posthoc(t)
+    assert not claims.is_posthoc(SimpleNamespace(name="tofu-metrics", exp="X1-suite", config={"config": {}}))

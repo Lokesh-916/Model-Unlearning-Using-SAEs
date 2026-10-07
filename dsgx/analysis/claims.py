@@ -324,7 +324,8 @@ def is_posthoc(r) -> bool:
     # Run.config is the whole config.json; the run's own config (with base.purpose) is under "config" (= Run.cfg).
     # Session 26 read the top level, which never holds "purpose", so post-hoc runs were not dropped (fixed 2026-10-07).
     c = getattr(r, "config", None) or {}
-    return (c.get("config") or c).get("purpose") == POSTHOC_PURPOSE
+    # every PH-* experiment is post-hoc exploratory, task runs included (their config.json has no base.purpose)
+    return (c.get("config") or c).get("purpose") == POSTHOC_PURPOSE or str(getattr(r, "exp", "")).startswith("PH-")
 
 
 def evaluate(runs, paired, tofu_extra=None) -> list[dict]:
