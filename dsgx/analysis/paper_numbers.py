@@ -618,6 +618,23 @@ def posthoc_numbers(N, gpu, gpu_runs: Path):
     n_mcq = sum(1 for r in rows)
     N.text("GpuPhUnionStatus", "done" if pu and n_mcq >= 24 else "pending", "PH-union paired DONE and its MCQ rows in the gpuws summary")
     N.text("GpuPhTofucalStatus", "done" if ptc else "pending", "PH-tofucal paired DONE")
+    # parts of PH-union that finish before its MCQ jobs (the paper prints them on their own, unpaired against DSG in the
+    # same experiment, until PH-union-paired is DONE)
+    done = lambda e, t: (gpu_runs / e / t / "DONE").exists()  # noqa: E731
+    gates_ = ("union-stream", "dsg-faithful-stream")
+    tofu_ok = done(U, "tofu-metrics") and all(done(U, f"{t}__{g}") for t in ("tofu-qa-forget", "tofu-qa-retain") for g in gates_)
+    N.text("GpuPhUnionTofuStatus", "done" if tofu_ok else "pending", "PH-union tofu-metrics + tofu-qa-{forget,retain} (union, DSG) DONE")
+    N.text("GpuPhUnionOpenStatus", "done" if all(done(U, f"benign-open__{g}") for g in gates_) else "pending",
+           "PH-union benign-open (union, DSG) DONE")
+    N.text("GpuPhUnionPairedStatus", "done" if pu else "pending", "PH-union paired DONE")
+    # On TOFU the union uses DSG's TOFU features; if DSG's own rho gate already fires on more than alpha of the MMLU DEV
+    # calibration prompts, the conformal threshold is the sentinel UNION_BIG and the strict '>' never fires.
+    tmu = _read(gpu_runs / U / "tofu-metrics" / "metrics.json") if done(U, "tofu-metrics") else None
+    cu = ((tmu or {}).get("conditions") or {})
+    uthr, dtau = (cu.get("full+union") or {}).get("threshold"), (cu.get("full+dsg") or {}).get("tau")
+    N.text("GpuPhUnionTofuDegenerate", ("yes" if uthr >= 1e9 else "no") if _ok(uthr) else None,
+           "PH-union tofu-metrics full+union threshold >= UNION_BIG (union never fires on TOFU)")
+    N.text("GpuPhUnionTofuDsgTau", f"{dtau:.3f}" if _ok(dtau) else None, "PH-union tofu-metrics full+dsg tau (TOFU features)")
     N.ci("GpuPhUnionUtil", rci(_x1(gpu, "union", exp=U), "raw_util"), f"{src} union, clean (full-MMLU utility)")
     N.ci("GpuPhUnionFpr", rci(_x1(gpu, "union", exp=U), "benign_fpr"), f"{src} union, clean (benign fire rate)")
     N.diff("GpuPhUnionVsDsgUtil", pt(_x1_pair(gpu, "union", "dsg", exp=U), "utility"), f"{src} paired union vs dsg (utility)")
@@ -636,7 +653,11 @@ def posthoc_numbers(N, gpu, gpu_runs: Path):
         m = _read(d / "metrics.json") if (d / "DONE").exists() else None
         N.ci(f"GpuPh{w}Match", (m or {}).get("match"), f"gpuws runs/{exp}/{task}__{tag} match")
         N.ci(f"GpuPh{w}Fired", (m or {}).get("gate_fired"), f"gpuws runs/{exp}/{task}__{tag} gate_fired")
-        r = (((pu if exp == U else ptc) or {}).get(task) or {}).get("match") or {}
+        dd_ = gpu_runs / exp / f"{task}__dsg-faithful-stream"  # DSG re-run in the same experiment (same items)
+        md = _read(dd_ / "metrics.json") if (dd_ / "DONE").exists() else None
+        N.ci(f"GpuPh{w}DsgMatch", (md or {}).get("match"), f"gpuws runs/{exp}/{task}__dsg-faithful-stream match")
+        N.ci(f"GpuPh{w}DsgFired", (md or {}).get("gate_fired"), f"gpuws runs/{exp}/{task}__dsg-faithful-stream gate_fired")
+        r =(((pu if exp == U else ptc) or {}).get(task) or {}).get("match") or {}
         dd = dict(r.get("paired_bootstrap") or {}) or None
         if dd:
             dd["mcnemar"] = r.get("mcnemar")
@@ -647,6 +668,17 @@ def posthoc_numbers(N, gpu, gpu_runs: Path):
     tm = _read(gpu_runs / "PH-tofucal" / "tofu-metrics" / "metrics.json") or {}
     thr = (((tm.get("conditions") or {}).get("full+gate-cusum-tofucal") or {}).get("threshold"))
     N.text("GpuPhTofucalThreshold", f"{thr:.2f}" if _ok(thr) else None, "PH-tofucal tofu-metrics full+gate-cusum-tofucal threshold")
+
+
+def x1_status_numbers(N, lab):
+    """\\resLabXOneStatus = done once the lab-PC X1 TEST replication is complete (final_report completeness 'done'),
+    so the interim sentences about it switch by themselves on the next scripts/paper_update.sh."""
+    c = ((lab or {}).get("completeness") or {}).get("X1") or {}
+    N.text("LabXOneStatus", "done" if str(c.get("status", "")).startswith("done") else "pending",
+           "lab summary.json completeness X1 status == done")
+    jobs_ = c.get("jobs") or {}
+    N.text("LabXOneJobsDone", f"{jobs_.get('DONE', 0)} of {sum(jobs_.values())}" if jobs_ else None,
+           "lab summary.json completeness X1 jobs DONE of all")
 
 
 def fix_numbers(N, lab, gpu, lab_runs: Path, gpu_runs: Path, jobs: Path):
@@ -714,6 +746,7 @@ def build(lab_summary: Path, gpu_summary: Path, jobs: Path, lab_runs: Path, gpu_
     cross_gpu_numbers(N, lab_runs, gpu_runs)
     a7_diag_numbers(N, a7_diag)
     x1_numbers(N)
+    x1_status_numbers(N, lab)
     fix_numbers(N, lab, gpu, lab_runs, gpu_runs, jobs)
     muse_numbers(N, jobs)
     posthoc_numbers(N, gpu, gpu_runs)

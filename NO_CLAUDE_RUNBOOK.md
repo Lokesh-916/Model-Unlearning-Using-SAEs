@@ -296,6 +296,42 @@ skipped). If 198 exits 3 (retain fine-tune unfinished), resubmit `x1suite-models
 Then the Q2 re-run (watcher refused at 05:44 for disk; there is room once x1-suite is cleaned): `cluster/server.sh run q2-graphs`
 with `q2-graphs-v2.sbatch` (runbook 5.6).
 
+### 5.11 Sessions 28–29 (2026-10-07): POST-HOC PH-union / PH-tofucal on gpuws (202–207)
+Exploratory, decided after the X1 TEST results, never a claim input (DEVIATIONS 2026-10-07). Chain (nice 0):
+202 validate (EXACT) → 203 x1suite-models → **204 ph-union (running, 3 h limit) → 205–207 ph-union, HELD by us**
+(`JobHeldUser`: another user needs the GPU). Each ph-union step is resumable: DONE tasks are skipped.
+
+State at session 29 (17:45): PH-tofucal complete (4/4 incl. paired); PH-union TOFU metrics, TOFU QA and benign-open done,
+leak running in 204; the MCQ grid (120 runs) and PH-union-paired need 205–207. The finished parts were copied to the lab PC
+as an interim copy (sha256-verified, no `.fetched` marker) and are in both papers.
+Finding: on TOFU the union never fires (its conformal threshold is the 1e9 sentinel, because DSG's TOFU gate, tau 0.045,
+alone fires on > 5 % of MMLU dev); the paper says so. This is not a job failure: do not re-run it.
+
+**Release only when the other user says the GPU is free** (never before; log it):
+
+    ssh gpuws 'scontrol release 205 206 207 && printf -- "- %s | scontrol release 205 206 207 | GPU free again\n" "$(date "+%F %T")" >> ~/dsg_cluster/COMMAND_LOG.md'
+
+You should see: no output; `cluster/server.sh check ph-union` then shows 205 pending/running. ~1–3 h per step.
+
+**Nothing else is manual.** `cluster/after_ph_union.sh` (nohup on the lab PC, log
+`$P/dsg_results_cluster/after_ph_union.log`) waits while any ph-union job is queued (held jobs count, so it just waits),
+then: fetch + verify + cleanup ph-union, results digest, `scripts/paper_update.sh`, local commits of numbers.tex (paper) and
+numbers.tex + main.pdf (paper-srw). Check it is alive: `pgrep -af after_ph_union` (after a reboot:
+`nohup cluster/after_ph_union.sh >> $P/dsg_results_cluster/after_ph_union.log 2>&1 &`).
+You should see at the end of its log: `ph-union complete: fetch / verify / cleanup` … `done`.
+
+Manual equivalent (if the watcher is not running):
+
+    cluster/server.sh check ph-union                   # "group ph-union COMPLETE"
+    cluster/server.sh fetch ph-union && cluster/server.sh verify ph-union && cluster/server.sh cleanup ph-union --yes
+    python -m dsgx.analysis.results_digest && scripts/paper_update.sh
+
+**If the held jobs are abandoned** (the GPU stays busy): FIRST stop the watcher, else it resubmits ph-union.sbatch as soon as
+the queue is empty: `pkill -f after_ph_union.sh`; then `ssh gpuws 'scancel 205 206 207'` (log it), then the manual
+fetch / verify / cleanup above. The paper then keeps "still running" for the union's MCQ part: replace that sentence in
+`paper/sections/11_results_fix.tex` (`\ifresdone{\resGpuPhUnionStatus}` … second branch) by "were not run" and do the same
+in `paper-srw/main.tex`.
+
 ## 6. Combination wave (after Waves 1–3 and N6 are DONE)
 
 Prerequisites: C1 (feature files), C3 (layer ranking), D1 and D2 (checkpoints) DONE. `--enqueue` refuses
@@ -359,6 +395,40 @@ It never writes `$DSG_RESULTS/summary.json` (the N10 watcher's).
 
 Results digest (end of every session; both machines, CIs, claims):
 `python -m dsgx.analysis.results_digest` → **You should see:** `wrote .../dsg_results/RESULTS_DIGEST.md (N lab runs, M gpuws runs)`.
+
+### 7.1 Finishing after Oct 8 (in this order; every step is copy-paste)
+1. **Lab X1 replication (finishes by itself, night of Oct 7):** `python -m dsgx.queue.status --chat` until every `X1-*`
+   job and `X1-attack-success` are DONE; T-T3 and A8-tables start by themselves after X1-022/023. If anything is FAILED or
+   BLOCKED: `python -m dsgx.queue.doctor` (then `--requeue <JOB>`). After a power cut: section 4.
+2. **gpuws 204–207:** section 5.11 (release only when the GPU is free; the watcher fetches, verifies, cleans up and runs
+   the paper update).
+3. **Numbers and both papers:**
+
+       python -m dsgx.analysis.results_digest
+       scripts/paper_update.sh --final
+
+   You should see `LaTeX warnings: 0`, `BUILD OK: main.pdf` (SRW) and the `open:` lines. When both machines are done:
+   `LabXOneStatus done`, all `GpuPh*Status done`, `0 [Interim] marks`. The text switches by itself (`\ifresdone`):
+   the lab-X1 "in progress" sentences in the introduction, Section 11, the limitations and the SRW limitations, and the
+   post-hoc paragraph. Pending numbers that remain are listed with their missing source (B4/B5 attack-success macros are
+   unused in the text and may stay pending).
+4. **Official reports (both machines, never mixed):**
+
+       python -m dsgx.analysis.final_report
+       python -m dsgx.analysis.final_report --hardware gpuws --runs $P/dsg_results_cluster/runs --out $P/dsg_results_cluster/final_report
+       python -m dsgx.analysis.paper_assets
+
+   You should see `completeness: ...` and `wrote .../FINAL_REPORT.md` twice (a note lists any unfinished experiment).
+5. **Commit and push the papers** (trailers: CLAUDE.md commit rules; numbers-only commits carry none):
+
+       git -C $P/paper add numbers.tex sections && git -C $P/paper commit -m "Final numbers" && git -C $P/paper push origin draft
+       git -C $P/paper-srw add numbers.tex main.tex main.pdf && git -C $P/paper-srw commit -m "Final numbers"   # no remote
+
+6. **arXiv** (only when you decide to post): fix the `TODO-VERIFY` notes in `paper/references.bib`, then
+   `paper/scripts/arxiv_build.sh` (authors in `paper/arxiv/authors.tex`, STATUS CONFIRMED). You should see every check
+   `ok` and `build-arxiv/arxiv-<date>.tar.gz`. It never uploads.
+7. Optional: Q2 re-run (needs > 61 GB free on the lab PC): `cluster/server.sh stage q2-graphs && cluster/submit_chain.sh
+   --after-any <last job> --nice 0 q2-graphs-v2.sbatch`, then runbook 5.6.
 
 ## 8. Qualitative track (Q1–Q8)
 
@@ -466,5 +536,5 @@ anything from `dsg_private/`, `items.parquet` text columns, or generations.
 | combination wave | `python -m dsgx.combine {--dry-run,--enqueue}` |
 | final report | `python -m dsgx.analysis.final_report [--interim]` |
 | paper assets | `python -m dsgx.analysis.paper_assets` |
-| paper numbers + PDF | `scripts/paper_update.sh [--no-pdf]` |
+| paper numbers + PDF | `scripts/paper_update.sh [--no-pdf] [--final]` (finish: section 7.1) |
 | qualitative | `python -m dsgx.analysis.qual.<q1_feature_cards,q3_never_learned,q5_geometry,q6_trajectory,annotate>` |

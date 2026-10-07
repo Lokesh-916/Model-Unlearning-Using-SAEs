@@ -408,3 +408,22 @@ Tests: 107 pass on CPU.
   marked superseded. arXiv authors confirmed. Digest: post-hoc section (`streamguard.posthoc_section`).
 - **Part 3:** `scripts/paper_update.sh`: TMLR 45 pages, 0 LaTeX warnings, 0 [pending] in the PDF; SRW BUILD OK (8 pages,
   content ends p.5, anonymous). Digest regenerated (487 lab, 629 gpuws runs). 140 tests pass.
+
+## Session 29 (2026-10-07 17:40–18:xx): post-hoc results in the papers, finish path after Oct 8
+- **Checked (session 28 work):** fix-first framing applied in paper (379623f) and paper-srw (ee90665), arXiv authors confirmed in
+  `paper/arxiv/authors.tex`; arXiv build now prints them (tarball `arxiv-20261007`, not posted). It still FAILS on purpose: the
+  `TODO-VERIFY` bib notes and the lab-X1 [Interim] mark.
+- **gpuws:** 204 ph-union running (leak task), **205–207 held by us** (another user needs the GPU; not released). Interim copy
+  (sha256-verified, no `.fetched` marker, COMMAND_LOG entry) of PH-tofucal (complete) and PH-union tofu-metrics, tofu-qa-*,
+  benign-open. after_ph_union.sh keeps waiting while held jobs are queued.
+- **Results (POST-HOC, EXPLORATORY):** PH-tofucal threshold 9.90: TOFU forget match 0.658 vs DSG 0.380 (+0.278 [+0.230, +0.328]),
+  retain 0.910 vs 0.783, fires on 0.383 of forget vs DSG 0.745, utility 0.716 vs 0.661. PH-union benign-open: fires 0.634 vs
+  0.584, correct 0.069 vs 0.119 (n 101, unpaired). **PH-union on TOFU is degenerate:** DSG's TOFU gate (tau 0.045) alone fires
+  on > 5 % of MMLU dev, so the conformal threshold = the 1e9 sentinel and the union never fires (TOFU numbers = ungated model).
+  Stated as such in both papers; not re-run.
+- **paper_numbers:** `GpuPhUnion{Tofu,Open,Paired}Status`, `GpuPhUnionTofuDegenerate`, `GpuPhUnionTofuDsgTau`, in-experiment DSG
+  comparators `GpuPh*DsgMatch/DsgFired`, `LabXOneStatus` / `LabXOneJobsDone` (the lab-X1 "in progress" sentences in intro,
+  Section 11, limitations and SRW switch by themselves); 1 test added.
+- **paper_update.sh `--final`** + "open:" summary (pending numbers, status macros, [Interim] marks). Runbook §5.11 (held chain,
+  release command, watcher, abandon path: stop the watcher first) and §7.1 (finish order after Oct 8).
+- Builds: TMLR 45 pages, 0 LaTeX warnings, 1 [Interim] (lab X1); SRW BUILD OK (8 pages, 0 [Interim]).

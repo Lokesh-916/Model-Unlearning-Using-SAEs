@@ -48,3 +48,33 @@ def test_diff_signs():
     N.diff("X", {"diff": -0.0125, "lo": -0.02, "hi": 0.001, "n": 10, "mcnemar": {"p": 0.0004}}, "t")
     tex = "\n".join(N.lines)
     assert "{$-0.013$ [$-0.020$, $+0.001$]}" in tex and "{$p < 0.001$}" in tex
+
+
+def test_posthoc_part_statuses_and_lab_x1(tmp_path):
+    """PH-union parts finished before its MCQ jobs get their own status; a sentinel threshold marks the union degenerate;
+    the lab X1 status follows final_report completeness."""
+    gr = tmp_path / "gr"
+
+    def run(exp, name, metrics):
+        d = gr / exp / name
+        d.mkdir(parents=True)
+        (d / "metrics.json").write_text(json.dumps(metrics))
+        (d / "DONE").write_text("")
+
+    m = {"match": {"mean": 0.5, "lo": 0.4, "hi": 0.6, "n": 400}, "gate_fired": {"mean": 0.0, "lo": 0.0, "hi": 0.0, "n": 400}}
+    for t in ("tofu-qa-forget", "tofu-qa-retain", "benign-open"):
+        for g in ("union-stream", "dsg-faithful-stream"):
+            run("PH-union", f"{t}__{g}", m)
+    run("PH-union", "tofu-metrics", {"conditions": {"full+dsg": {"model_utility": 0.66, "tau": 0.0447},
+                                                     "full+union": {"model_utility": 0.727, "threshold": 1e9}}})
+    lab = _summary("labpc")
+    lab["completeness"] = {"X1": {"status": "partial", "jobs": {"DONE": 22, "WAITING": 11}}}
+    (tmp_path / "lab.json").write_text(json.dumps(lab))
+    (tmp_path / "gpu.json").write_text(json.dumps(_summary("gpuws")))
+    tex = pn.render(pn.build(tmp_path / "lab.json", tmp_path / "gpu.json", tmp_path / "jobs", tmp_path / "lr", gr,
+                             tmp_path / "none.jsonl"))
+    for name, val in (("GpuPhUnionTofuStatus", "done"), ("GpuPhUnionOpenStatus", "done"), ("GpuPhUnionStatus", "pending"),
+                      ("GpuPhUnionPairedStatus", "pending"), ("GpuPhUnionTofuDegenerate", "yes"),
+                      ("GpuPhUnionTofuDsgTau", "0.045"), ("GpuPhUnionOpenDsgMatchVal", "0.500"),
+                      ("LabXOneStatus", "pending"), ("LabXOneJobsDone", "22 of 33")):
+        assert f"\\newcommand{{\\res{name}}}{{{val}}}" in tex, name

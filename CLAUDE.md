@@ -551,3 +551,13 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
 - **Lab reboot 17:23:** reboot_recover re-queued X1-025 (+ X1-attack-success); after_ph_union.sh restarted 17:25. gpuws
   unaffected: 204 running, PH-tofucal 4/4 + PH-union TOFU/open tasks rc 0. Interim (PH-tofucal, TOFU-retain-DEV threshold
   9.90): streaming TOFU forget match 0.658 vs DSG 0.380 (still leaks more), retain 0.910 vs 0.783.
+
+### Session 29 — 2026-10-07 17:40–18:xx (end state)
+- **gpuws:** 204 ph-union R (3 h limit, leak task); **205–207 HELD (JobHeldUser) for another user: release only when told**
+  (runbook §5.11; if abandoned, `pkill -f after_ph_union.sh` BEFORE scancel, else the watcher resubmits). Interim copy of the
+  finished PH parts on the lab PC (no `.fetched` marker); the watcher does the final fetch/verify/cleanup + paper update.
+- **Papers:** post-hoc paragraph filled for PH-tofucal (done) and PH-union TOFU + benign-open; PH-union is degenerate on TOFU
+  (threshold = 1e9 sentinel, never fires), stated in both papers. Lab-X1 sentences switch via `\resLabXOneStatus`.
+- **Finish after Oct 8:** runbook §7.1 (`scripts/paper_update.sh --final`, final_report both machines, push paper, arXiv only
+  after the bib TODO-VERIFY notes are fixed).
+
