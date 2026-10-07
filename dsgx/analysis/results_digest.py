@@ -21,7 +21,7 @@ from pathlib import Path
 import numpy as np
 
 from dsgx import paths
-from dsgx.analysis import aggregate, claims
+from dsgx.analysis import streamguard, aggregate, claims
 from dsgx.analysis.collect import load_all
 from dsgx.util import atomic_write_text
 
@@ -557,6 +557,9 @@ def main(argv=None) -> int:
     tl, tofu = tofu_section(croot, a.n_boot)
     L += ["### 2.3 TOFU, full fine-tune (gpuws)", ""] + (tl or ["(none yet)", ""])
     L += ["### 2.4 Other server jobs (gpuws)", ""] + server_jobs_section(croot)
+    L += ["## StreamGuard summary (X1 combined gate vs DSG, per machine; descriptive, C-H5 decides)", ""]
+    L += streamguard.section(lab, lab_paired, "labpc")
+    L += streamguard.section(gpu, gpu_paired, "gpuws", read(croot.parent / "jobs" / "mtbench" / "summary.json"))
     L += claims_section(lab, gpu, lab_paired, gpu_paired, a6s, tofu, st_lab, st_gpu)
     atomic_write_text(out, "\n".join(L) + "\n")
     print(f"wrote {out} ({len(lab)} lab runs, {len(gpu)} gpuws runs)")
