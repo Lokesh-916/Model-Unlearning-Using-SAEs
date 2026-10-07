@@ -279,6 +279,23 @@ in their own **gpuws** tables and never mixed with lab-PC numbers:
 3. Then `scripts/paper_update.sh` and `paper/scripts/fix_framing_check.sh` (lists the macros still [pending]); choose the
    version in `paper/FIX_FRAMING.tex` by `\resLabVerdictCHFive` and apply it by hand.
 
+### 5.10 Session 27 (2026-10-07): X1-suite replica on gpuws (StreamGuard vs DSG, TOFU-full v3 model)
+Chain (nice 0): 197 validate (EXACT) → 198 `x1suite-models` (retain-only TOFU reference re-trained on gpuws, ~25 min;
+links `ckpt:A2/{tofu_full,tofu_retain}` to the gpuws TOFU-full v3 models) → 199–201 `x1-suite` (the lab's six X1-suite
+jobs at b933e20 through `lab_jobs.py --group x1-suite`, order: tofu-metrics, tofu-qa-forget, tofu-qa-retain,
+benign-open, leak, paired). When all have left the queue:
+
+    cluster/server.sh check x1-suite          # you should see "group x1-suite COMPLETE" in the last log
+    cluster/server.sh fetch x1-suite && cluster/server.sh verify x1-suite
+    cluster/server.sh cleanup x1-suite --yes   # retain model, ckpt links, MiniLM, code-X1-suite-*
+    cluster/server.sh cleanup x1 --yes         # x1 inputs (wmdp-corpora, translations, B4/B5), no longer needed
+    python -m dsgx.analysis.results_digest && scripts/paper_update.sh
+
+If 201 ends `INCOMPLETE`, resubmit: `ssh gpuws 'cd ~/dsg_cluster/slurm && ./submit.sh x1-suite.sbatch'` (DONE jobs are
+skipped). If 198 exits 3 (retain fine-tune unfinished), resubmit `x1suite-models.sbatch` then the x1-suite sbatch afterok.
+Then the Q2 re-run (watcher refused at 05:44 for disk; there is room once x1-suite is cleaned): `cluster/server.sh run q2-graphs`
+with `q2-graphs-v2.sbatch` (runbook 5.6).
+
 ## 6. Combination wave (after Waves 1–3 and N6 are DONE)
 
 Prerequisites: C1 (feature files), C3 (layer ranking), D1 and D2 (checkpoints) DONE. `--enqueue` refuses
