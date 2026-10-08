@@ -396,39 +396,106 @@ It never writes `$DSG_RESULTS/summary.json` (the N10 watcher's).
 Results digest (end of every session; both machines, CIs, claims):
 `python -m dsgx.analysis.results_digest` → **You should see:** `wrote .../dsg_results/RESULTS_DIGEST.md (N lab runs, M gpuws runs)`.
 
-### 7.1 Finishing after Oct 8 (in this order; every step is copy-paste)
-1. **Lab X1 replication (finishes by itself, night of Oct 7):** `python -m dsgx.queue.status --chat` until every `X1-*`
-   job and `X1-attack-success` are DONE; T-T3 and A8-tables start by themselves after X1-022/023. If anything is FAILED or
-   BLOCKED: `python -m dsgx.queue.doctor` (then `--requeue <JOB>`). After a power cut: section 4.
-2. **gpuws 204–207:** section 5.11 (release only when the GPU is free; the watcher fetches, verifies, cleans up and runs
-   the paper update).
-3. **Numbers and both papers:**
+### 7.1 Finishing after Oct 8 (for the team; in this order; every step is copy-paste)
+State on 2026-10-08 (session 31): the lab queue is 100 % done (176 jobs incl. B7 and N8; 71 moved to gpuws and run there).
+Claims, digest, both final reports, both papers and the deck were regenerated that morning. The only open runs are
+gpuws **205–207** (PH-union, post hoc, exploratory; released 2026-10-08, expected to finish early afternoon). Everything
+else below is reporting, communication and cleanup. Start every terminal with section 0.
+
+1. **gpuws 205–207 (PH-union) → numbers.** Nothing to do by hand while the watcher runs:
+
+       pgrep -af after_ph_union.sh                         # alive? (after a reboot: section 5.11 restarts it)
+       tail -5 $P/dsg_results_cluster/after_ph_union.log   # progress
+       cluster/server.sh check ph-union                    # queue state of 205-207
+
+   **You should see** at the end of the log: `ph-union complete: fetch / verify / cleanup` … `paper: numbers.tex committed
+   (not pushed)` … `paper-srw: committed` … `done`. The watcher has then fetched, verified and cleaned ph-union on the
+   server, regenerated the digest and run `scripts/paper_update.sh` (both papers) and committed numbers.tex locally.
+   If a job fails it resubmits up to its retry limit; if the log ends with `stopping`, read the job log
+   (`cluster/server.sh check ph-union`) and use the manual path in section 5.11.
+   Manual equivalent (watcher not running, group COMPLETE):
+
+       cluster/server.sh fetch ph-union && cluster/server.sh verify ph-union && cluster/server.sh cleanup ph-union --yes
+
+2. **Final numbers, both papers, reports, deck** (also fine to re-run any time; files are overwritten):
 
        python -m dsgx.analysis.results_digest
        scripts/paper_update.sh --final
-
-   You should see `LaTeX warnings: 0`, `BUILD OK: main.pdf` (SRW) and the `open:` lines. When both machines are done:
-   `LabXOneStatus done`, all `GpuPh*Status done`, `0 [Interim] marks`. The text switches by itself (`\ifresdone`):
-   the lab-X1 "in progress" sentences in the introduction, Section 11, the limitations and the SRW limitations, and the
-   post-hoc paragraph. Pending numbers that remain are listed with their missing source (B4/B5 attack-success macros are
-   unused in the text and may stay pending).
-4. **Official reports (both machines, never mixed):**
-
        python -m dsgx.analysis.final_report
        python -m dsgx.analysis.final_report --hardware gpuws --runs $P/dsg_results_cluster/runs --out $P/dsg_results_cluster/final_report
        python -m dsgx.analysis.paper_assets
+       (cd $P/presentation && ./make_deck.sh)
 
-   You should see `completeness: ...` and `wrote .../FINAL_REPORT.md` twice (a note lists any unfinished experiment).
-5. **Commit and push the papers** (trailers: CLAUDE.md commit rules; numbers-only commits carry none):
+   **You should see:** `wrote .../RESULTS_DIGEST.md`; `LaTeX warnings: 0`, `built .../main.pdf (46 pages)`,
+   `BUILD OK: main.pdf` (SRW); `GpuPhUnionStatus done`, `GpuPhUnionPairedStatus done`; `open: 0 [Interim] marks`;
+   the remaining `pending` numbers are only `LabBFour*`, `LabBFive*`, `*FixVsDsgForget`, `*FixVsDsgUtil`, `LabFixAxesWon` (not used in
+   either paper; the deck uses the C-H5 rule macros instead); two `claims:` lines that match the table in CLAUDE.md
+   (session 31); `final_review.pdf: 28 slides` with `pending on slides: LabBFiveMax LabBFourMax` only.
+   The claims never change by hand: `dsgx/analysis/claims.py` is fixed (a change needs a DEVIATIONS row).
 
-       git -C $P/paper add numbers.tex sections && git -C $P/paper commit -m "Final numbers" && git -C $P/paper push origin draft
-       git -C $P/paper-srw add numbers.tex main.tex main.pdf && git -C $P/paper-srw commit -m "Final numbers"   # no remote
+3. **Commit and push** (CLAUDE.md commit rules: the author's name only, never an AI trailer; Amar060 / Chakrish28
+   trailers only on commits in their areas; numbers-only commits carry none):
 
-6. **arXiv** (only when you decide to post): fix the `TODO-VERIFY` notes in `paper/references.bib`, then
-   `paper/scripts/arxiv_build.sh` (authors in `paper/arxiv/authors.tex`, STATUS CONFIRMED). You should see every check
-   `ok` and `build-arxiv/arxiv-<date>.tar.gz`. It never uploads.
-7. Optional: Q2 re-run (needs > 61 GB free on the lab PC): `cluster/server.sh stage q2-graphs && cluster/submit_chain.sh
-   --after-any <last job> --nice 0 q2-graphs-v2.sbatch`, then runbook 5.6.
+       git -C $P/paper status --short            # only numbers.tex / main.pdf-related changes expected
+       git -C $P/paper add numbers.tex sections && git -C $P/paper commit -m "Final numbers (PH-union in)" && git -C $P/paper push origin draft
+       git -C $P/paper-srw add numbers.tex main.tex main.pdf && git -C $P/paper-srw commit -m "Final numbers"        # no remote
+       git -C $P/presentation add -A && git -C $P/presentation commit -m "Deck: final numbers"                        # no remote
+
+   "nothing to commit" is fine (the watcher may have committed already). paper-srw, presentation and release have no
+   remote: copy them off this PC (USB / Drive) before the cleanup in step 8.
+
+4. **Email the DSG authors (before ANY public posting: arXiv, release, talk slides online).** The draft is
+   `paper/DSG_AUTHORS_EMAIL.md` (to Aashiq Muhamed, CC Dr. M. Naresh Babu). Lokesh sends it from his own address:
+   fill in the CC address, re-check the quoted numbers against `paper/numbers.tex` after step 2, attach the TMLR PDF
+   only if the team agrees which version to share. Never attach or paste WMDP items, attack prompts or generations.
+   Record the date sent (and any reply) in `paper/REVIEW_NOTES.md` and commit. Give them time to answer before step 5;
+   the team decides how long.
+
+5. **arXiv (only after step 4, when the team decides to post):**
+
+       cd $P/paper && scripts/arxiv_build.sh
+
+   **You should see** every check `ok` (citations were verified in session 30, no `TODO-VERIFY` left; authors in
+   `paper/arxiv/authors.tex` are `STATUS: CONFIRMED`: K. Lokesh Babu, K. Chakreesh, S. Amarnath Reddy, M. Naresh Babu)
+   and `build-arxiv/arxiv-<date>.tar.gz`. The script never uploads: Lokesh uploads the tarball by hand on arxiv.org and
+   checks the arXiv-generated PDF page by page. The public code release (`$P/release`, `python scan_release.py
+   --private-check ...` must say SCAN OK; LICENSE is still a placeholder: choose one first) also waits for step 4.
+
+6. **EACL 2027 SRW** (`$P/paper-srw`, anonymous ACL template; dates and format in its README):
+   - **Fri 6 Nov 2026**: pre-submission mentorship deadline (OpenReview `EACL/2027/SRW_Pre-submission_Mentorship`).
+   - 5 Dec 2026: mentorship feedback; apply it in `paper-srw/main.tex` (numbers only through `numbers.tex` macros).
+   - **Tue 15 Dec 2026**: direct submission deadline (OpenReview `EACL/2027/SRW`). All deadlines 11:59 pm UTC-12.
+
+       cd $P/paper-srw && ./build.sh
+
+   **You should see** `BUILD OK: main.pdf` with the page, anonymity and font checks passing. Before submitting: first
+   author must be a student; Limitations section present (mandatory); any repository link anonymised; the Responsible
+   NLP checklist is filled in on OpenReview. Re-run `scripts/paper_update.sh` first if any number changed.
+
+7. **History cleanup of the main repo** (only now: all lab and server runs are done, so no queue job needs its pinned
+   hash any more). Follow `END_OF_PROJECT_HISTORY_CLEANUP.md` exactly, steps 0 → 6 (test on a copy first, `VERIFY OK`
+   required at every stage, backup tags + bundle, remap recorded hashes, push with `--force-with-lease`).
+   Known before step 0: local `main` is 1 commit ahead of `origin/main` (c0535b4 "Add master plan", 2026-10-01, Lokesh):
+   push it or drop it first (never commit anything else to main). All other branches were pushed in session 31
+   (incl. `exp/PH-X1-conformal`). The paper repo history is already clean (step 5b only if new AI trailers appear:
+   `git -C $P/paper log --format=%B | grep -ci claude` must print 0).
+
+8. **Cleanup (last; it removes our access to gpuws).** Dry run first, read every line, then act:
+
+       scripts/cleanup_all.sh            # dry run: checks + what it would do; changes nothing
+       scripts/cleanup_all.sh --yes      # acts only if every check is ok
+
+   **You should see** in the dry run `== checks: 0 failure(s)` (warnings for paper-srw / presentation / release having no
+   remote are expected). Checks: lab queue idle, no dsg-* job on gpuws, every server result file on the lab PC, every
+   branch of the main and paper repos pushed, no uncommitted tracked changes. With `--yes` it stops the watchers,
+   copies the server COMMAND_LOG.md to `dsg_results_cluster/server_logs/`, deletes `~/dsg_cluster` on gpuws, removes our
+   key line from gpuws `~/.ssh/authorized_keys` (last), stops the dsg-* tmux sessions and removes our crontab lines
+   (other lines are kept). Large lab caches (dsg_cache, HF models, conda env, dsg_private) are only **listed** with
+   their sizes and delete commands; nothing under `dsg_results*` or the git repos is ever deleted. Tell the friend whose
+   gpuws account we used that we are done.
+
+9. Optional, only before step 8: Q2 re-run (needs > 61 GB free on the lab PC): `cluster/server.sh stage q2-graphs &&
+   cluster/submit_chain.sh --after-any <last job> --nice 0 q2-graphs-v2.sbatch`, then runbook 5.6.
 
 ## 8. Qualitative track (Q1–Q8)
 
@@ -537,4 +604,5 @@ anything from `dsg_private/`, `items.parquet` text columns, or generations.
 | final report | `python -m dsgx.analysis.final_report [--interim]` |
 | paper assets | `python -m dsgx.analysis.paper_assets` |
 | paper numbers + PDF | `scripts/paper_update.sh [--no-pdf] [--final]` (finish: section 7.1) |
+| end-of-project cleanup (gpuws + lab; dry run default) | `scripts/cleanup_all.sh [--yes] [--skip-server] [--skip-lab]` (section 7.1 step 8) |
 | qualitative | `python -m dsgx.analysis.qual.<q1_feature_cards,q3_never_learned,q5_geometry,q6_trajectory,annotate>` |

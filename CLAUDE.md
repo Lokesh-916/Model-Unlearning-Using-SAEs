@@ -52,6 +52,7 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | StreamGuard digest section (attacks per axis, clean utility/FPR paired, hard negatives, generation, TOFU, MT-Bench) | `dsgx/analysis/streamguard.py` (called by `results_digest`); X1-suite streaming check `docs/X1_SUITE_STREAM_CHECK.md` |
 | POST-HOC exploratory union gate (DSG rho OR CUSUM, one conformal threshold) + TOFU-calibrated StreamGuard (gpuws, session 28; not claim inputs) | branch exp/PH-union, `cluster/ph_union.py`, conf `ph-union`; watcher `cluster/after_ph_union.sh` (fetch/verify/cleanup, digest, paper update, local commits) |
 | B7 adaptive attacks on StreamGuard (POST-HOC, lab PC, session 30: interleaving k 1/2/4/8, interleave+split, mid-question pad 400) | branch exp/B7-adaptive (`dsgx/attacks/adaptive.py`, `configs/experiments/B7.yaml`); `python -m dsgx.analysis.b7_adaptive` → `$DSG_RESULTS/B7_ADAPTIVE.md`; macros `LabBSeven*` |
+| end-of-project cleanup: gpuws ~/dsg_cluster + our key line, lab watchers / tmux / crontab; checks fetched + pushed first (dry run default) | `scripts/cleanup_all.sh [--yes]` (runbook §7.1 step 8; never run by Claude) |
 
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
 `calibrate(..., rule="conformal")` (cache key unchanged for the default quantile rule); `dsgx/attacks/transforms.py`
@@ -566,3 +567,22 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
 - **B7 (POST-HOC, lab PC) done:** StreamGuard attack success <= 0.044 under all six adaptive attacks; DSG up to 0.762 (midpad 400),
   fire rate down to 0.025; paired SG better on 5/6 (not k=1). Paper paragraph + macros (paper 2361a13). N8 could not resume
   (no item checkpoints) so it ran to completion first. Lab queue empty. gpuws untouched; 205–207 still HELD (runbook §5.11).
+
+### Session 31 — 2026-10-08 08:50–09:xx (end state)
+- Lab queue 100 % done (176 + 71 moved). gpuws 205 ph-union R, 206–207 pending (released by the user); `after_ph_union.sh` alive:
+  it fetches/verifies/cleans ph-union and runs paper_update + local commits by itself.
+- **Claims (fixed rules, per machine):**
+
+  | claim | labpc | gpuws |
+  |---|---|---|
+  | C-H1 dilution defeats DSG | Supported (0.909 [0.875, 0.943], pad 1600) | Inconclusive (not run there) |
+  | C-H2 fails beyond English MCQ | Supported (B2 split 0.694, B3 spaced 0.449) | Inconclusive (not run there) |
+  | C-H3 knowledge remains internally | Not supported (probe 0.285, CI lo 0.253 < 0.30) | Inconclusive (not run there) |
+  | C-H4 interpretable cause | Supported (recon_mse +0.529 [+0.089, +1.076]) | Inconclusive (not run there) |
+  | C-H5 hardened gate at matched utility | Not supported (wins B1/B2/B5, utility −0.0117, FPR 0.046) | Not supported (same; FPR 0.045) |
+  | C-H6 baked erasure resists tampering | Inconclusive (A6 ran on gpuws) | Not supported (0/8 cells, D1 and D2) |
+  | C-H7 findings generalise | Inconclusive (no best-fix TOFU cond., A7 no attack comparison) | Inconclusive |
+- Deck: StreamGuard title + B7 slide (presentation repo). `scripts/cleanup_all.sh` written, NOT run. Runbook §7.1 = team finish list.
+- **Next (team, runbook §7.1):** after 207: check the watcher log, `paper_update.sh --final`, push paper; DSG email before any posting;
+  arXiv; SRW 6 Nov / 15 Dec; history cleanup; `cleanup_all.sh` last.
+

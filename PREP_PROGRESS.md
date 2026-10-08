@@ -442,3 +442,19 @@ Tests: 107 pass on CPU.
 - **Paper:** paragraph "StreamGuard under adaptive attacks (post hoc, lab PC)" in `sections/11_results_fix.tex` (paper 2361a13, pushed);
   paper_update: TMLR 45 pages, 0 [pending]/[Interim] in the PDF; SRW BUILD OK (e951fb9, local). Digest regenerated (582 lab, 642 gpuws runs).
 - Lab queue empty after B7 (176 done, 71 moved to server). gpuws untouched; 205–207 still held.
+
+## Session 31 (2026-10-08 08:50–09:xx): wrap-up for the team (lab queue 100 % done; gpuws 205–207 released, running)
+- **Claims re-evaluated** (fixed rules, per machine): labpc C-H1 Supported, C-H2 Supported, C-H3 Not supported, C-H4 Supported,
+  C-H5 Not supported, C-H6 Inconclusive, C-H7 Inconclusive; gpuws C-H1–C-H4 Inconclusive (not run there), C-H5 Not supported,
+  C-H6 Not supported, C-H7 Inconclusive. C-H5 replicates exactly: CUSUM wins B1, B2, B5 on both machines, paired utility vs DSG
+  −0.0117 on both (limit −0.01), FPR 0.046 / 0.045. Digest (582 lab, 642 gpuws runs), final_report both machines, paper_update
+  (TMLR 46 pages, 0 warnings; SRW BUILD OK, 8 pages); 44 pending macros = PH-union (205–207) + 9 unused in either paper.
+- **Deck:** title = StreamGuard title, new slide "StreamGuard Under Adaptive Attacks (B7)" (lab PC, post hoc), utility/axes cells use
+  the C-H5 rule macros (`LabFixRuleUtilDiff`, `LabFixRuleAxes`; the paired-test macros stay pending). 28 slides.
+- **`scripts/cleanup_all.sh`** (dry run default, `--yes` acts only if all checks pass; NOT run): lab queue idle, no dsg-* job on gpuws,
+  every server result file on the lab PC (rsync size-only dry run per conf RESULT_PATHS), every branch of main + paper repos on
+  origin and not ahead, clean worktrees; then watchers → copy COMMAND_LOG → rm ~/dsg_cluster → our authorized_keys line (atomic,
+  exact line count) → tmux_down → our crontab lines (none today); large caches only listed. Tested with stubbed ssh/rsync/tmux/crontab
+  and the key removal on a temp file.
+- **Runbook §7.1 rewritten** for the team: 205–207 watcher, final numbers, commits, DSG email, arXiv, SRW (6 Nov, 15 Dec), history
+  cleanup, cleanup_all. `exp/PH-X1-conformal` pushed (was local only). Local `main` is 1 commit ahead (c0535b4, Lokesh, Oct 1): left as is.
