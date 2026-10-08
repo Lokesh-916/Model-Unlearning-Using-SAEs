@@ -512,6 +512,7 @@ else below is reporting, communication and cleanup. Start every terminal with se
 
        scripts/cleanup_all.sh            # dry run: checks + what it would do; changes nothing
        scripts/cleanup_all.sh --yes      # acts only if every check is ok
+       scripts/cleanup_all.sh --yes --keep-key   # same, but keeps our gpuws key line + the lab ~/.ssh/config entry (ssh gpuws still works)
 
    **You should see** in the dry run `== checks: 0 failure(s)` (warnings for paper-srw / presentation / release having no
    remote are expected). Checks: lab queue idle, no dsg-* job on gpuws, every server result file on the lab PC, every
@@ -632,7 +633,7 @@ anything from `dsg_private/`, `items.parquet` text columns, or generations.
 | final report | `python -m dsgx.analysis.final_report [--interim]` |
 | paper assets | `python -m dsgx.analysis.paper_assets` |
 | paper numbers + PDF | `scripts/paper_update.sh [--no-pdf] [--final]` (finish: section 7.1) |
-| end-of-project cleanup (gpuws + lab; dry run default) | `scripts/cleanup_all.sh [--yes] [--skip-server] [--skip-lab]` (section 7.1 step 8) |
+| end-of-project cleanup (gpuws + lab; dry run default) | `scripts/cleanup_all.sh [--yes] [--skip-server] [--skip-lab] [--keep-key]` (section 7.1 step 8) |
 | D1 v3 (prepared follow-up) | `scripts/d1_v3_dryrun.sh`, `cluster/server.sh run d1-v3` (section 5.12, README.md) |
 | private backups of paper-srw / presentation / release | `scripts/push_backups.sh [--print]` (section H) |
 | SRW submission list | `$P/paper-srw/SUBMISSION_CHECKLIST.md` |

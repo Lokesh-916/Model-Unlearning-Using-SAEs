@@ -142,7 +142,7 @@ verify)
         d="$DEST_LOCAL/${p#results/}"
         printf '  %-60s %s files\n' "$d" "$( [ -d "$d" ] && find "$d" -type f | wc -l || echo MISSING)"
     done
-    for s in "$DEST_LOCAL"/jobs/"$JOB"/summary.json; do [ -f "$s" ] && python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print('  headline:', json.dumps(d.get('headline', {k: d[k] for k in list(d)[:4]}))[:400])" "$s"; done
+    for s in "$DEST_LOCAL"/jobs/"$JOB"/summary.json; do [ -f "$s" ] && python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print('  headline:', json.dumps(d.get('headline', {k: d[k] for k in list(d)[:4]}))[:400])" "$s"; done; true
     ;;
 cleanup)
     conf

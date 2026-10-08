@@ -4,6 +4,8 @@
 #   scripts/cleanup_all.sh              # dry run (default; same as --dry-run)
 #   scripts/cleanup_all.sh --yes        # act, but only if every check passes
 #   options: --skip-server  --skip-lab  (do one side only; the checks for that side still run)
+#            --keep-key  keep our key line in gpuws ~/.ssh/authorized_keys (and the lab ~/.ssh/config 'Host gpuws' block,
+#                        which this script never edits): ~/dsg_cluster is still removed, ssh gpuws keeps working
 #
 # Checks (all must pass before --yes acts):
 #   1. lab queue: nothing running / waiting / failed / blocked
@@ -12,11 +14,11 @@
 #      FETCH_EXCLUDE; plus the dsg-* Slurm logs and results/_superseded) -> nothing left to fetch
 #   4. git: every local branch of the main repo and the paper repo is pushed (no branch ahead of origin, no
 #      branch missing on origin); every worktree has no uncommitted tracked changes; paper-srw / presentation /
-#      release (no remote) are committed (warning only: they exist only on this PC, back them up)
+#      release are committed and, if they have an origin, pushed (no origin: warning only, back them up)
 # Actions with --yes, in this order:
 #   lab:    stop our watchers (they would otherwise resubmit server jobs)
 #   server: copy ~/dsg_cluster/COMMAND_LOG.md to the lab PC, rm -rf ~/dsg_cluster,
-#           then (last, it ends our access) remove our key line from ~/.ssh/authorized_keys on gpuws
+#           then (last, it ends our access) remove our key line from ~/.ssh/authorized_keys on gpuws (not with --keep-key)
 #   lab:    stop the dsg-* tmux sessions (baselines_DSG/scripts/tmux_down.sh), remove our crontab lines
 #   lab:    list large caches as OPTIONAL deletions (sizes + commands; never deleted by this script)
 # Never touched: other users' files, crontab lines that are not ours, $DSG_RESULTS, dsg_results_cluster, git repos.
@@ -25,10 +27,10 @@ P="${P:-$HOME/projects/mechunlearn-project}"
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 DEST="${DSG_RESULTS_CLUSTER:-$P/dsg_results_cluster}"
 KEYPUB="${DSG_GPUWS_KEY:-$HOME/.ssh/id_ed25519_gpuws.pub}"
-ACT=0; DO_SERVER=1; DO_LAB=1
+ACT=0; DO_SERVER=1; DO_LAB=1; KEEP_KEY=0
 for a in "$@"; do case "$a" in
-    --yes) ACT=1;; --dry-run) ACT=0;; --skip-server) DO_SERVER=0;; --skip-lab) DO_LAB=0;;
-    -h|--help) sed -n 2,23p "$0"; exit 0;;
+    --yes) ACT=1;; --dry-run) ACT=0;; --skip-server) DO_SERVER=0;; --skip-lab) DO_LAB=0;; --keep-key) KEEP_KEY=1;;
+    -h|--help) sed -n 2,24p "$0"; exit 0;;
     *) echo "unknown option $a"; exit 2;; esac; done
 # shellcheck disable=SC1091
 source "$REPO/scripts/env.sh" >/dev/null 2>&1 || true
@@ -118,8 +120,10 @@ check_pushed "$P/baselines_DSG"
 for r in paper-srw presentation release; do
     [ -d "$P/$r/.git" ] || continue
     d=$(git -C "$P/$r" status --porcelain --untracked-files=no | wc -l)
-    [ "$d" = 0 ] && warn "$r: committed, but it has no remote (only on this PC: back it up)" \
-                 || bad "$r: $d uncommitted change(s)"
+    if [ "$d" != 0 ]; then bad "$r: $d uncommitted change(s)"
+    elif git -C "$P/$r" remote get-url origin >/dev/null 2>&1; then
+        before=$fails; check_pushed "$P/$r"; [ $fails = $before ] && ok "$r: committed and pushed to origin"
+    else warn "$r: committed, but it has no remote (only on this PC: back it up)"; fi
 done
 
 echo "== checks: $fails failure(s), $warns warning(s)"
@@ -158,7 +162,8 @@ if [ $DO_SERVER = 1 ] && [ $SERVER_UP = 1 ]; then
         act "ssh gpuws rm -rf ~/dsg_cluster" srv_rm || exit 1
     fi
     echo "-- server: remove our key line from ~/.ssh/authorized_keys (LAST: ends our access)"
-    if [ -f "$KEYPUB" ]; then
+    if [ $KEEP_KEY = 1 ]; then ok "--keep-key: our authorized_keys line on gpuws and the lab ~/.ssh/config entry are kept"
+    elif [ -f "$KEYPUB" ]; then
         blob=$(awk '{print $2}' "$KEYPUB")
         m=$(g "grep -cF -- '$blob' ~/.ssh/authorized_keys" 2>/dev/null); m=${m:-0}
         echo "  key $(awk '{print $1, substr($2,1,16) "...", $3}' "$KEYPUB"): $m matching line(s) on gpuws"
@@ -189,7 +194,8 @@ if [ $DO_LAB = 1 ]; then
     opt "$HOME/miniconda3/envs/mechunlearn2" "conda env remove -n mechunlearn2"
     opt "$P/dsg_private" "rm -rf '$P/dsg_private'   # hazardous data: delete when the data agreement says so"
     echo "  kept always: ${DSG_RESULTS:-$P/dsg_results}, $DEST (all results), the git repos"
-    echo "  yours to remove by hand if wanted: the 'Host gpuws' block in ~/.ssh/config, $KEYPUB and its private key"
+    if [ $KEEP_KEY = 1 ]; then echo "  kept (--keep-key): the 'Host gpuws' block in ~/.ssh/config, $KEYPUB and its private key"
+    else echo "  yours to remove by hand if wanted: the 'Host gpuws' block in ~/.ssh/config, $KEYPUB and its private key"; fi
 fi
 
 echo "== done ($([ $ACT = 1 ] && echo acted || echo 'dry run: nothing changed; re-run with --yes when every check is ok'))"
