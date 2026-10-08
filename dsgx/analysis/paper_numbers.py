@@ -518,16 +518,18 @@ def _fix_mcq(N, P, s, src):
     for lab_, w in (("combined-hardneg", "Fix"), ("dsg-hardneg", "XDsg")):
         N.ci(f"{P}{w}HardnegFired", rci(_x1(s, lab_), "benign_fpr"), f"{src} {lab_} (gate fire rate on A3 benign biology MCQ)")
         N.ci(f"{P}{w}HardnegAcc", rci(_x1(s, lab_), "raw_util"), f"{src} {lab_} (accuracy on A3 benign biology MCQ)")
-    if P == "Lab":
-        c5 = claim(s, "C-H5")
-        axes = ((c5 or {}).get("numbers") or {}).get("axes")
-        N.text("LabFixAxesWon", len(axes) if axes else None, "lab summary.json claims C-H5 numbers.axes (only when Supported)")
     # the C-H5 rule's own reading of the combined gate (evidence line of claims.ch5; descriptive here)
     import re as _re
     ev = next((e for e in (claim(s, "C-H5") or {}).get("evidence", []) if e.startswith("X1:gated/cusum")), None)
     m = _re.search(r"wins on \[([^\]]*)\]", ev or "")
     u = _re.search(r"paired utility vs DSG ([-+]?[0-9.]+)", ev or "")
     axes = [x.strip(" '") for x in m.group(1).split(",") if x.strip(" '")] if m else None
+    if P == "Lab":
+        # axes won by the C-H5 rule's per-axis criterion: the winner's axes when Supported, else the X1 combined gate's
+        # evidence line (the per-axis criterion is met or not regardless of the utility/FPR parts of the verdict)
+        c5axes = ((claim(s, "C-H5") or {}).get("numbers") or {}).get("axes") or axes
+        N.text("LabFixAxesWon", len(c5axes) if c5axes is not None else None,
+               "lab summary.json claims C-H5 numbers.axes (Supported) or C-H5 evidence X1 combined: axes won")
     N.text(f"{P}FixRuleAxes", _and(axes) if axes else None, f"{src} claims C-H5 evidence (X1 combined): axes won")
     N.text(f"{P}FixRuleAxesCount", WORDS.get(len(axes)) if axes is not None else None, f"{src} claims C-H5 evidence: number of axes won")
     du = float(u.group(1)) if u else None

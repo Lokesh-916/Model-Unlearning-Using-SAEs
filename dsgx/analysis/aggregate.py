@@ -107,15 +107,22 @@ def paired_tests(runs, n_boot=stats.N_BOOT, split="test") -> list[dict]:
             if r.is_base:
                 continue
             fd = r.cfg.get("forget_datasets") or ["wmdp-bio", "wmdp-cyber"]
+            # candidate references in the old order; the first one stays the reference whenever it shares items with r
+            # (so every earlier pair is unchanged). If it shares none (e.g. X1's clean DSG run vs its same-seed
+            # dsg-hardneg run, which only has the five benign-biology subjects), the next candidate is tried.
             refs = []
             if bases:
-                refs.append(("base", bases[0]))
+                refs.append(("base", bases))
             if r.method not in DSG_NAMES:
                 same_seed = [d for d in dsgs if d.seed == r.seed] or dsgs
                 if same_seed:
-                    refs.append(("dsg", same_seed[0]))
-            for tag, ref in refs:
-                res = compare(r, ref, fd, n_boot)
+                    refs.append(("dsg", same_seed))
+            for tag, cands in refs:
+                ref, res = cands[0], {}
+                for ref in cands:
+                    res = compare(r, ref, fd, n_boot)
+                    if res:
+                        break
                 if res:
                     out.append({"exp": exp, "case": case, "attack": json.loads(att), "run": r.name,
                                 "condition": r.label(), "vs": tag, "ref_run": ref.name,
