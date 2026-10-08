@@ -591,7 +591,7 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   arXiv; SRW 6 Nov / 15 Dec; history cleanup; `cleanup_all.sh` last.
 
 ### Session 32 — 2026-10-08 (STATE AT HANDOVER: last Claude Code session; the team continues with NO_CLAUDE_RUNBOOK.md)
-- **gpuws:** 205 ph-union RUNNING (1 h in at 10:4x), 206–207 pending (Dependency). `after_ph_union.sh` alive (pid 7266, log every
+- **gpuws:** 205 ph-union RUNNING (1 h in at 10:4x), 206–207 pending (Dependency). `after_ph_union.sh` alive (restarted 10:31 after a lab reboot; log every
   10 min); it fetches / verifies / cleans ph-union, regenerates the digest and both papers, and commits numbers.tex locally.
   Then the team runs runbook §7.1 step 2–3 (`paper_update.sh --final`, push paper). Ours 35 GB, `/` 63 GB free (other users).
   Note: ph-union's cleanup deletes MiniLM from gpuws; d1-v3 stages it again.
