@@ -609,3 +609,15 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   D1-v2 / D1-full student weights no longer exist anywhere, so D1 v3's relearning controls are dsg-hook, dsg-nohook, rmu-v2 (+ students).
 - Untracked `docs/ROADMAP.md` (the 2026-09-30 roadmap) was left untracked as found.
 
+### Session 33 — 2026-10-08 14:2x–15:xx (end state)
+- **ph-union:** 205–207 done; the watcher stopped at `verify` (exit 1 when a job has no summary.json; fixed in server.sh) → cleanup,
+  digest, `paper_update.sh --final` by hand (46 pages, 0 warnings, 6 pending B4/B5 macros unused; claims = session 31 table).
+  Aggregates (union vs DSG vs StreamGuard, CIs, n; post hoc, exploratory): `docs/PH_UNION_AGGREGATES.md` (`scripts/ph_union_aggregates.py`).
+- **gpuws cleaned:** all 5141 server result files sha256-identical on the lab PC (incl. jobs/x1-suite, queue/, index.csv, logs,
+  _superseded, labjobs → `dsg_results_cluster/server_logs/`); `cleanup_all.sh --yes --keep-key` removed `~/dsg_cluster`; key line and
+  `~/.ssh/config` kept; 0 jobs. Note: cleanup_all's check 3 covers only conf RESULT_PATHS (the full-tree check was done by hand).
+- **Lab disk:** 55 → 192 GB free (137 GB deleted; list in `dsg_results_cluster/server_logs/lab_disk_cleanup_2026-10-08.md`): Gemma 3 /
+  gemma-2-9b / Gemma Scope 2 HF caches, env_q2_lab, dsg_cache except the gemma-2-2b L3 bio/cyber act caches (+ leakage records) and
+  residuals/A4 (TMLR App. E Q5/Q6 figures), legacy bio L3 act_fgt/act_ret.pkl. D1 v3 CPU plan still PLAN OK.
+- baselines_DSG main pushed (c0535b4, MASTER_PLAN.md only); REPO_REPORT.md moved to prep/docs.
+

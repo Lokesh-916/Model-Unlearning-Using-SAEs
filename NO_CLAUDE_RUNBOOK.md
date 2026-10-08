@@ -18,11 +18,11 @@ Everything from here on is done by the team with this runbook; no step needs Cla
 | area | state on 2026-10-08 (session 32) | what to do |
 |---|---|---|
 | lab PC queue | 100 % done (176 jobs + 71 moved to gpuws) | nothing (section 1 only if you add jobs) |
-| gpuws | 205 ph-union RUNNING, 206–207 pending behind it (post hoc, exploratory); ours 35 GB, `/` 63 GB free | nothing by hand: the watcher `cluster/after_ph_union.sh` (pid alive, log `$P/dsg_results_cluster/after_ph_union.log`) fetches, verifies, cleans, regenerates the digest + both papers, commits numbers.tex locally (section 5.11; restart after a reboot) |
+| gpuws | **cleaned 2026-10-08 (session 33)**: ph-union fetched/verified/cleaned, every server result file (5141) on the lab PC sha256-identical, `cleanup_all.sh --yes --keep-key` removed `~/dsg_cluster`; our key line and `~/.ssh/config` entry kept (ssh gpuws works) | D1 v3 / Q2 re-run would need a fresh setup (env + base set re-staged); otherwise nothing |
 | claims C-H1..C-H7 | final per machine (table in CLAUDE.md, session 31); rules fixed in `dsgx/analysis/claims.py` | never by hand; a change needs a DEVIATIONS row |
 | TMLR paper (`$P/paper`, remote `origin` draft) | pushed up to session 31; PH-union numbers fill in when the watcher finishes | section 7.1 steps 2–3 (`scripts/paper_update.sh --final`, commit, `git push origin draft`) |
 | SRW paper (`$P/paper-srw`) | BUILD OK, 8 pages, long paper (content ends p.5), anonymous; `SUBMISSION_CHECKLIST.md` | 6 Nov mentorship draft, 15 Dec submission (section 7.1 step 6 + the checklist) |
-| backups | paper-srw, presentation, release have **no remote** (gh CLI not installed on the lab PC; release leak scan: SCAN OK on 2026-10-08) | `scripts/push_backups.sh --print` → create the 3 PRIVATE repos on github.com, run the printed commands (or install gh, `gh auth login`, `scripts/push_backups.sh`) |
+| backups | paper-srw, presentation, release pushed to their private origins (checked 2026-10-08, session 33) | nothing |
 | D1 v3 (follow-up, prepared, NOT submitted) | `cluster/d1_v3.py`, conf `d1-v3`, dry run `scripts/d1_v3_dryrun.sh` (PLAN OK); needs ≥ 82 GB free on gpuws `/` (63 on 2026-10-08) | README.md "How to run D1 v3 on gpuws without Claude"; section 5.12 |
 | DSG-author email, arXiv, history cleanup, final cleanup | not done | section 7.1 steps 4, 5, 7, 8 (in that order; `cleanup_all.sh` last) |
 
