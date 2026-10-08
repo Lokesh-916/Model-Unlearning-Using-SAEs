@@ -57,6 +57,7 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | D1 v3 follow-up (PREPARED, not submitted): forget-corpus-only distillation, α 0.1, 3 seeds, `@utility` + 9 hazard-adjacent MMLU, open-ended leak/benign, full + LoRA relearning of the same controls on held-out passages | `cluster/d1_v3.py {plan,train,test,open,relearn,summary}`, conf `d1-v3`, `scripts/d1_v3_dryrun.sh`, `cluster/server.sh run d1-v3`; README.md "How to run D1 v3 on gpuws without Claude"; runbook §5.12 |
 | private GitHub backups of paper-srw / presentation / release (release leak scan first; never public) | `scripts/push_backups.sh [--print]` |
 | EACL 2027 SRW requirements + upload list + PDF verification | `~/projects/mechunlearn-project/paper-srw/SUBMISSION_CHECKLIST.md` |
+| GPU hours per machine and experiment group (Responsible NLP checklist C1; counted vs smoke / failed / superseded) | `python scripts/gpu_hours.py [--md]`; table in `paper-srw/SRW_SUBMISSION_NOTES.md` C1 |
 
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
 `calibrate(..., rule="conformal")` (cache key unchanged for the default quantile rule); `dsgx/attacks/transforms.py`
