@@ -53,11 +53,15 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | POST-HOC exploratory union gate (DSG rho OR CUSUM, one conformal threshold) + TOFU-calibrated StreamGuard (gpuws, session 28; not claim inputs) | branch exp/PH-union, `cluster/ph_union.py`, conf `ph-union`; watcher `cluster/after_ph_union.sh` (fetch/verify/cleanup, digest, paper update, local commits) |
 | B7 adaptive attacks on StreamGuard (POST-HOC, lab PC, session 30: interleaving k 1/2/4/8, interleave+split, mid-question pad 400) | branch exp/B7-adaptive (`dsgx/attacks/adaptive.py`, `configs/experiments/B7.yaml`); `python -m dsgx.analysis.b7_adaptive` → `$DSG_RESULTS/B7_ADAPTIVE.md`; macros `LabBSeven*` |
 | end-of-project cleanup: gpuws ~/dsg_cluster + our key line, lab watchers / tmux / crontab; checks fetched + pushed first (dry run default) | `scripts/cleanup_all.sh [--yes]` (runbook §7.1 step 8; never run by Claude) |
+| **state at handover (2026-10-08): read first** | `NO_CLAUDE_RUNBOOK.md` section H; session 32 below |
+| D1 v3 follow-up (PREPARED, not submitted): forget-corpus-only distillation, α 0.1, 3 seeds, `@utility` + 9 hazard-adjacent MMLU, open-ended leak/benign, full + LoRA relearning of the same controls on held-out passages | `cluster/d1_v3.py {plan,train,test,open,relearn,summary}`, conf `d1-v3`, `scripts/d1_v3_dryrun.sh`, `cluster/server.sh run d1-v3`; README.md "How to run D1 v3 on gpuws without Claude"; runbook §5.12 |
+| private GitHub backups of paper-srw / presentation / release (release leak scan first; never public) | `scripts/push_backups.sh [--print]` |
+| EACL 2027 SRW requirements + upload list + PDF verification | `~/projects/mechunlearn-project/paper-srw/SUBMISSION_CHECKLIST.md` |
 
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
 `calibrate(..., rule="conformal")` (cache key unchanged for the default quantile rule); `dsgx/attacks/transforms.py`
 rewrite_cache / suffix accept `exp:` to read another experiment's private artifacts (used by X1).
-Tests: `CUDA_VISIBLE_DEVICES= ~/miniconda3/envs/mechunlearn2/bin/python -m pytest -q tests` = 120 pass on CPU (~9 min; `tests/test_prep_*.py`; server jobs run with a
+Tests: `CUDA_VISIBLE_DEVICES= ~/miniconda3/envs/mechunlearn2/bin/python -m pytest -q tests` = 148 pass on CPU (~9.5 min, 2026-10-08; `tests/test_prep_*.py`; server jobs run with a
 tiny random Gemma-2 via `DSG_TINY=1`). Before submitting, also check real (non-tiny) configs on CPU: resolve + `check_runs` (session 8 found
 the multi-topic union-tau bug this way: an activation cache stores fire bits only for its own 2048 candidate features).
 Gotchas found: Neuronpedia's `3-gemmascope-res-16k` is the canonical **l0_59** SAE, not DSG's l0_142 (Q1 only queries
@@ -585,4 +589,22 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
 - Deck: StreamGuard title + B7 slide (presentation repo). `scripts/cleanup_all.sh` written, NOT run. Runbook §7.1 = team finish list.
 - **Next (team, runbook §7.1):** after 207: check the watcher log, `paper_update.sh --final`, push paper; DSG email before any posting;
   arXiv; SRW 6 Nov / 15 Dec; history cleanup; `cleanup_all.sh` last.
+
+### Session 32 — 2026-10-08 (STATE AT HANDOVER: last Claude Code session; the team continues with NO_CLAUDE_RUNBOOK.md)
+- **gpuws:** 205 ph-union RUNNING (1 h in at 10:4x), 206–207 pending (Dependency). `after_ph_union.sh` alive (pid 7266, log every
+  10 min); it fetches / verifies / cleans ph-union, regenerates the digest and both papers, and commits numbers.tex locally.
+  Then the team runs runbook §7.1 step 2–3 (`paper_update.sh --final`, push paper). Ours 35 GB, `/` 63 GB free (other users).
+  Note: ph-union's cleanup deletes MiniLM from gpuws; d1-v3 stages it again.
+- **Backups:** gh CLI is not installed, so no repos were created. `scripts/push_backups.sh --print` prints the steps (create
+  3 PRIVATE repos dsg-paper-srw / dsg-presentation / dsg-release on github.com, then push over SSH; SSH auth as Lokesh-916 works).
+  Release leak scan SCAN OK (329 files, private check incl. corpus + WMDP bio/cyber).
+- **SRW:** `paper-srw/SUBMISSION_CHECKLIST.md` from the official call + ARR CFP (re-read today). PDF verified: BUILD OK, 8 pages,
+  content ends p.5, so it is a **long** paper (README said it fitted the short limit; fixed). A4, empty PDF metadata, no URLs, no
+  acknowledgements, Limitations + Ethical Considerations present, 0 pending / 0 interim. Team: student first author, archival
+  choice, Responsible NLP checklist **incl. the generative-AI assistance disclosure ARR requires**, OpenReview accounts.
+- **D1 v3 kit (not submitted):** `cluster/d1_v3.py` + 4 sbatch + conf `d1-v3`; 5 tiny CPU tests (`tests/test_prep_d1v3.py`); real-config
+  CPU plan PLAN OK (distill 23,432 / held-out 1,000 passages, tau 0.5458, open items 476 leak / 352 benign, 18 full + 36 LoRA cells,
+  ~21 h, peak 32 GB). `server.sh plan d1-v3` today: free would drop to 31 GB < 50, so it can run only when gpuws `/` has ≥ 82 GB free.
+  D1-v2 / D1-full student weights no longer exist anywhere, so D1 v3's relearning controls are dsg-hook, dsg-nohook, rmu-v2 (+ students).
+- Untracked `docs/ROADMAP.md` (the 2026-09-30 roadmap) was left untracked as found.
 

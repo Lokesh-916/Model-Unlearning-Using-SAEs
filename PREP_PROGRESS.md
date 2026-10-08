@@ -458,3 +458,15 @@ Tests: 107 pass on CPU.
   and the key removal on a temp file.
 - **Runbook §7.1 rewritten** for the team: 205–207 watcher, final numbers, commits, DSG email, arXiv, SRW (6 Nov, 15 Dec), history
   cleanup, cleanup_all. `exp/PH-X1-conformal` pushed (was local only). Local `main` is 1 commit ahead (c0535b4, Lokesh, Oct 1): left as is.
+
+## Session 32 (2026-10-08 10:xx–): handover (last Claude Code session)
+- **Backups:** release leak scan SCAN OK; gh CLI missing → `scripts/push_backups.sh` (gh path: creates PRIVATE repos, refuses an existing
+  non-private repo, scan first) and `--print` (manual github.com + SSH push commands). Nothing pushed for the three repos.
+- **SRW:** `SUBMISSION_CHECKLIST.md` (official call + ARR CFP, dates 6 Nov / 15 Dec, long paper ≤ 8 p., Limitations mandatory, anonymity,
+  Responsible NLP checklist with AI-assistance disclosure, upload table, verification). PDF: BUILD OK, content ends p.5 → long paper (README fixed).
+- **D1 v3 kit:** `cluster/d1_v3.py` (plan / train / test / open / relearn / summary), sbatch ×4, conf `d1-v3` (stages corpus, RMU-v2 best, MiniLM,
+  code snapshot code-d1v3), `scripts/d1_v3_dryrun.sh`, README section, runbook §5.12, manifest row. Rule fixed before any result: no seed selection,
+  3-seed mean ± sd, bound_met (DEV utility drop ≤ 0.02) reported only. Tests: `tests/test_prep_d1v3.py` 5 pass; full CPU suite 148 pass (9.5 min).
+  Not stageable today (server `/` 63 GB free; needs ≥ 82).
+- **gpuws 205–207** still running/pending at handover; watcher alive; runbook §5.11 / §7.1 / H cover the rest.
+

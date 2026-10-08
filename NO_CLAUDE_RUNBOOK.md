@@ -11,6 +11,23 @@ metrics. All scripts here print ids and metrics only.
 
 ---
 
+## H. State at handover (2026-10-08, last Claude Code session: read this first)
+
+Everything from here on is done by the team with this runbook; no step needs Claude Code.
+
+| area | state on 2026-10-08 (session 32) | what to do |
+|---|---|---|
+| lab PC queue | 100 % done (176 jobs + 71 moved to gpuws) | nothing (section 1 only if you add jobs) |
+| gpuws | 205 ph-union RUNNING, 206–207 pending behind it (post hoc, exploratory); ours 35 GB, `/` 63 GB free | nothing by hand: the watcher `cluster/after_ph_union.sh` (pid alive, log `$P/dsg_results_cluster/after_ph_union.log`) fetches, verifies, cleans, regenerates the digest + both papers, commits numbers.tex locally (section 5.11; restart after a reboot) |
+| claims C-H1..C-H7 | final per machine (table in CLAUDE.md, session 31); rules fixed in `dsgx/analysis/claims.py` | never by hand; a change needs a DEVIATIONS row |
+| TMLR paper (`$P/paper`, remote `origin` draft) | pushed up to session 31; PH-union numbers fill in when the watcher finishes | section 7.1 steps 2–3 (`scripts/paper_update.sh --final`, commit, `git push origin draft`) |
+| SRW paper (`$P/paper-srw`) | BUILD OK, 8 pages, long paper (content ends p.5), anonymous; `SUBMISSION_CHECKLIST.md` | 6 Nov mentorship draft, 15 Dec submission (section 7.1 step 6 + the checklist) |
+| backups | paper-srw, presentation, release have **no remote** (gh CLI not installed on the lab PC; release leak scan: SCAN OK on 2026-10-08) | `scripts/push_backups.sh --print` → create the 3 PRIVATE repos on github.com, run the printed commands (or install gh, `gh auth login`, `scripts/push_backups.sh`) |
+| D1 v3 (follow-up, prepared, NOT submitted) | `cluster/d1_v3.py`, conf `d1-v3`, dry run `scripts/d1_v3_dryrun.sh` (PLAN OK); needs ≥ 82 GB free on gpuws `/` (63 on 2026-10-08) | README.md "How to run D1 v3 on gpuws without Claude"; section 5.12 |
+| DSG-author email, arXiv, history cleanup, final cleanup | not done | section 7.1 steps 4, 5, 7, 8 (in that order; `cleanup_all.sh` last) |
+
+---
+
 ## 0. Every new terminal
 
 ```bash
@@ -332,6 +349,16 @@ fetch / verify / cleanup above. The paper then keeps "still running" for the uni
 `paper/sections/11_results_fix.tex` (`\ifresdone{\resGpuPhUnionStatus}` … second branch) by "were not run" and do the same
 in `paper-srw/main.tex`.
 
+### 5.12 D1 v3 (prepared 2026-10-08, NOT submitted): distillation from the forget corpus, 3 seeds, open-ended, full + LoRA relearning
+Full instructions with "you should see" lines: **README.md, section "How to run D1 v3 on gpuws without Claude"**. Short form:
+
+    scripts/d1_v3_dryrun.sh            # submits nothing: tiny tests, real-config CPU plan (PLAN OK), server disk plan, dry chain
+    cluster/server.sh run d1-v3        # plan + confirm + stage + validate -> 12 chained 3 h jobs (~21 h); needs >= 82 GB free on /
+    cluster/server.sh check d1-v3      # progress
+    cluster/server.sh fetch d1-v3 && cluster/server.sh verify d1-v3 && cluster/server.sh cleanup d1-v3 --yes
+
+Results: `$P/dsg_results_cluster/jobs/d1-v3/SUMMARY.md` (gpuws only; follow-up, not a claim input without a DEVIATIONS row).
+
 ## 6. Combination wave (after Waves 1–3 and N6 are DONE)
 
 Prerequisites: C1 (feature files), C3 (layer ranking), D1 and D2 (checkpoints) DONE. `--enqueue` refuses
@@ -442,7 +469,8 @@ else below is reporting, communication and cleanup. Start every terminal with se
        git -C $P/presentation add -A && git -C $P/presentation commit -m "Deck: final numbers"                        # no remote
 
    "nothing to commit" is fine (the watcher may have committed already). paper-srw, presentation and release have no
-   remote: copy them off this PC (USB / Drive) before the cleanup in step 8.
+   remote: back them up first as PRIVATE GitHub repos (`scripts/push_backups.sh --print`, section H) or copy them off
+   this PC (USB / Drive) before the cleanup in step 8.
 
 4. **Email the DSG authors (before ANY public posting: arXiv, release, talk slides online).** The draft is
    `paper/DSG_AUTHORS_EMAIL.md` (to Aashiq Muhamed, CC Dr. M. Naresh Babu). Lokesh sends it from his own address:
@@ -605,4 +633,7 @@ anything from `dsg_private/`, `items.parquet` text columns, or generations.
 | paper assets | `python -m dsgx.analysis.paper_assets` |
 | paper numbers + PDF | `scripts/paper_update.sh [--no-pdf] [--final]` (finish: section 7.1) |
 | end-of-project cleanup (gpuws + lab; dry run default) | `scripts/cleanup_all.sh [--yes] [--skip-server] [--skip-lab]` (section 7.1 step 8) |
+| D1 v3 (prepared follow-up) | `scripts/d1_v3_dryrun.sh`, `cluster/server.sh run d1-v3` (section 5.12, README.md) |
+| private backups of paper-srw / presentation / release | `scripts/push_backups.sh [--print]` (section H) |
+| SRW submission list | `$P/paper-srw/SUBMISSION_CHECKLIST.md` |
 | qualitative | `python -m dsgx.analysis.qual.<q1_feature_cards,q3_never_learned,q5_geometry,q6_trajectory,annotate>` |
