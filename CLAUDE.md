@@ -51,6 +51,7 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | X1-suite on gpuws (StreamGuard vs DSG on the gpuws TOFU-full v3 model: TOFU metrics, streaming TOFU QA, A3 benign open-ended, B6 leak, paired incl. gpuws X1 hard negatives) | conf `x1-suite` (`cluster/x1suite_server.py models` re-trains the retain reference; `cluster/stage_x1suite.sh`); runbook §5.10 |
 | StreamGuard digest section (attacks per axis, clean utility/FPR paired, hard negatives, generation, TOFU, MT-Bench) | `dsgx/analysis/streamguard.py` (called by `results_digest`); X1-suite streaming check `docs/X1_SUITE_STREAM_CHECK.md` |
 | POST-HOC exploratory union gate (DSG rho OR CUSUM, one conformal threshold) + TOFU-calibrated StreamGuard (gpuws, session 28; not claim inputs) | branch exp/PH-union, `cluster/ph_union.py`, conf `ph-union`; watcher `cluster/after_ph_union.sh` (fetch/verify/cleanup, digest, paper update, local commits) |
+| B7 adaptive attacks on StreamGuard (POST-HOC, lab PC, session 30: interleaving k 1/2/4/8, interleave+split, mid-question pad 400) | branch exp/B7-adaptive (`dsgx/attacks/adaptive.py`, `configs/experiments/B7.yaml`); `python -m dsgx.analysis.b7_adaptive` → `$DSG_RESULTS/B7_ADAPTIVE.md`; macros `LabBSeven*` |
 
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
 `calibrate(..., rule="conformal")` (cache key unchanged for the default quantile rule); `dsgx/attacks/transforms.py`
@@ -561,3 +562,7 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
 - **Finish after Oct 8:** runbook §7.1 (`scripts/paper_update.sh --final`, final_report both machines, push paper, arXiv only
   after the bib TODO-VERIFY notes are fixed).
 
+### Session 30 — 2026-10-08 00:30–08:0x (end state)
+- **B7 (POST-HOC, lab PC) done:** StreamGuard attack success <= 0.044 under all six adaptive attacks; DSG up to 0.762 (midpad 400),
+  fire rate down to 0.025; paired SG better on 5/6 (not k=1). Paper paragraph + macros (paper 2361a13). N8 could not resume
+  (no item checkpoints) so it ran to completion first. Lab queue empty. gpuws untouched; 205–207 still HELD (runbook §5.11).

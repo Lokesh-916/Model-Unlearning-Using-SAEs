@@ -427,3 +427,18 @@ Tests: 107 pass on CPU.
 - **paper_update.sh `--final`** + "open:" summary (pending numbers, status macros, [Interim] marks). Runbook §5.11 (held chain,
   release command, watcher, abandon path: stop the watcher first) and §7.1 (finish order after Oct 8).
 - Builds: TMLR 45 pages, 0 LaTeX warnings, 1 [Interim] (lab X1); SRW BUILD OK (8 pages, 0 [Interim]).
+
+## Session 30 (2026-10-08 00:30–08:0x): B7 adaptive attacks on StreamGuard (POST-HOC, EXPLORATORY, lab PC only)
+- **N8-reasoning** was NOT paused: `experiments/N8/reason.py` opens each mode's jsonl with "w" and keeps rows in memory until a mode
+  ends, so a restart would begin at item 0 (no item checkpoints). It finished first (DONE ~06:40); B7 then ran.
+- **B7** (branch exp/B7-adaptive 0acbac7 = v2-harness 39cf610 + `dsgx/attacks/adaptive.py` + `configs/experiments/B7.yaml`, pushed;
+  Chakrish28 trailer): interleave k in {1,2,4,8} WikiText tokens between question-stem tokens, interleave k=2 + 3-turn split (B2 template),
+  midpad 400; base / DSG / X1 CUSUM gate (configs identical to X1), 637 TEST forget items, bs 1, seed 0, purpose posthoc-exploratory.
+  9 unit tests; smoke `B7-smoke-*` (10 items) through the queue (thresholds = X1: DSG tau 0.546, CUSUM 16.822); full B7 06:41–07:40.
+  DEVIATIONS row. Prep: `dsgx.analysis.b7_adaptive` (summary `$DSG_RESULTS/B7_ADAPTIVE.md`, digest section, `LabBSeven*` macros).
+- **Result:** StreamGuard attack success <= 0.044 under every attack (fires on 0.85–0.93 of forget items); DSG 0.189 (k=2), 0.434 (k=4),
+  0.491 (k=8), 0.543 (split), 0.762 (midpad), fire rate down to 0.025. Paired SG - DSG accuracy significant on 5/6 (all but k=1):
+  midpad −0.278 [−0.325, −0.231]. Caveats in the paper: fixed designs (not optimised against the CUSUM LLRs), one seed, no utility/FPR.
+- **Paper:** paragraph "StreamGuard under adaptive attacks (post hoc, lab PC)" in `sections/11_results_fix.tex` (paper 2361a13, pushed);
+  paper_update: TMLR 45 pages, 0 [pending]/[Interim] in the PDF; SRW BUILD OK (e951fb9, local). Digest regenerated (582 lab, 642 gpuws runs).
+- Lab queue empty after B7 (176 done, 71 moved to server). gpuws untouched; 205–207 still held.
