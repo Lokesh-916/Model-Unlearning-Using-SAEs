@@ -470,3 +470,10 @@ Tests: 107 pass on CPU.
   Not stageable today (server `/` 63 GB free; needs ≥ 82).
 - **gpuws 205–207** still running/pending at handover; watcher alive; runbook §5.11 / §7.1 / H cover the rest.
 
+
+## Session 34 (2026-11-10): E1 three-number audit (CPU, existing X1 TEST per-item logs, no model runs)
+- `dsgx/analysis/rfd_audit.py` (+ `tests/test_prep_rfd_audit.py`) → `docs/E1_RFD_AUDIT.md`: R / F, a_miss / u_base (base run,
+  same items), a_fire / u_fire, predicted vs observed with item-cluster bootstrap CIs, per machine; nothing skipped.
+- Both machines: every prediction inside the observed CI. Q1 yes (DSG fired items at chance, a_fire 0.259 / 0.263; misses-only
+  0.287 in CI). Q2 yes (MMLU Δ −0.0117: discordant fires carry −0.011, concordant rows ≈ 0). Worst case: DSG 0.602 / 0.609
+  (pad400), StreamGuard 0.332 (translate hi).
