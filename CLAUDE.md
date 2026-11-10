@@ -57,6 +57,8 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | D1 v3 follow-up (PREPARED, not submitted): forget-corpus-only distillation, α 0.1, 3 seeds, `@utility` + 9 hazard-adjacent MMLU, open-ended leak/benign, full + LoRA relearning of the same controls on held-out passages | `cluster/d1_v3.py {plan,train,test,open,relearn,summary}`, conf `d1-v3`, `scripts/d1_v3_dryrun.sh`, `cluster/server.sh run d1-v3`; README.md "How to run D1 v3 on gpuws without Claude"; runbook §5.12 |
 | private GitHub backups of paper-srw / presentation / release (release leak scan first; never public) | `scripts/push_backups.sh [--print]` |
 | EACL 2027 SRW requirements + upload list + PDF verification | `~/projects/mechunlearn-project/paper-srw/SUBMISSION_CHECKLIST.md` |
+| E3 detect here, erase there (DEV only: attribution-patching rank per Gemma Scope 16k SAE L3-L14 + DSG L3, forced-on zero-ablation top 10/20/50, controls; success line not met) | exp/E3-causal-localisation (`experiments/E3`, `configs/experiments/E3.yaml`), `docs/E3_CAUSAL_LOCALISATION.md` |
+| StreamGuard v2 claim rules V1-V4 (separate from C-H1..C-H7) | `dsgx/analysis/claims.py` `evaluate_v2` |
 | E1 three-number audit (R, F, a_miss/a_fire, u_base/u_fire, predicted vs observed, worst-case attack; per machine, CPU) | `python -m dsgx.analysis.rfd_audit --out docs/E1_RFD_AUDIT.md` |
 | GPU hours per machine and experiment group (Responsible NLP checklist C1; counted vs smoke / failed / superseded) | `python scripts/gpu_hours.py [--md]`; table in `paper-srw/SRW_SUBMISSION_NOTES.md` C1 |
 

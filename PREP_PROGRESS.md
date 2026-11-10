@@ -477,3 +477,10 @@ Tests: 107 pass on CPU.
 - Both machines: every prediction inside the observed CI. Q1 yes (DSG fired items at chance, a_fire 0.259 / 0.263; misses-only
   0.287 in CI). Q2 yes (MMLU Δ −0.0117: discordant fires carry −0.011, concordant rows ≈ 0). Worst case: DSG 0.602 / 0.609
   (pad400), StreamGuard 0.332 (translate hi).
+
+## Session 35 (2026-11-10): claim rules V1-V4; E3 detect here, erase there (lab PC, DEV only)
+- **V1-V4** (StreamGuard v2) in `claims.py` `evaluate_v2` (57c9663; C-H1..C-H7 unchanged; DEVIATIONS row). All Inconclusive until v2 runs exist.
+- **E3** (exp/E3-causal-localisation d3cd127): canonical 16k SAEs L4/6/7/9/10/11/13/14 downloaded (2.4 GB). Queue 11:46-19:53, 55 DEV runs,
+  0 failures. Scheduler lock was stale (PID reused by VS Code); removed, supervisor restarted via tmux_up.
+- **Result:** success line not met (0/53). Best within 2 points: L12 causal20 0.594 vs base 0.676; lowest overall L13 causal50 0.506 at −6.0 points.
+  DSG's 20 features zero-ablated: 0.660, −0.1 points; DSG clamp forced-on: 0.233, −17.1 utility, −38.2 benign biology. Jaccard(DSG20, causal20) = 0.
