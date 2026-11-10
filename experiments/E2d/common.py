@@ -4,7 +4,7 @@ Keep the gate; when it fires, answer with RMU-edited weights (a "response") inst
 the composite is exact: prediction = response model's forced-on prediction if the gate fired on the prompt, else
 the base model's prediction (every run at batch size 1 on identical items).
 
-Responses are weight deltas of mlp.down_proj in layers 1-3 only (RMU v2 c14 recipe), stored in fp32 under
+Responses are weight deltas of mlp.down_proj in layers 1-3 only (RMU v2 c14 recipe), stored in fp64 (exact for any two bf16 values) under
 $DSG_CACHE/models/E2d/<R>/delta.safetensors (exact: bf16(base + delta) == the trained bf16 weights, checked).
 
 The selection rule (`select`) was logged in $DSG_RESULTS/DEVIATIONS.md (2026-11-10) before any E2d run.

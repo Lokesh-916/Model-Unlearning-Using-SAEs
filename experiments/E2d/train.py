@@ -1,4 +1,4 @@
-"""E2d train task (GPU): the response ladder R1-R5 as fp32 weight deltas of mlp.down_proj in layers 1-3.
+"""E2d train task (GPU): the response ladder R1-R5 as fp64 weight deltas of mlp.down_proj in layers 1-3.
 
 R1 = RMU v2 c14 as trained on gpuws: its delta is read from the lab copy of the weights (every other tensor is
 checked bit-identical to the base checkpoint). R2-R5 are trained here with the c14 recipe (port of
@@ -60,9 +60,12 @@ def key(i: int) -> str:
 
 
 def snapshot() -> Path:
-    from huggingface_hub import snapshot_download
+    from huggingface_hub import try_to_load_from_cache
 
-    return Path(snapshot_download(HF, local_files_only=True))
+    p = try_to_load_from_cache(HF, "model.safetensors.index.json")
+    if not isinstance(p, str):
+        raise FileNotFoundError(f"{HF} checkpoint index not in the local HF cache")
+    return Path(p).parent
 
 
 def base_tensors(keys) -> dict:
@@ -87,22 +90,22 @@ def _sha_tensors(d: dict) -> str:
 
 
 def save_delta(rid: str, exp_id: str, new: dict, extra: dict) -> dict:
-    """new: {key: bf16 tensor (CPU)}. Writes delta.safetensors (fp32) + meta.json; checks exact reconstruction."""
+    """new: {key: bf16 tensor (CPU)}. Writes delta.safetensors (fp64) + meta.json; checks exact reconstruction."""
     from safetensors.torch import save_file
 
     base = base_tensors(list(new))
-    delta = {k: (new[k].float() - base[k].float()).contiguous() for k in new}
-    exact = all(torch.equal((base[k].float() + delta[k]).to(torch.bfloat16), new[k].to(torch.bfloat16)) for k in new)
+    delta = {k: (new[k].double() - base[k].double()).contiguous() for k in new}  # exact for any two bf16 values
+    exact = all(torch.equal((base[k].double() + delta[k]).to(torch.bfloat16), new[k].to(torch.bfloat16)) for k in new)
     if not exact:
         raise RuntimeError(f"{rid}: bf16(base + delta) != trained weights")
     d = response_dir(exp_id, rid)
     tmp = d / "delta.safetensors.tmp"
     save_file(delta, str(tmp))
     tmp.replace(d / "delta.safetensors")
-    per = {k: {"fro": float(delta[k].norm()), "rel_fro": float(delta[k].norm() / base[k].float().norm()),
+    per = {k: {"fro": float(delta[k].norm()), "rel_fro": float(delta[k].norm() / base[k].double().norm()),
                "max_abs": float(delta[k].abs().max()), "frac_changed": float((delta[k] != 0).float().mean())}
            for k in sorted(delta)}
-    meta = {"rid": rid, "keys": sorted(delta), "dtype": "float32", "exact_bf16_reconstruction": exact,
+    meta = {"rid": rid, "keys": sorted(delta), "dtype": "float64", "exact_bf16_reconstruction": exact,
             "base_sha256": _sha_tensors(base), "new_sha256": _sha_tensors({k: new[k].to(torch.bfloat16) for k in new}),
             "delta_file_sha256": sha256_file(d / "delta.safetensors"),
             "delta_bytes": (d / "delta.safetensors").stat().st_size, "delta_stats": per, "time": now_iso(), **extra}

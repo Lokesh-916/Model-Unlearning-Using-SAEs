@@ -46,7 +46,7 @@ def test_delta_patch_restore(monkeypatch):
     base = {f"model.layers.{i}.mlp.down_proj.weight": torch.randn(d_model, d_mlp, generator=g).to(torch.bfloat16)
             for i in (1, 2)}
     new = {k: (v.float() + 0.01 * torch.randn(v.shape, generator=g)).to(torch.bfloat16) for k, v in base.items()}
-    delta = {k: new[k].float() - base[k].float() for k in base}
+    delta = {k: new[k].double() - base[k].double() for k in base}
     blocks = [types.SimpleNamespace(mlp=types.SimpleNamespace(W_out=torch.nn.Parameter(
         (base.get(f"model.layers.{i}.mlp.down_proj.weight", torch.zeros(d_model, d_mlp))).T.clone(),
         requires_grad=False))) for i in range(3)]

@@ -2,7 +2,7 @@
 every input (forced-on, no gate, no SAE hook).
 
 TransformerLens (from_pretrained_no_processing) stores blocks[i].mlp.W_out = HF down_proj.weight.T, in bf16, so the
-patched weight bf16(W_out + delta.T) equals the trained bf16 weights exactly (checked when the delta was saved).
+patched weight bf16(W_out + delta.T) (fp64 add) equals the trained bf16 weights exactly (checked when the delta was saved).
 install() patches in place and keeps the original tensors; remove() (run()'s finally) copies them back, so the shared
 cached base model is unchanged for the next run of the worker. A second patch on an already patched model raises.
 
@@ -58,7 +58,7 @@ class DeltaResponse(Method):
                     if not torch.equal(W, b):
                         raise RuntimeError(f"layer {i}: W_out is not the base down_proj.T (mapping or stale patch)")
                     self._orig[i] = W.detach().clone()
-                    W.copy_((W.float() + d).to(W.dtype))
+                    W.copy_((W.double() + d.double()).to(W.dtype))
         except Exception:
             self.remove()
             raise

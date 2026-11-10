@@ -258,7 +258,7 @@ def render(s, hardware):
         else:
             pk = f"{m.get('peak_gpu_gb_train')} GB ({m.get('peak_gpu_note', '')})"
         L.append(f"| {r} | {LADDER_TEXT[r]} | {hp.get('steering_coeff')} | {hp.get('max_num_batches')} | {hp.get('retain', 'wikitext')} "
-                 f"| {m.get('hardware_trained')} | {pk} | {m['delta_bytes'] / 1e6:.0f} MB fp32 | {rel} | {m['exact_bf16_reconstruction']} |")
+                 f"| {m.get('hardware_trained')} | {pk} | {m['delta_bytes'] / 1e6:.0f} MB fp64 | {rel} | {m['exact_bf16_reconstruction']} |")
     if s.get("r5_leakage"):
         k = s["r5_leakage"]
         pc = k.get("positive_control") or {}
