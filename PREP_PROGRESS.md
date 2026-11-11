@@ -484,3 +484,11 @@ Tests: 107 pass on CPU.
   0 failures. Scheduler lock was stale (PID reused by VS Code); removed, supervisor restarted via tmux_up.
 - **Result:** success line not met (0/53). Best within 2 points: L12 causal20 0.594 vs base 0.676; lowest overall L13 causal50 0.506 at −6.0 points.
   DSG's 20 features zero-ablated: 0.660, −0.1 points; DSG clamp forced-on: 0.233, −17.1 utility, −38.2 benign biology. Jaccard(DSG20, causal20) = 0.
+
+## Session 36 (2026-11-10 22:50 – 2026-11-11 10:xx): E2d switched response (lab PC, DEV only)
+- Rule + verdict lines logged in DEVIATIONS before any run; code exp/E2d-switched-response (c2723e3, d3d61e6). Smoke (6 items) via the queue first,
+  then 17 jobs 23:22 – ~09:30, 0 failures, 7.5 h of GPU eval. B3 Hindi translated for dev (627 / 636 kept). Deltas fp64 (fp32 missed 4 of 21M elements).
+- R1 = gpuws c14 delta (bit-exact); R2-R5 trained on the lab PC, peak 6.66 GB alloc (truncated after layer 3, micro-batch 12). R5 retain: 18,554 benign-bio docs, 83 dropped, scan 0/0.
+- Rule: DSG gate → R4, CUSUM → R5, overall DSG → R4 (meets 2/4: forced-on utility 0.303, benign bio n.s.). CUSUM → R5 meets all 4 clean lines
+  (forced-on 0.545, benign bio +0.110 vs DSG) but under pad400 / split3 / Hindi is significantly worse than StreamGuard v1. Damage per fire on
+  utility 0.34-0.39 (clamp) → 0.06-0.08 (R5). Clamp curve: −5 forgets nothing (0.619), −20 already costs −0.094 utility. `docs/E2D_SWITCHED_RESPONSE.md`.
