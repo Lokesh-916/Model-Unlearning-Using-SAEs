@@ -492,3 +492,11 @@ Tests: 107 pass on CPU.
 - Rule: DSG gate → R4, CUSUM → R5, overall DSG → R4 (meets 2/4: forced-on utility 0.303, benign bio n.s.). CUSUM → R5 meets all 4 clean lines
   (forced-on 0.545, benign bio +0.110 vs DSG) but under pad400 / split3 / Hindi is significantly worse than StreamGuard v1. Damage per fire on
   utility 0.34-0.39 (clamp) → 0.06-0.08 (R5). Clamp curve: −5 forgets nothing (0.619), −20 already costs −0.094 utility. `docs/E2D_SWITCHED_RESPONSE.md`.
+
+## Session 37 (2026-11-11 09:5x – 10:32, checkpoint): E2e robust soft landing (lab PC, DEV only)
+- Rule v2 in DEVIATIONS (2026-11-11 row) + exp/E2e-tiered-response 3d9ddae before any result; supersedes the E2d rule (ignored hard negatives and attacks).
+- Step A (CPU, E2e-stepA, d1cac0d): tau recomputed exactly (16.8222, 960 calibration prompts). Tiered clamp/R5 at q 0.5/1/1.7/2.5 %: none eligible (benign
+  biology not above DSG; forget above StreamGuard v1 under pad400 and Hindi). Closest: CUSUM → R5. `docs/E2E_ROBUST_SOFT_LANDING.md` (interim).
+- Step B queued (6326496; smoke E2e-smoke-* all DONE, sgF == StreamGuard v1 on fired prompts 100 %, R6/R7 peak 8.9 GB): translate-forget → train →
+  E2e-000..002 → stepB. Stopped at a checkpoint at the user's request (no internet); the queue continues alone, ETA ≈ 13:10. Finish = doc "Resume" section.
+

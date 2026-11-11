@@ -1,6 +1,17 @@
 # E2e: robust soft landing (tiered response + attack-shaped soft responses), DEV only
 
-**INTERIM: Step A only. Steps B and C are running in the lab queue.** Lab PC (labpc, RTX 2000 Ada), gemma-2-2b-it, DEV split only (never TEST). Branch `exp/E2e-tiered-response` (d1cac0d for Step A). Exploratory; not a claim input. Selection rule v2 was logged in DEVIATIONS (2026-11-11) and in `experiments/E2e/common.py` (3d9ddae) before any E2e result. It supersedes the E2d rule, which ignored hard negatives and attacks. Ids and metrics only.
+**INTERIM: Step A only. Steps B and C are running in the lab queue (checkpoint 2026-11-11 10:32, see "Resume" below).** Lab PC (labpc, RTX 2000 Ada), gemma-2-2b-it, DEV split only (never TEST). Branch `exp/E2e-tiered-response` (d1cac0d for Step A). Exploratory; not a claim input. Selection rule v2 was logged in DEVIATIONS (2026-11-11) and in `experiments/E2e/common.py` (3d9ddae) before any E2e result. It supersedes the E2d rule, which ignored hard negatives and attacks. Ids and metrics only.
+
+## Resume (Step B / C, no Claude needed)
+
+The queue runs by itself (one GPU job at a time, item-level resume; a power cut is handled by `scripts/reboot_recover.sh`).
+Order: E2e-translate-forget → E2e-train (R6, R7; ~35 min) → E2e-000 / 001 / 002 (R6, R7, sgF forced-on, ~40 min each) → E2e-stepB
+(CPU, Steps B + C, rule v2). ETA ≈ 13:10 on 2026-11-11. Check: `python -m dsgx.queue.status` or
+`grep status $DSG_RESULTS/queue/state/E2e-*.json`; failures: `python -m dsgx.queue.doctor`.
+When E2e-stepB is DONE, the full result is `$DSG_RESULTS/runs/E2e/stepB/E2E_STEPB.md` (selection rule v2 over all 20
+candidates, forced-on table, R6/R7 provenance, Step C curve). To finish: paste that file below the Step A tables,
+replace the INTERIM line with the verdict, commit in prep, and push (`git push origin prep/later-runs`,
+`git -C ../dsg_worktrees/exp/E2e-tiered-response push -u origin exp/E2e-tiered-response`).
 
 ## Step A verdict (offline, from the E2d per-item DEV logs)
 
