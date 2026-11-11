@@ -1,0 +1,44 @@
+# E4a "can any layer separate hazard from harmless biology?" (lab PC, DEV split only, never TEST; exploratory,
+# not a claim input). Detectors trained on DOCUMENTS only (forget corpus vs E2d R5's benign-biology docs; WikiText
+# for the "rare" filter), evaluated on dev QUESTIONS (WMDP-Bio clean / pad400 / split3 / Hindi, benign biology,
+# MMLU utility). Rules fixed in experiments/E4a/common.py and DEVIATIONS (2026-11-11 E4a row) before any result.
+exp_id: E4a
+priority: must
+wave: 9
+tasks:
+  - id: docs
+    entry: experiments.E4a.docs:task
+    args: {}
+    smoke_args: {limit: 24}
+    kind_slot: gpu
+    gpu_exclusive: true
+    est_minutes: 60
+    est_vram_gb: 9
+    est_ram_gb: 24
+  - id: fit
+    entry: experiments.E4a.fit:task
+    args: {}
+    kind_slot: gpu
+    gpu_exclusive: true
+    est_minutes: 25
+    est_vram_gb: 9
+    est_ram_gb: 40
+    deps: [docs]
+  - id: questions
+    entry: experiments.E4a.questions:task
+    args: {}
+    smoke_args: {limit: 8}
+    kind_slot: gpu
+    gpu_exclusive: true
+    est_minutes: 30
+    est_vram_gb: 9
+    est_ram_gb: 20
+    deps: [fit]
+  - id: summary
+    entry: experiments.E4a.summary:task
+    args: {}
+    smoke_args: {n_boot: 50}
+    kind_slot: cpu
+    est_minutes: 5
+    est_ram_gb: 4
+    deps: [questions]
