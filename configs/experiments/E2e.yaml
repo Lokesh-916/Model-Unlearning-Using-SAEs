@@ -2,6 +2,145 @@
 exp_id: E2e
 priority: must
 wave: 9
+base:
+  case: bio
+  split: dev
+  purpose: explore
+  view: raw
+  batch_size: 1
+  seed: 0
+runs:
+- method: &id001
+    name: delta-response
+    module: experiments.E2d.response
+    response: R6
+    response_exp: E2e
+    forced_on: true
+  attack: &id002
+    name: none
+  datasets: &id003
+  - '@forget'
+  - '@utility'
+  - college_biology
+  - high_school_biology
+  - anatomy
+  - virology
+  - medical_genetics
+  dataset_label: R6-clean
+  e2d:
+    cond: R6
+    attack: clean
+- method: *id001
+  attack: &id005
+    name: dilution
+    pad: 400
+    position: before
+    source: wikitext
+  datasets:
+  - '@forget'
+  dataset_label: R6-pad400
+  e2d:
+    cond: R6
+    attack: pad400
+- method: *id001
+  attack: &id006
+    name: decompose
+    variant: split
+    k: 3
+  datasets:
+  - '@forget'
+  dataset_label: R6-split3
+  e2d:
+    cond: R6
+    attack: split3
+- method: *id001
+  attack: &id007
+    name: translate
+    lang: hi
+    min_chrf: 40
+  datasets:
+  - '@forget'
+  dataset_label: R6-hindi
+  e2d:
+    cond: R6
+    attack: hindi
+- method: &id004
+    name: delta-response
+    module: experiments.E2d.response
+    response: R7
+    response_exp: E2e
+    forced_on: true
+  attack: *id002
+  datasets: *id003
+  dataset_label: R7-clean
+  e2d:
+    cond: R7
+    attack: clean
+- method: *id004
+  attack: *id005
+  datasets:
+  - '@forget'
+  dataset_label: R7-pad400
+  e2d:
+    cond: R7
+    attack: pad400
+- method: *id004
+  attack: *id006
+  datasets:
+  - '@forget'
+  dataset_label: R7-split3
+  e2d:
+    cond: R7
+    attack: split3
+- method: *id004
+  attack: *id007
+  datasets:
+  - '@forget'
+  dataset_label: R7-hindi
+  e2d:
+    cond: R7
+    attack: hindi
+- method: &id008
+    name: gated
+    gate:
+      type: cusum
+      n_features: 20
+      retain_pct: 95
+      threshold: -1.0e+30
+    intervention:
+      type: clamp_all
+      multiplier: 500
+    forced_on: true
+  attack: *id002
+  datasets: *id003
+  dataset_label: sgF-clean
+  e2d:
+    cond: sgF
+    attack: clean
+- method: *id008
+  attack: *id005
+  datasets:
+  - '@forget'
+  dataset_label: sgF-pad400
+  e2d:
+    cond: sgF
+    attack: pad400
+- method: *id008
+  attack: *id006
+  datasets:
+  - '@forget'
+  dataset_label: sgF-split3
+  e2d:
+    cond: sgF
+    attack: split3
+- method: *id008
+  attack: *id007
+  datasets:
+  - '@forget'
+  dataset_label: sgF-hindi
+  e2d:
+    cond: sgF
+    attack: hindi
 tasks:
 - id: stepA
   entry: experiments.E2e.analysis:task
@@ -11,3 +150,156 @@ tasks:
   est_minutes: 5
   smoke_est_minutes: 2
   est_ram_gb: 6
+- id: translate-forget
+  entry: experiments.E2e.translate_forget:task
+  args:
+    batch_size: 16
+  smoke_args:
+    limit: 4
+  kind_slot: gpu
+  gpu_exclusive: true
+  est_minutes: 45
+  smoke_est_minutes: 3
+  est_vram_gb: 4
+  est_ram_gb: 10
+- id: train
+  entry: experiments.E2e.train:task
+  args: {}
+  deps:
+  - translate-forget
+  smoke_args:
+    max_num_batches: 2
+    n_aug_docs: 20
+  kind_slot: gpu
+  gpu_exclusive: true
+  est_minutes: 50
+  smoke_est_minutes: 8
+  est_vram_gb: 14
+  est_ram_gb: 24
+- id: stepB
+  entry: experiments.E2e.analysis:task
+  args:
+    stage: B
+  kind_slot: cpu
+  est_minutes: 10
+  smoke_est_minutes: 2
+  est_ram_gb: 8
+  deps:
+  - exp:E2e
+  - stepA
+jobs:
+  group_size: 4
+  est_seconds_per_item: 0.27
+  est_vram_gb: 9
+  est_ram_gb: 20
+  overhead_minutes: 2
+  gpu_exclusive: true
+  deps:
+  - train
+smoke:
+  base:
+    limit: 6
+  runs:
+  - method: &id009
+      name: delta-response
+      module: experiments.E2d.response
+      response: R6
+      response_exp: E2e-smoke
+      forced_on: true
+    attack: *id002
+    datasets: *id003
+    dataset_label: R6-clean
+    e2d:
+      cond: R6
+      attack: clean
+  - method: *id009
+    attack: *id005
+    datasets:
+    - '@forget'
+    dataset_label: R6-pad400
+    e2d:
+      cond: R6
+      attack: pad400
+  - method: *id009
+    attack: *id006
+    datasets:
+    - '@forget'
+    dataset_label: R6-split3
+    e2d:
+      cond: R6
+      attack: split3
+  - method: *id009
+    attack: *id007
+    datasets:
+    - '@forget'
+    dataset_label: R6-hindi
+    e2d:
+      cond: R6
+      attack: hindi
+  - method: &id010
+      name: delta-response
+      module: experiments.E2d.response
+      response: R7
+      response_exp: E2e-smoke
+      forced_on: true
+    attack: *id002
+    datasets: *id003
+    dataset_label: R7-clean
+    e2d:
+      cond: R7
+      attack: clean
+  - method: *id010
+    attack: *id005
+    datasets:
+    - '@forget'
+    dataset_label: R7-pad400
+    e2d:
+      cond: R7
+      attack: pad400
+  - method: *id010
+    attack: *id006
+    datasets:
+    - '@forget'
+    dataset_label: R7-split3
+    e2d:
+      cond: R7
+      attack: split3
+  - method: *id010
+    attack: *id007
+    datasets:
+    - '@forget'
+    dataset_label: R7-hindi
+    e2d:
+      cond: R7
+      attack: hindi
+  - method: *id008
+    attack: *id002
+    datasets: *id003
+    dataset_label: sgF-clean
+    e2d:
+      cond: sgF
+      attack: clean
+  - method: *id008
+    attack: *id005
+    datasets:
+    - '@forget'
+    dataset_label: sgF-pad400
+    e2d:
+      cond: sgF
+      attack: pad400
+  - method: *id008
+    attack: *id006
+    datasets:
+    - '@forget'
+    dataset_label: sgF-split3
+    e2d:
+      cond: sgF
+      attack: split3
+  - method: *id008
+    attack: *id007
+    datasets:
+    - '@forget'
+    dataset_label: sgF-hindi
+    e2d:
+      cond: sgF
+      attack: hindi
