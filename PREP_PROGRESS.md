@@ -503,4 +503,7 @@ Tests: 107 pass on CPU.
   worktree was at 6326496 (my stepB re-pin moved HEAD). 5366ad5..6326496 changes only `experiments/E2e/analysis.py` (stepB report), so E2e-train /
   -000..002 were re-pinned to 6326496 (originals in the session scratchpad) and `doctor --requeue E2e-train` re-queued them + stepB. Lab PC had then
   been shut down (exam), rebooted 14:33; tmux up via reboot_recover. Training running (R6 4.8 s/step, 150 steps); queue ETA ≈ 17:45.
+- All E2e jobs DONE (train 15:03, stepB after). Final: no candidate eligible under rule v2 (20 candidates); closest tiered 0.5 % clamp / R6 (fails
+  benign biology only: +0.040 vs DSG, p 0.13; attacks match StreamGuard v1). R6/R7 forced-on: utility −0.182 / −0.311 vs base (clamp −0.170).
+  Doc final; CLAUDE.md row.
 
