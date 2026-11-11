@@ -1,0 +1,3 @@
+# Extra commits that get Chakrish's trailer although select_break_commits.sh's path rule misses them
+# (e.g. a doc-only commit about attack results). One hash (7-40 hex) per line, then a comment.
+# Review the dry-run list (break_commits.txt) and add or remove lines here before --apply.

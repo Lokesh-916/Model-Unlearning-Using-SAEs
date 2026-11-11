@@ -104,6 +104,9 @@ def git_info(cwd=None) -> dict:
             return ""
 
     status = _git("status", "--porcelain", "--untracked-files=no")
+    stamp = Path(cwd) / "CODE_COMMIT.json"  # written by cluster/sync_code.sh (copies have no .git)
+    if not _git("rev-parse", "HEAD") and stamp.exists():
+        return {**json.loads(stamp.read_text()), "cwd": cwd}
     return {
         "commit": _git("rev-parse", "HEAD"),
         "branch": _git("rev-parse", "--abbrev-ref", "HEAD"),
@@ -134,9 +137,14 @@ def gpu_info() -> dict:
             ["nvidia-smi", "--query-gpu=name,driver_version,memory.total",
              "--format=csv,noheader"], capture_output=True, text=True, timeout=20)
         name, driver, mem = [x.strip() for x in r.stdout.strip().splitlines()[0].split(",")]
-        return {"gpu": name, "driver": driver, "memory_total": mem}
+        return {"gpu": name, "driver": driver, "memory_total": mem, "label": hardware_label()}
     except Exception:
-        return {"gpu": None}
+        return {"gpu": None, "label": hardware_label()}
+
+
+def hardware_label() -> str:
+    """Which hardware baseline a result belongs to ($DSG_HARDWARE; gpuws sets it). Never compare across labels."""
+    return os.environ.get("DSG_HARDWARE", "labpc")
 
 
 def now_iso() -> str:

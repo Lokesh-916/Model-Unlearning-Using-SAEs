@@ -1,0 +1,226 @@
+{
+ "candidates": [
+  {
+   "slot": "features",
+   "name": "C1-attr",
+   "patch": {
+    "features_file": "C1_attr_bio.json"
+   }
+  },
+  {
+   "slot": "features",
+   "name": "C1-chi2",
+   "patch": {
+    "features_file": "C1_chi2_bio.json"
+   }
+  },
+  {
+   "slot": "detector",
+   "name": "window-w8",
+   "patch": {
+    "gate": {
+     "type": "window",
+     "w": 8
+    }
+   }
+  },
+  {
+   "slot": "detector",
+   "name": "window-w16",
+   "patch": {
+    "gate": {
+     "type": "window",
+     "w": 16
+    }
+   }
+  },
+  {
+   "slot": "detector",
+   "name": "window-w24",
+   "patch": {
+    "gate": {
+     "type": "window",
+     "w": 24
+    }
+   }
+  },
+  {
+   "slot": "detector",
+   "name": "window-w32",
+   "patch": {
+    "gate": {
+     "type": "window",
+     "w": 32
+    }
+   }
+  },
+  {
+   "slot": "detector",
+   "name": "window-w64",
+   "patch": {
+    "gate": {
+     "type": "window",
+     "w": 64
+    }
+   }
+  },
+  {
+   "slot": "detector",
+   "name": "cusum",
+   "patch": {
+    "gate": {
+     "type": "cusum"
+    }
+   }
+  },
+  {
+   "slot": "detector",
+   "name": "probe-sae",
+   "patch": {
+    "gate": {
+     "type": "probe_sae",
+     "probe_train": "cache"
+    }
+   }
+  },
+  {
+   "slot": "detector",
+   "name": "probe-resid",
+   "patch": {
+    "gate": {
+     "type": "probe_resid",
+     "probe_train": "cache"
+    }
+   }
+  },
+  {
+   "slot": "detector",
+   "name": "layer-16",
+   "patch": {
+    "gate": {
+     "sae_release": "gemma-scope-2b-pt-res-canonical",
+     "sae_id": "layer_16/width_16k/canonical"
+    }
+   }
+  },
+  {
+   "slot": "detector",
+   "name": "layer-24",
+   "patch": {
+    "gate": {
+     "sae_release": "gemma-scope-2b-pt-res-canonical",
+     "sae_id": "layer_24/width_16k/canonical"
+    }
+   }
+  },
+  {
+   "slot": "detector",
+   "name": "layer-8",
+   "patch": {
+    "gate": {
+     "sae_release": "gemma-scope-2b-pt-res-canonical",
+     "sae_id": "layer_8/width_16k/canonical"
+    }
+   }
+  },
+  {
+   "slot": "detector",
+   "name": "N7-any",
+   "patch": {
+    "composite": {
+     "combine": "any",
+     "layers": [
+      "layer_16/width_16k/canonical",
+      "layer_24/width_16k/canonical"
+     ]
+    }
+   }
+  },
+  {
+   "slot": "detector",
+   "name": "N7-majority",
+   "patch": {
+    "composite": {
+     "combine": "majority",
+     "layers": [
+      "layer_16/width_16k/canonical",
+      "layer_24/width_16k/canonical"
+     ]
+    }
+   }
+  },
+  {
+   "slot": "threshold",
+   "name": "N6-conformal",
+   "patch": {
+    "calib": {
+     "rule": "conformal"
+    }
+   }
+  },
+  {
+   "slot": "intervention",
+   "name": "C5-mean_ablate",
+   "patch": {
+    "intervention": {
+     "type": "mean_ablate",
+     "multiplier": 500
+    }
+   }
+  },
+  {
+   "slot": "intervention",
+   "name": "C5-clamp_per_feature",
+   "patch": {
+    "intervention": {
+     "type": "clamp_per_feature",
+     "multiplier": 500
+    }
+   }
+  },
+  {
+   "slot": "intervention",
+   "name": "C5-clamp_scaled",
+   "patch": {
+    "intervention": {
+     "type": "clamp_scaled",
+     "multiplier": 500
+    }
+   }
+  },
+  {
+   "slot": "baked",
+   "name": "D1-undo_a0.1",
+   "patch": {
+    "weights": "ckpt:D1/undo_a0.1"
+   }
+  },
+  {
+   "slot": "baked",
+   "name": "D1-undo_a0.3",
+   "patch": {
+    "weights": "ckpt:D1/undo_a0.3"
+   }
+  },
+  {
+   "slot": "baked",
+   "name": "D1-undo_a0.5",
+   "patch": {
+    "weights": "ckpt:D1/undo_a0.5"
+   }
+  },
+  {
+   "slot": "baked",
+   "name": "D2-nullspace",
+   "patch": {
+    "weights": "ckpt:D2/nullspace"
+   }
+  }
+ ],
+ "rule": {
+  "alpha": 0.05,
+  "max_utility_cost": 0.01,
+  "max_benign_fpr": 0.05
+ },
+ "missing": []
+}

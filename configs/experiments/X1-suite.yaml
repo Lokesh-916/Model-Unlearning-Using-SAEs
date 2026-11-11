@@ -1,0 +1,87 @@
+# X1-suite - full benchmark suite for the final method (the X1 combined gate: CUSUM detector, DSG's 20 features,
+# threshold at 5% benign FPR on MMLU DEV, clamp_all x500), each against DSG on the same machine (lab PC) and items:
+#   benign-open  A3 benign-biology over-blocking, open-ended, streaming gate        (A3 MCQ part: X1's own hardneg runs)
+#   leak         B6 generation-time leakage + gibberish (WMDP-Bio-Open test, streaming)
+#   tofu-metrics TOFU on the lab A2 models (truth ratio, forget quality, model utility; DSG and gate on TOFU features)
+#   tofu-qa-*    TOFU forget10 / retain QA (ROUGE) with the streaming gate
+#   paired       paired tests gate vs DSG for all of the above + X1 hardneg MCQ (McNemar + paired bootstrap)
+# Latency: gpuws FP-latency (job figs, protocol interleaved-v2) already times the identical gate ("gate-cusum") next
+# to DSG on gpuws. MT-Bench: server job mtbench (mode cusum), prepared, not submitted. Queued after every X1 job
+# (`--after-exp X1`), so it never delays X1. Gate spec = X1.yaml's combined method (selection: detector cusum).
+exp_id: X1-suite
+priority: must
+wave: 7
+tasks:
+  - id: benign-open
+    entry: dsgx.eval.openqa:task
+    args:
+      items: "mmlu-open:college_biology,high_school_biology,anatomy"
+      split: test
+      case: bio
+      max_new: 48
+      methods:
+        - {name: base}
+        - {name: dsg-faithful, mode: stream, n_features: 20, retain_pct: 95, multiplier: 500}
+        - {name: gated, tag: cusum-stream, mode: stream, gate: {type: cusum, n_features: 20, retain_pct: 95},
+           calib: {fpr: 0.05, n_max: 1000, source: mmlu-dev}, intervention: {type: clamp_all, multiplier: 500}}
+    smoke_args: {limit: 4, max_new: 16}
+    kind_slot: gpu
+    est_minutes: 60
+    est_vram_gb: 8
+  - id: leak
+    entry: dsgx.eval.openqa:task
+    args:
+      items: wmdp-bio-open
+      split: test
+      case: bio
+      max_new: 96
+      prefix_scores: true
+      methods:
+        - {name: base}
+        - {name: dsg-faithful, mode: stream, n_features: 20, retain_pct: 95, multiplier: 500}
+        - {name: gated, tag: cusum-stream, mode: stream, gate: {type: cusum, n_features: 20, retain_pct: 95},
+           calib: {fpr: 0.05, n_max: 1000, source: mmlu-dev}, intervention: {type: clamp_all, multiplier: 500}}
+    smoke_args: {limit: 4, max_new: 24}
+    kind_slot: gpu
+    est_minutes: 130
+    est_vram_gb: 8
+  - id: tofu-metrics
+    entry: experiments.X1suite.tofu_fix:metrics
+    args: {n_features: 20, retain_pct: 95}
+    smoke_args: {limit: 4}
+    kind_slot: gpu
+    est_minutes: 80
+    est_vram_gb: 9
+    est_ram_gb: 30
+  - id: tofu-qa-forget
+    entry: dsgx.eval.openqa:task
+    args: &tofuqa
+      items: tofu-forget10
+      model: {weights: "ckpt:A2/tofu_full"}
+      max_new: 64
+      methods:
+        - {name: base}
+        - {name: dsg-faithful, mode: stream, forget_corpus: tofu-forget10, retain_corpus: tofu-retain90, n_features: 20, retain_pct: 95}
+        - {name: gated, tag: cusum-stream, mode: stream,
+           gate: {type: cusum, n_features: 20, retain_pct: 95, forget_corpus: tofu-forget10, retain_corpus: tofu-retain90},
+           calib: {fpr: 0.05, n_max: 1000, source: mmlu-dev}, intervention: {type: clamp_all, multiplier: 500}}
+    smoke_args: {limit: 4, max_new: 16}
+    kind_slot: gpu
+    est_minutes: 45
+    est_vram_gb: 9
+    deps: [tofu-metrics]
+  - id: tofu-qa-retain
+    entry: dsgx.eval.openqa:task
+    args: {<<: *tofuqa, items: tofu-retain_perturbed}
+    smoke_args: {limit: 4, max_new: 16}
+    kind_slot: gpu
+    est_minutes: 45
+    est_vram_gb: 9
+    deps: [tofu-metrics]
+  - id: paired
+    entry: experiments.X1suite.paired:task
+    args: {gate_tag: cusum-stream, dsg_tag: dsg-faithful-stream, x1_exp: X1}
+    kind_slot: cpu
+    est_minutes: 5
+    est_ram_gb: 4
+    deps: [benign-open, leak, tofu-qa-forget, tofu-qa-retain, "exp:X1"]
