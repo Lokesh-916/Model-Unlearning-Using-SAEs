@@ -499,4 +499,8 @@ Tests: 107 pass on CPU.
   biology not above DSG; forget above StreamGuard v1 under pad400 and Hindi). Closest: CUSUM → R5. `docs/E2E_ROBUST_SOFT_LANDING.md` (interim).
 - Step B queued (6326496; smoke E2e-smoke-* all DONE, sgF == StreamGuard v1 on fired prompts 100 %, R6/R7 peak 8.9 GB): translate-forget → train →
   E2e-000..002 → stepB. Stopped at a checkpoint at the user's request (no internet); the queue continues alone, ETA ≈ 13:10. Finish = doc "Resume" section.
+- 14:3x resume: translate-forget DONE 10:32 (720 docs, 717 kept at chrF >= 40, median 75.2). E2e-train FAILED in 10 s: pinned to 5366ad5 while the
+  worktree was at 6326496 (my stepB re-pin moved HEAD). 5366ad5..6326496 changes only `experiments/E2e/analysis.py` (stepB report), so E2e-train /
+  -000..002 were re-pinned to 6326496 (originals in the session scratchpad) and `doctor --requeue E2e-train` re-queued them + stepB. Lab PC had then
+  been shut down (exam), rebooted 14:33; tmux up via reboot_recover. Training running (R6 4.8 s/step, 150 steps); queue ETA ≈ 17:45.
 
