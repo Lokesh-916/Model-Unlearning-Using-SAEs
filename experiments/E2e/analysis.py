@@ -228,7 +228,36 @@ def collect(stage="A", nb=2000, e2e_exp=EXP, e2d_exp=E2D_EXP):
         best = next(c for c in cands if c["name"] == pick["name"])
         out["best_step_b"] = pick["name"]
         out["curve"] = curve(D, best, nb)
+        out["forced"] = forced(D, refs, nb)
+        out["train"], out["translate_forget"] = provenance(e2e_exp)
     return out
+
+
+def forced(D, refs, nb):
+    """Responses forced on every prompt (E2d Step 2 format): levels + paired vs base."""
+    out = {}
+    for cond in ["R5", "R6", "R7", "sgF"]:
+        col = ref_cols(D, cond)
+        out[cond] = {"levels": {c: _ci(col[c], nb) for c in COLS},
+                     "vs_base": {c: _paired(col[c], refs["base"][c], nb) for c in COLS}}
+    return out
+
+
+def provenance(e2e_exp):
+    from experiments.E2d.common import response_dir
+
+    tr = {}
+    for r in E2E_R:
+        p = response_dir(e2e_exp, r) / "meta.json"
+        if p.exists():
+            m = json.loads(p.read_text())
+            tr[r] = {k: m.get(k) for k in ("hp", "peak_gpu_allocated_gb", "peak_gpu_reserved_gb", "micro_batch_final",
+                                           "train_seconds_last_attempt", "exact_bf16_reconstruction", "delta_bytes",
+                                           "delta_file_sha256", "final")}
+            tr[r]["data"] = {k: v for k, v in m["data"].items() if k != "retain_leakage"}
+            tr[r]["rel_fro"] = {k: v["rel_fro"] for k, v in sorted(m["delta_stats"].items())}
+    p = paths.runs_dir() / e2e_exp / "translate-forget" / "metrics.json"
+    return tr, (json.loads(p.read_text()) if p.exists() else None)
 
 
 # ------------------------------------------------------------------------------------------ rendering
@@ -295,6 +324,37 @@ def render(s, hardware="labpc"):
     else:
         L.append(f"**No candidate is eligible under rule v2.** Closest (fewest failed conditions, then lowest worst-case "
                  f"forget): {sel['closest']}. The rule is not relaxed.")
+    if s.get("train"):
+        L += ["", "## Step B: responses R6 / R7 (training)", "",
+              "| R | recipe | forget sequences (forms) | steps | seq len median / max | peak GPU | train time | ‖Δ‖/‖W‖ (L1 / L2 / L3) | exact bf16 |",
+              "|---|---|---|---|---|---|---|---|---|"]
+        for r, m in s["train"].items():
+            dd = m["data"]
+            L.append(f"| {r} | {TEXT[r]} | {dd['forget_sequences']} ({', '.join(f'{k} {v}' for k, v in dd['forms'].items())}) "
+                     f"| {m['hp']['max_num_batches']} | {dd['seq_len_median']} / {dd['seq_len_max']} | "
+                     f"{m['peak_gpu_allocated_gb']:.2f} GB alloc / {m['peak_gpu_reserved_gb']:.2f} reserved (micro {m['micro_batch_final']}) "
+                     f"| {m['train_seconds_last_attempt'] / 60:.1f} min | {' / '.join(f'{v:.4f}' for v in m['rel_fro'].values())} "
+                     f"| {m['exact_bf16_reconstruction']} |")
+        t = s.get("translate_forget")
+        if t:
+            L += ["", f"R7 Hindi forget subset: {t['records']} docs translated ({t['chunks_total']} chunks, NLLB, B3 pipeline), "
+                  f"{t['kept']} kept at doc-level back-translation chrF >= {t['min_chrf']:.0f} (median chrF "
+                  f"{t['chrf_quantiles']['0.5']:.1f}). Forget docs used by R6 / R7: the first 1440 of R5's stream."]
+    if s.get("forced"):
+        fo = s["forced"]
+        L += ["", "## Step B: responses forced on every prompt", "",
+              "| condition | " + " | ".join(CN[c] for c in COLS) + " | Δ utility vs base | Δ benign bio vs base |",
+              "|---|" + "---|" * (len(COLS) + 2)]
+        L.append("| base | " + " | ".join(_f(s["ref_levels"]["base"][c]) for c in COLS) + " | – | – |")
+        nm = {"R5": "R5 forced-on (E2d)", "R6": f"R6 forced-on ({TEXT['R6']})", "R7": f"R7 forced-on ({TEXT['R7']})",
+              "sgF": "StreamGuard v1 clamp forced-on (sgF)"}
+        for c, v in fo.items():
+            L.append(f"| {nm[c]} | " + " | ".join(_f(v["levels"][k]) for k in COLS)
+                     + f" | {_d(v['vs_base']['utility'])} | {_d(v['vs_base']['benign_bio'])} |")
+        L += ["", "Forced-on forget vs base, per attack (paired):", "", "| condition | " + " | ".join(CN[c] for c in COLS[:4]) + " |",
+              "|---|" + "---|" * 4]
+        for c, v in fo.items():
+            L.append(f"| {nm[c]} | " + " | ".join(_d(v["vs_base"][k]) for k in COLS[:4]) + " |")
     if s.get("curve"):
         cv = s["curve"]
         L += ["", "## Step C: threshold curve (exploratory, not used for selection)", "",
