@@ -507,3 +507,10 @@ Tests: 107 pass on CPU.
   benign biology only: +0.040 vs DSG, p 0.13; attacks match StreamGuard v1). R6/R7 forced-on: utility −0.182 / −0.311 vs base (clamp −0.170).
   Doc final; CLAUDE.md row.
 
+
+## Session 38 (2026-11-12 09:50–): E4a separability, E2f ignorance response (lab PC, DEV only)
+- Lab PC had booted another OS overnight: reboot_recover re-queued E4a-docs (killed 2026-11-11 20:33 at forget chunk 77/96) + 3 dependents;
+  resumed from chunk files. Full E2f (7 jobs, f81e84b) enqueued behind every E4a and E2f-smoke job; queue ETA at 09:52 ~8h27m.
+- **E4a DONE 10:43, line NOT MET** (`docs/E4A_SEPARABILITY.md`). Closest: L08 SAE-CUSUM recall >= 0.936 on all four, benign biology 0.323
+  (MMLU fire 0.014: score tie at the threshold); L03dsg benign 0.276 but Hindi 0.695. Probes: doc CV AUROC 0.9997, questions vs benign
+  0.79-0.91, split3 <= 0.10. E2f-smoke all DONE (n 3); full E2f running.
