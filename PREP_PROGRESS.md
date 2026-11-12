@@ -514,3 +514,15 @@ Tests: 107 pass on CPU.
 - **E4a DONE 10:43, line NOT MET** (`docs/E4A_SEPARABILITY.md`). Closest: L08 SAE-CUSUM recall >= 0.936 on all four, benign biology 0.323
   (MMLU fire 0.014: score tie at the threshold); L03dsg benign 0.276 but Hindi 0.695. Probes: doc CV AUROC 0.9997, questions vs benign
   0.79-0.91, split3 <= 0.10. E2f-smoke all DONE (n 3); full E2f running.
+
+## Session 39 (2026-11-12 13:3x–): E4b L08 gate in front of the gentle response (lab PC, DEV only)
+- DEVIATIONS row (2026-11-12, E4b) before any result: E4a line not met (0.323 > 0.30), rule v2 tested anyway and unchanged; Step 0 rule;
+  candidates; Step B attacks. Branch exp/E4b-l08-gate (f3f8efa rule, 6133da9 Step A, 2a4a6f2 Step B; B7 adaptive.py ported).
+- **Step 0:** L08 score on MMLU dev has a tie floor (5988 / 6076 = 7.0620, none lower). Tie-aware split conformal on the 960 calibration
+  prompts: op5 t 7.0620 (19 / 960 above, all-MMLU fire 0.0145), op1.7 t 8.9226 (15 / 960, 0.0115).
+- **Step A (CPU):** prompt identity vs E2d StreamGuard v1 100 %. Rule v2 selects **L08 op5 → clamp** (forget clean / pad400 / split3 / Hindi
+  0.241 / 0.247 / 0.245 / 0.244, utility 0.569, benign biology 0.518 = +0.087 vs DSG); L08 → R6 eligible too; L08 → R5 leaks under attack.
+  Caveat: L08 was chosen in E4a on the same DEV items. `docs/E4B_L08_GATE.md`.
+- **Step B queued** behind every E2f job (E4b-smoke-* then E4b-000..004, scores, stepB; at 13:52 queue ETA ~8 h). Doctor clean.
+  Finish: paste `runs/E4b/stepB/E4B_STEPB.md` into the doc's Step B section.
+
