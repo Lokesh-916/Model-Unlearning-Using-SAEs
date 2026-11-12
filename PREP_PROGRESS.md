@@ -529,3 +529,11 @@ Tests: 107 pass on CPU.
 - **E2f Step 1 DONE 13:44** (3 h vs 45 min est.): requested c 2/4/8 x norm mostly gibberish; fixed rule selects L6 c2 (only eligible cell, IDK
   0.01, not above base); diagnostic L12 c1 works (IDK 0.32, gibberish 0.02) but is outside the rule. Steps 2-3 run with L6 c2. gen-wmdp 96 s/item
   (~12 h); E2f chain ETA ~2026-11-13 18:00-20:00. `docs/E2F_IGNORANCE_RESPONSE.md` interim (resume section).
+
+## Session 40 (2026-11-12 19:1x–): lab queue reordered (DEV only): E2f L6 c2 stopped, E4b Step B now, reduced E2f-L12 after
+- **E2f Steps 2-3 (L6 c2) stopped** as uninformative (DEVIATIONS row with the Step-1 numbers): `E2f-gen-wmdp` killed at 239 / 459
+  (200 items kept in its item checkpoint, not analysed); gen-benign / tofu-forget / tofu-retain / summary removed before starting.
+  Archive `queue/_archive/manual-2026-11-12-e2f-stop/`. E4b jobs' ordering-only E2f deps removed.
+- **E4b Step B** started 19:21 unchanged (2a4a6f2): smoke 7/7 DONE, then E4b-000..004, scores, stepB.
+- **E2f-L12** (DEVIATIONS row first; exploratory): L12 c1, 100 items per set (seed 0 subset), max_new 48, check_n 10; exp/E2f-ignorance-response
+  818a379 (pushed); 12 jobs (smoke first) after every E4b job; doctor clean; no job double-queued.

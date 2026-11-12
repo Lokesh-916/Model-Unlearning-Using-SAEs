@@ -1,6 +1,6 @@
 # E2f: ignorance response for free-text answers
 
-**Status: INTERIM (Step 1 final; Steps 2-3 running in the lab queue).** Lab PC (RTX 2000 Ada), DEV only, never
+**Status: Step 1 final; Steps 2-3 with the selected cell (L6 c2) STOPPED as uninformative (2026-11-12); reduced exploratory re-run E2f-L12 (layer 12, c 1) queued after E4b Step B.** Lab PC (RTX 2000 Ada), DEV only, never
 TEST. Exploratory; not a claim input. Ids and metrics only.
 Code: branch `exp/E2f-ignorance-response` f81e84b (clean). Design, the Step-1 selection rule and the two lines were
 logged in DEVIATIONS (2026-11-11, E2f row) before any result. Run dirs: `$DSG_RESULTS/runs/E2f/*`; generations only
@@ -50,17 +50,33 @@ is eligible, so it is not used here. The same recipe on the TOFU model: layer 6,
 - **Possible follow-up (not run):** the same Steps 2-3 with L12 c 1. This needs a new DEVIATIONS row before any
   result.
 
-## Steps 2-3 (running)
+## Steps 2-3 with L6 c2: stopped (2026-11-12, DEVIATIONS row)
 
-Responses on fire: −500 clamp, R6, ign, R6+ign, R5+ign. StreamGuard v1 streaming CUSUM gate (StreamGuard v1 =
-the CUSUM gate on DSG's 20 features at a 5 % MMLU-dev false-fire rate). Sets: WMDP-Bio-open dev (459), benign
-biology open dev (180), TOFU forget10 / retain_perturbed (400 / 400). Lines (fixed): gibberish <= 0.05 on every
-set, and leak not significantly above the clamp's on WMDP-Bio-open and TOFU forget.
+Stopped at the user's request, because Step 1 showed the selected cell does not differ from base (IDK 0.01 vs 0.00,
+McNemar p 1). `E2f-gen-wmdp` was killed at 239 / 459 items (5 h 33 min); its item checkpoint keeps 200 items
+(`$DSG_PRIVATE/E2f/gen-wmdp/partial/`, kept, not analysed; the 38 after the last 200-item chunk are lost).
+`E2f-gen-benign`, `-gen-tofu-forget`, `-gen-tofu-retain` and `-summary` never started and were removed from the queue
+(archive `queue/_archive/manual-2026-11-12-e2f-stop/`). No Steps 2-3 result exists for L6 c2.
 
-Measured rate: gen-wmdp about 96 s per item (6 conditions × 96 tokens), so about 12 h. The whole chain should
-finish around 2026-11-13 18:00–20:00. Every gen task has item-level resume (chunks in the private dir).
+## E2f-L12: reduced Steps 2-3 with layer 12, c 1 (EXPLORATORY; queued)
 
-### Resume (if this doc is still interim)
-1. `scripts/reboot_recover.sh` after any reboot, then `python -m dsgx.queue.status --chat | grep E2f`.
-2. When `E2f-summary` is DONE: copy `$DSG_RESULTS/runs/E2f/summary/SUMMARY.md` (from "### WMDP-Bio open") into
-   this doc, then state the lines table verdict and drop "INTERIM".
+DEVIATIONS row (2026-11-12, E2f-L12) logged before any result: layer 12 at c 1 is **outside the original grid** and was
+chosen from the Step-1 safe-entity check only (IDK 0.32, gibberish 0.02). Every number below is exploratory.
+Code: exp/E2f-ignorance-response 818a379 (`configs/experiments/E2f-L12.yaml`, `experiments/E2f/l12.py`; override
+args `ign`, `n_items`, `subset_seed` in `gen.py`). Run dirs `$DSG_RESULTS/runs/E2f-L12/*`.
+
+- Same as E2f: StreamGuard v1 streaming CUSUM gate (StreamGuard v1 = the CUSUM gate on DSG's 20 features at a 5 %
+  MMLU-dev false-fire rate), responses clamp / R6 / ign / R6+ign / R5+ign, graders, and the two lines (gibberish
+  <= 0.05 on every set; leak on WMDP-Bio-open and TOFU forget not significantly above the clamp).
+- Direction: base model = Step 1's L12 direction (norm 182.8). TOFU model = the same recipe at L12 (task `tofu-dir`).
+- **Reduced to fit ~6 h:** **100 items per set** (seeded random subset, numpy `default_rng(0)`, original order kept,
+  from WMDP-Bio-open dev 459, benign biology open dev 180, TOFU forget10 400, retain_perturbed 400) and **48 new
+  tokens on every set** (E2f: 96 / 48 / 64 / 64); 10 items per set re-checked against `dsgx.gen.stream` (E2f: 20).
+- Jobs: `E2f-L12-smoke-*` (3 items, 16 tokens) then `E2f-L12-tofu-dir`, `-gen-wmdp`, `-gen-benign`,
+  `-gen-tofu-forget`, `-gen-tofu-retain`, `-summary`; one GPU job at a time; item-level resume (chunks in the
+  private dir). Expected ~5 h (gen-wmdp ran at 84 s per item at 96 tokens; ~42 s at 48 tokens x 400 items + setup).
+
+### Resume (while this section says "queued")
+1. `scripts/reboot_recover.sh` after any reboot, then `python -m dsgx.queue.status --chat | grep E2f-L12`.
+2. When `E2f-L12-summary` is DONE: copy `$DSG_RESULTS/runs/E2f-L12/summary/SUMMARY.md` (from "### WMDP-Bio open")
+   here, state the lines verdict, label it exploratory.
