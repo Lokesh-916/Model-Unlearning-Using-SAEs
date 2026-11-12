@@ -526,3 +526,6 @@ Tests: 107 pass on CPU.
 - **Step B queued** behind every E2f job (E4b-smoke-* then E4b-000..004, scores, stepB; at 13:52 queue ETA ~8 h). Doctor clean.
   Finish: paste `runs/E4b/stepB/E4B_STEPB.md` into the doc's Step B section.
 
+- **E2f Step 1 DONE 13:44** (3 h vs 45 min est.): requested c 2/4/8 x norm mostly gibberish; fixed rule selects L6 c2 (only eligible cell, IDK
+  0.01, not above base); diagnostic L12 c1 works (IDK 0.32, gibberish 0.02) but is outside the rule. Steps 2-3 run with L6 c2. gen-wmdp 96 s/item
+  (~12 h); E2f chain ETA ~2026-11-13 18:00-20:00. `docs/E2F_IGNORANCE_RESPONSE.md` interim (resume section).
