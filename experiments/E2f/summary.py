@@ -27,9 +27,9 @@ def _paired(a, b, nb):
             "sig_lower": bool(pb["hi"] < 0 and mc["p"] < ALPHA)}
 
 
-def collect(exp, nb=2000):
+def collect(exp, nb=2000, step1_exp=None):
     rd = paths.runs_dir() / exp
-    out = {"step1": json.loads((rd / "ignorance" / "metrics.json").read_text()), "sets": {}}
+    out = {"step1": json.loads((paths.runs_dir() / (step1_exp or exp) / "ignorance" / "metrics.json").read_text()), "sets": {}}
     for tid, (name, kind) in SETS.items():
         p = rd / tid / "items.parquet"
         if not p.exists():
@@ -37,6 +37,8 @@ def collect(exp, nb=2000):
         df = pd.read_parquet(p)
         met = json.loads((rd / tid / "metrics.json").read_text())
         clamp = df[df["cond"] == "clamp"].set_index("item_id")
+        cfg = json.loads((rd / tid / "config.json").read_text()) if (rd / tid / "config.json").exists() else {}
+        out.setdefault("ign_used", {})[tid] = {k: cfg.get("args", {}).get(k) for k in ("ign", "n_items", "max_new")}
         s = {"name": name, "kind": kind, "fire_rate": met["fire_rate"], "threshold": met["threshold"], "check": met["check"],
              "conds": {}}
         for c in CONDS:
@@ -85,6 +87,9 @@ def render(s, hardware="labpc"):
     sel = st["selection"]
     L += ["", f"Selected: layer {sel['layer']}, c {sel['coef']:g} ({sel['grid']} grid, eligible {sel['eligible']}, "
               f"IDK significantly above base: {sel['works']}).", ""]
+    used = {json.dumps(v, sort_keys=True) for v in s.get("ign_used", {}).values() if v.get("ign")}
+    if used:
+        L += [f"**Steps 2-3 used an override, not the selection above (exploratory):** {'; '.join(sorted(used))}.", ""]
     for tid, ss in s["sets"].items():
         what = "leak (match)" if ss["kind"] == "leak" else "correct (match)"
         L += [f"### {ss['name']}", "", f"Gate fire rate {ss['fire_rate']:.3f}, threshold {ss['threshold']:.4g}; switch "
@@ -103,8 +108,8 @@ def render(s, hardware="labpc"):
 
 def task(ctx):
     exp = ctx.args.get("gen_exp", ctx.exp_id)
-    s = collect(exp, int(ctx.args.get("n_boot", 2000)))
-    ctx.write_config(gen_exp=exp)
+    s = collect(exp, int(ctx.args.get("n_boot", 2000)), ctx.args.get("step1_exp"))
+    ctx.write_config(gen_exp=exp, step1_exp=ctx.args.get("step1_exp"))
     ctx.write_metrics(s)
     (ctx.run_dir() / "SUMMARY.md").write_text(render(s))
     ctx.finish({"view": "e2f-summary", "forget": None, "pass": [c for c, r in s["lines"].items() if r["both"]]})

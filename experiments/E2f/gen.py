@@ -5,7 +5,8 @@ args: items (wmdp-bio-open | mmlu-open:<5 benign-bio subjects> | tofu-forget10 |
 gate {forget_corpus, retain_corpus} (default bio), direction ("base" | "tofu"), check_n (items also run through
 dsgx.gen.stream.generate with the clamp, to check that the switch generator reproduces StreamGuard v1 exactly).
 Gate = StreamGuard v1 (cusum, DSG's 20 features / retain_pct 95 on the gate's corpora, 5 % MMLU-dev FPR).
-Conditions: base (no gate), clamp, R6, ign, R6+ign, R5+ign; ign = the Step-1 selected layer and coefficient.
+Conditions: base (no gate), clamp, R6, ign, R6+ign, R5+ign; ign = the Step-1 selected layer and coefficient, or
+args.ign {layer, coef, dir_exp} (E2f-L12 override, exploratory). n_items / subset_seed: seeded random item subset.
 Per item and condition: match vs reference (openqa.grade; leak on hazard / forget sets, correctness otherwise),
 gibberish (openqa.gibberish), IDK (common.IDK), refusal (common.REFUSAL), gate fire step. Generations only under
 $DSG_PRIVATE; items.parquet has ids, hashes and scores. Item-level resume (chunks in the private dir).
@@ -44,6 +45,9 @@ def task(ctx):
 
     a = ctx.args
     items = item_set(a["items"], a.get("split", "dev"))
+    if a.get("n_items") and len(items) > int(a["n_items"]):  # seeded random subset, original order kept (E2f-L12)
+        keep = np.sort(np.random.default_rng(int(a.get("subset_seed", 0))).choice(len(items), int(a["n_items"]), replace=False))
+        items = [items[i] for i in keep]
     if a.get("limit"):
         items = items[: int(a["limit"])]
     max_new = int(a.get("max_new", 64))
@@ -55,8 +59,14 @@ def task(ctx):
     g = gates.Gate(gspec, b, 0)
     cal = gates.calibrate(b, g, "bio", 0.05, 1000, "mmlu-dev")
     gate = gates.stream_gate(g)
-    sel = json.loads((paths.runs_dir() / a.get("ign_exp", ctx.exp_id) / "ignorance" / "metrics.json").read_text())["selection"]
-    ign = (sel["layer"], load_vec(a.get("ign_exp", ctx.exp_id), a.get("direction", "base"), sel["layer"], sel["coef"], b.device))
+    ov = a.get("ign")  # override of the Step-1 selection (E2f-L12, DEVIATIONS 2026-11-12: exploratory)
+    if ov:
+        sel = {"layer": int(ov["layer"]), "coef": float(ov["coef"]), "source": "override", "label": ov.get("label", "exploratory")}
+        dexp = ov.get("dir_exp", ctx.exp_id)
+    else:
+        sel = json.loads((paths.runs_dir() / a.get("ign_exp", ctx.exp_id) / "ignorance" / "metrics.json").read_text())["selection"]
+        dexp = a.get("ign_exp", ctx.exp_id)
+    ign = (sel["layer"], load_vec(dexp, a.get("direction", "base"), sel["layer"], sel["coef"], b.device))
     W = {r: patched_weights(m, load_delta(ctx.exp_id, r)) for r in ("R5", "R6")}
     resp = [Response("clamp", b.hook_name, clamp=(b.sae, g.features, 500.0)),
             Response("R6", weights=W["R6"]), Response("ign", steer=ign),
@@ -64,7 +74,8 @@ def task(ctx):
     assert [r.name for r in resp] == RESPONSES
     check_n = int(a.get("check_n", 20))
     ctx.write_config(items=a["items"], n_items=len(items), gate=gspec, calib=cal, features=g.features,
-                     ignorance=sel, direction=a.get("direction", "base"), max_new=max_new, model=mc)
+                     ignorance=sel, direction=a.get("direction", "base"), dir_exp=dexp, max_new=max_new, model=mc,
+                     item_ids=[it.item_id for it in items])
     ctx.progress.update(items_total=len(items), items_done=0, force=True)
     priv = ctx.private_dir()
     ck = ItemCheckpoints(priv / "partial", ["E2f-gen", a["items"], [it.item_id for it in items], max_new, mc, gspec,
