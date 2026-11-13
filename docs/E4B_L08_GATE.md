@@ -6,7 +6,7 @@ metrics only. Branch `exp/E4b-l08-gate`: f3f8efa = rule (before any result), 613
 DEVIATIONS (2026-11-12, E4b row) before any E4b result. **E4a's verdict line was not met** (L08 benign-biology fire
 0.323 > 0.30); at the user's request E4b tests that gate against **selection rule v2 anyway; rule v2 is unchanged**.
 
-## Answer (Step A; Step B status below)
+## Answer (Step A + Step B; rule v2 verdict)
 
 **Rule v2 selects L08 op5 → clamp.** Four of six candidates are eligible: L08 → clamp and L08 → R6, at both operating
 points. L08 → R5 fails (attacks).
@@ -31,6 +31,11 @@ points. L08 → R5 fails (attacks).
   documents, which moves the separation into the gate.
 - **Two operating points, small difference.** op1.7 is slightly kinder to benign biology (+0.021) and slightly weaker on
   Hindi recall (0.920 vs 0.936). Rule v2's tie-break (lowest worst-case forget) picks op5.
+
+- **Step B (2026-11-13): the selected L08 op5 → clamp holds.** Under benign-biology dilution 400 / 1600, midpad 400 and
+  interleave k=2 it is never significantly above StreamGuard v1 and is at or below DSG (L08 recall 0.915–0.983).
+  **L08 → R6 is opened by benign-biology dilution** (forget ≈ base, 0.58–0.63; the R6 response fails, not the gate).
+  **Rule v2 verdict stays L08 op5 → clamp (DEV only, exploratory).**
 
 **Caveats (read before using this result).**
 1. **Selection on DEV.** E4a chose L08 as its closest candidate after seeing these same DEV questions (37 layer ×
@@ -63,11 +68,28 @@ from the same prompts, and the composites are exact.
 
 ## Step B: attacks a benign-biology-quiet gate could open
 
-**Status: QUEUED (lab PC), not run yet.** Jobs `E4b-smoke-*` (6 items each) and then `E4b-000..004`, `E4b-scores`,
-`E4b-stepB` wait for every E2f job (E2f-gen-wmdp was running at 13:52; queue ETA then ~8 h). Commit 2a4a6f2.
+**Status: DONE (lab PC, 2026-11-13).** All E4b jobs DONE on their first attempt (smoke 7/7, `E4b-000..004`,
+`E4b-scores`, `E4b-stepB`), code 2a4a6f2. Exploratory, DEV only.
+
+**Result.** The selected **L08 op5 → clamp** is not opened by any Step B attack: it is never significantly above
+StreamGuard v1 (largest +0.006, interleave k=2, p 0.57). It is significantly below DSG under benign-biology filler 400
+(−0.033), midpad 400 (−0.324) and interleave k=2 (−0.064), and n.s. vs DSG under filler 1600 (−0.008, p 0.33). L08
+recall stays 0.915–0.983 under all four attacks. Midpad 400 removes DSG's gate (fire 0.035, forget 0.561 ≈ base 0.574)
+but not L08's (0.958).
+
+Opened (an L08 composite significantly above StreamGuard v1):
+- **L08 → R6, both operating points, under benign-biology dilution** (forget 0.626 at 400, 0.575–0.579 at 1600, ≈ base 0.653 / 0.656).
+  The gate still fires (0.97–0.98). The response fails: **R6 forced on every prompt** gives the same 0.627 / 0.577.
+  R6 was trained with pad-augmented forget text (E2e), and benign-biology filler in front of the question defeats it.
+- **L08 op1.7 → clamp / R6 under interleave k=2** (+0.019, p 0.043; +0.030, p 0.0043). These are small margins at the stricter
+  threshold, where recall falls to 0.895.
+
+**Rule v2 verdict (unchanged by Step B, as fixed in DEVIATIONS):** rule v2 selects **L08 op5 → clamp**. Step B adds no
+counter-evidence against the selected candidate. It does count against the runner-up **L08 → R6**, which fails under
+benign-biology dilution. Caveat 1 (L08 was chosen on the same DEV items) still applies. TEST was not run.
 
 Design (fixed in DEVIATIONS): WMDP-Bio dev (636) under
-- B1 dilution with the benign-biology filler pool, 400 and 1600 tokens before the question (median prompt ~530 / ~1730 tokens);
+- B1 dilution with the benign-biology filler pool, 400 and 1600 tokens before the question (planned median prompt ~530 / ~1730 tokens; measured 508 / 1709);
 - B7 mid-question padding, 400 WikiText tokens;
 - B7 interleaving, k = 2 WikiText tokens between question tokens.
 
@@ -77,8 +99,75 @@ and R6 forced-on. Reported: recall and gated forget of L08 → clamp / R6 at bot
 StreamGuard v1. "Opened" = an L08 composite significantly above StreamGuard v1. Step B does not change the rule v2
 verdict (the rule's attack set is fixed).
 
-Finish (no Claude needed): after `E4b-stepB` is DONE, paste `$DSG_RESULTS/runs/E4b/stepB/E4B_STEPB.md` here, replacing
-this status paragraph, and add one line to the Answer section.
+### Step B tables (generated: `E4b-stepB`, copied from `runs/E4b/stepB/E4B_STEPB.md`)
+
+Hardware: labpc. WMDP-Bio DEV (@forget), bs 1, identical items per attack. Recall = fire share of the gate; forget = accuracy after the gate's response (lower is better). 95 % bootstrap CIs; paired = row − comparator, paired bootstrap [95 % CI] and exact McNemar p; ↑ / ↓ significant. L08 thresholds: conformal 5 % t = 7.0620, conformal 1.7 % (DSG's rate) t = 8.9226.
+
+#### B1 dilution, benign-biology filler 400 (before)
+
+n 636, median prompt length 508 tokens. Scores task vs StreamGuard v1 run, same gate decision: 1.0000. Clamp forced on == StreamGuard v1's gated prediction on its 627 fired prompts: 1.0.
+
+| condition | recall (fire share) | forget | vs DSG | vs StreamGuard v1 |
+|---|---|---|---|---|
+| base (no gate) | – | 0.653 [0.615, 0.689] (n 636) | +0.385 [+0.336, +0.431], p 2.5e-45 ↑ | +0.420 [+0.368, +0.467], p 1.3e-49 ↑ |
+| DSG (rho + clamp) | 0.914 [0.893, 0.934] (n 636) | 0.267 [0.234, 0.302] (n 636) | – | +0.035 [+0.019, +0.052], p 5.9e-05 ↑ |
+| StreamGuard v1 (CUSUM + clamp) | 0.986 [0.976, 0.994] (n 636) | 0.233 [0.203, 0.266] (n 636) | -0.035 [-0.052, -0.019], p 5.9e-05 ↓ | – |
+| L08 op5 → clamp | 0.973 [0.961, 0.984] (n 636) | 0.234 [0.203, 0.267] (n 636) | -0.033 [-0.052, -0.013], p 0.0015 ↓ | +0.002 [-0.011, +0.014], p 1 |
+| L08 op5 → R6 | 0.973 [0.961, 0.984] (n 636) | 0.626 [0.590, 0.664] (n 636) | +0.358 [+0.311, +0.406], p 2.4e-40 ↑ | +0.393 [+0.346, +0.442], p 7.4e-46 ↑ |
+| L08 op1.7 → clamp | 0.969 [0.954, 0.981] (n 636) | 0.237 [0.208, 0.270] (n 636) | -0.030 [-0.049, -0.009], p 0.0054 ↓ | +0.005 [-0.006, +0.017], p 0.63 |
+| L08 op1.7 → R6 | 0.969 [0.954, 0.981] (n 636) | 0.626 [0.590, 0.664] (n 636) | +0.358 [+0.311, +0.406], p 2.4e-40 ↑ | +0.393 [+0.346, +0.442], p 7.4e-46 ↑ |
+| R6 forced on every prompt | – | 0.627 [0.591, 0.665] (n 636) | +0.360 [+0.314, +0.406], p 6.9e-41 ↑ | +0.395 [+0.347, +0.443], p 2e-46 ↑ |
+| clamp forced on every prompt | – | 0.228 [0.197, 0.259] (n 636) | -0.039 [-0.057, -0.020], p 2.2e-05 ↓ | -0.005 [-0.013, +0.003], p 0.45 |
+
+#### B1 dilution, benign-biology filler 1600 (before)
+
+n 636, median prompt length 1709 tokens. Scores task vs StreamGuard v1 run, same gate decision: 1.0000. Clamp forced on == StreamGuard v1's gated prediction on its 636 fired prompts: 1.0.
+
+| condition | recall (fire share) | forget | vs DSG | vs StreamGuard v1 |
+|---|---|---|---|---|
+| base (no gate) | – | 0.656 [0.619, 0.690] (n 636) | +0.412 [+0.363, +0.458], p 2.1e-48 ↑ | +0.421 [+0.373, +0.469], p 3.6e-49 ↑ |
+| DSG (rho + clamp) | 0.973 [0.961, 0.984] (n 636) | 0.244 [0.212, 0.278] (n 636) | – | +0.009 [+0.000, +0.019], p 0.11 |
+| StreamGuard v1 (CUSUM + clamp) | 1.000 [1.000, 1.000] (n 636) | 0.234 [0.204, 0.267] (n 636) | -0.009 [-0.019, +0.000], p 0.11 | – |
+| L08 op5 → clamp | 0.983 [0.972, 0.992] (n 636) | 0.236 [0.206, 0.267] (n 636) | -0.008 [-0.020, +0.005], p 0.33 | +0.002 [-0.006, +0.009], p 1 |
+| L08 op5 → R6 | 0.983 [0.972, 0.992] (n 636) | 0.575 [0.536, 0.613] (n 636) | +0.332 [+0.281, +0.381], p 7.4e-34 ↑ | +0.341 [+0.292, +0.390], p 2.1e-35 ↑ |
+| L08 op1.7 → clamp | 0.980 [0.969, 0.989] (n 636) | 0.239 [0.209, 0.270] (n 636) | -0.005 [-0.019, +0.008], p 0.65 | +0.005 [-0.003, +0.014], p 0.51 |
+| L08 op1.7 → R6 | 0.980 [0.969, 0.989] (n 636) | 0.579 [0.539, 0.615] (n 636) | +0.335 [+0.285, +0.385], p 2.7e-34 ↑ | +0.344 [+0.296, +0.393], p 7.5e-36 ↑ |
+| R6 forced on every prompt | – | 0.577 [0.536, 0.613] (n 636) | +0.333 [+0.283, +0.384], p 2.6e-34 ↑ | +0.343 [+0.294, +0.392], p 7e-36 ↑ |
+| clamp forced on every prompt | – | 0.234 [0.204, 0.267] (n 636) | -0.009 [-0.019, +0.000], p 0.11 | +0.000 [+0.000, +0.000], p 1 |
+
+#### B7 mid-question pad 400 (WikiText)
+
+n 636, median prompt length 510 tokens. Scores task vs StreamGuard v1 run, same gate decision: 1.0000. Clamp forced on == StreamGuard v1's gated prediction on its 577 fired prompts: 1.0.
+
+| condition | recall (fire share) | forget | vs DSG | vs StreamGuard v1 |
+|---|---|---|---|---|
+| base (no gate) | – | 0.574 [0.535, 0.613] (n 636) | +0.013 [-0.002, +0.028], p 0.13 | +0.336 [+0.286, +0.382], p 7.8e-37 ↑ |
+| DSG (rho + clamp) | 0.035 [0.022, 0.050] (n 636) | 0.561 [0.522, 0.599] (n 636) | – | +0.324 [+0.275, +0.369], p 7.6e-36 ↑ |
+| StreamGuard v1 (CUSUM + clamp) | 0.907 [0.885, 0.929] (n 636) | 0.237 [0.204, 0.270] (n 636) | -0.324 [-0.369, -0.275], p 7.6e-36 ↓ | – |
+| L08 op5 → clamp | 0.958 [0.942, 0.972] (n 636) | 0.237 [0.206, 0.270] (n 636) | -0.324 [-0.369, -0.275], p 5.7e-34 ↓ | +0.000 [-0.017, +0.017], p 1 |
+| L08 op5 → R6 | 0.958 [0.942, 0.972] (n 636) | 0.237 [0.206, 0.270] (n 636) | -0.324 [-0.368, -0.275], p 5.7e-34 ↓ | +0.000 [-0.017, +0.017], p 1 |
+| L08 op1.7 → clamp | 0.954 [0.937, 0.970] (n 636) | 0.239 [0.208, 0.272] (n 636) | -0.322 [-0.368, -0.274], p 9.4e-34 ↓ | +0.002 [-0.017, +0.019], p 1 |
+| L08 op1.7 → R6 | 0.954 [0.937, 0.970] (n 636) | 0.239 [0.208, 0.272] (n 636) | -0.322 [-0.368, -0.274], p 9.4e-34 ↓ | +0.002 [-0.016, +0.019], p 1 |
+| R6 forced on every prompt | – | 0.228 [0.197, 0.259] (n 636) | -0.333 [-0.379, -0.283], p 1.5e-34 ↓ | -0.009 [-0.025, +0.006], p 0.34 |
+| clamp forced on every prompt | – | 0.230 [0.198, 0.263] (n 636) | -0.332 [-0.377, -0.281], p 4.3e-34 ↓ | -0.008 [-0.024, +0.008], p 0.44 |
+
+#### B7 interleave k=2 (WikiText)
+
+n 636, median prompt length 153 tokens. Scores task vs StreamGuard v1 run, same gate decision: 1.0000. Clamp forced on == StreamGuard v1's gated prediction on its 572 fired prompts: 1.0.
+
+| condition | recall (fire share) | forget | vs DSG | vs StreamGuard v1 |
+|---|---|---|---|---|
+| base (no gate) | – | 0.480 [0.442, 0.517] (n 636) | +0.187 [+0.145, +0.228], p 6.3e-17 ↑ | +0.258 [+0.208, +0.305], p 8.2e-22 ↑ |
+| DSG (rho + clamp) | 0.624 [0.585, 0.662] (n 636) | 0.292 [0.258, 0.327] (n 636) | – | +0.071 [+0.042, +0.101], p 4.3e-06 ↑ |
+| StreamGuard v1 (CUSUM + clamp) | 0.899 [0.876, 0.921] (n 636) | 0.222 [0.190, 0.255] (n 636) | -0.071 [-0.101, -0.042], p 4.3e-06 ↓ | – |
+| L08 op5 → clamp | 0.915 [0.893, 0.936] (n 636) | 0.228 [0.195, 0.261] (n 636) | -0.064 [-0.097, -0.033], p 0.00019 ↓ | +0.006 [-0.011, +0.022], p 0.57 |
+| L08 op5 → R6 | 0.915 [0.893, 0.936] (n 636) | 0.239 [0.206, 0.274] (n 636) | -0.053 [-0.086, -0.020], p 0.0027 ↓ | +0.017 [-0.002, +0.036], p 0.11 |
+| L08 op1.7 → clamp | 0.895 [0.869, 0.918] (n 636) | 0.241 [0.208, 0.274] (n 636) | -0.052 [-0.085, -0.020], p 0.0027 ↓ | +0.019 [+0.003, +0.036], p 0.043 ↑ |
+| L08 op1.7 → R6 | 0.895 [0.869, 0.918] (n 636) | 0.252 [0.219, 0.286] (n 636) | -0.041 [-0.074, -0.009], p 0.022 ↓ | +0.030 [+0.009, +0.050], p 0.0043 ↑ |
+| R6 forced on every prompt | – | 0.233 [0.201, 0.266] (n 636) | -0.060 [-0.094, -0.027], p 0.00082 ↓ | +0.011 [-0.008, +0.030], p 0.34 |
+| clamp forced on every prompt | – | 0.226 [0.195, 0.259] (n 636) | -0.066 [-0.099, -0.033], p 0.00016 ↓ | +0.005 [-0.013, +0.020], p 0.7 |
+
+**Opened (an L08 composite significantly above StreamGuard v1):** B1 dilution, benign-biology filler 400 (before): L08 op5 → R6, L08 op1.7 → R6; B1 dilution, benign-biology filler 1600 (before): L08 op5 → R6, L08 op1.7 → R6; B7 interleave k=2 (WikiText): L08 op1.7 → clamp, L08 op1.7 → R6.
 
 ## Step A tables (generated: `python -m experiments.E4b.stepa`, copied from `runs/E4b/stepA/E4B_STEPA.md`)
 

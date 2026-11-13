@@ -537,3 +537,11 @@ Tests: 107 pass on CPU.
 - **E4b Step B** started 19:21 unchanged (2a4a6f2): smoke 7/7 DONE, then E4b-000..004, scores, stepB.
 - **E2f-L12** (DEVIATIONS row first; exploratory): L12 c1, 100 items per set (seed 0 subset), max_new 48, check_n 10; exp/E2f-ignorance-response
   818a379 (pushed); 12 jobs (smoke first) after every E4b job; doctor clean; no job double-queued.
+
+## Session 41 (2026-11-13 11:1x–): E4b Step B and E2f-L12 write-ups (lab PC, DEV only, exploratory)
+- Queue: 283 DONE + 71 MOVED-TO-SERVER, 0 failed / blocked (`doctor`: nothing to do); nothing re-queued. Scheduler alive (tmux dsg-*).
+- **E4b Step B DONE:** selected L08 op5 → clamp never significantly above StreamGuard v1 under benign-bio dilution 400 / 1600,
+  midpad 400, interleave k=2 (recall 0.915-0.983); L08 → R6 opened by benign-bio dilution (R6 forced-on 0.627 / 0.577 ≈ base);
+  op1.7 small opening at interleave k=2. Rule v2 verdict unchanged: L08 op5 → clamp. `docs/E4B_L08_GATE.md` final.
+- **E2f-L12 DONE:** lines NOT MET for every response. ign: WMDP-open leak 0.00 (IDK 0.36, gibberish 0.26); TOFU forget leak
+  0.63 vs clamp 0.45 (p 0.0003); retain unaffected. `docs/E2F_IGNORANCE_RESPONSE.md` final.

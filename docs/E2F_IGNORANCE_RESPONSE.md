@@ -1,6 +1,6 @@
 # E2f: ignorance response for free-text answers
 
-**Status: Step 1 final; Steps 2-3 with the selected cell (L6 c2) STOPPED as uninformative (2026-11-12); reduced exploratory re-run E2f-L12 (layer 12, c 1) queued after E4b Step B.** Lab PC (RTX 2000 Ada), DEV only, never
+**Status: FINAL. Step 1 final; Steps 2-3 with the selected cell (L6 c2) STOPPED as uninformative (2026-11-12); reduced exploratory re-run E2f-L12 (layer 12, c 1) DONE 2026-11-13: both lines NOT MET for every response.** Lab PC (RTX 2000 Ada), DEV only, never
 TEST. Exploratory; not a claim input. Ids and metrics only.
 Code: branch `exp/E2f-ignorance-response` f81e84b (clean). Design, the Step-1 selection rule and the two lines were
 logged in DEVIATIONS (2026-11-11, E2f row) before any result. Run dirs: `$DSG_RESULTS/runs/E2f/*`; generations only
@@ -58,7 +58,7 @@ McNemar p 1). `E2f-gen-wmdp` was killed at 239 / 459 items (5 h 33 min); its ite
 `E2f-gen-benign`, `-gen-tofu-forget`, `-gen-tofu-retain` and `-summary` never started and were removed from the queue
 (archive `queue/_archive/manual-2026-11-12-e2f-stop/`). No Steps 2-3 result exists for L6 c2.
 
-## E2f-L12: reduced Steps 2-3 with layer 12, c 1 (EXPLORATORY; queued)
+## E2f-L12: reduced Steps 2-3 with layer 12, c 1 (EXPLORATORY; DONE)
 
 DEVIATIONS row (2026-11-12, E2f-L12) logged before any result: layer 12 at c 1 is **outside the original grid** and was
 chosen from the Step-1 safe-entity check only (IDK 0.32, gibberish 0.02). Every number below is exploratory.
@@ -76,7 +76,88 @@ args `ign`, `n_items`, `subset_seed` in `gen.py`). Run dirs `$DSG_RESULTS/runs/E
   `-gen-tofu-forget`, `-gen-tofu-retain`, `-summary`; one GPU job at a time; item-level resume (chunks in the
   private dir). Expected ~5 h (gen-wmdp ran at 84 s per item at 96 tokens; ~42 s at 48 tokens x 400 items + setup).
 
-### Resume (while this section says "queued")
-1. `scripts/reboot_recover.sh` after any reboot, then `python -m dsgx.queue.status --chat | grep E2f-L12`.
-2. When `E2f-L12-summary` is DONE: copy `$DSG_RESULTS/runs/E2f-L12/summary/SUMMARY.md` (from "### WMDP-Bio open")
-   here, state the lines verdict, label it exploratory.
+### Results (EXPLORATORY, DEV only, labpc; n 100 per set, 48 new tokens)
+
+All 12 E2f-L12 jobs DONE on their first attempt (smoke 6/6, then `tofu-dir`, 4 generation jobs, `summary`).
+TOFU-model L12 direction (`tofu-dir`): residual norm 184.0, raw made-up − real difference norm 19.8 (base model: 182.8 / 28.5).
+StreamGuard v1 stream check: switch generator = StreamGuard v1 stream on 10/10 checked items in every set.
+Gate fire rates: WMDP-Bio open 0.910 and benign biology 0.580 (threshold 16.82); TOFU forget10 0.600 and retain 0.040
+(TOFU-model threshold 5.475).
+
+**Lines verdict: NOT MET.** No response meets both lines (gibberish <= 0.05 on every set; leak not significantly
+above the clamp on WMDP-Bio-open and TOFU forget).
+- **The ignorance response does what Step 1 promised on WMDP:** ign alone gives leak 0.00 (= clamp), IDK 0.36 and
+  gibberish 0.26 (clamp: gibberish 0.59, IDK 0.00). R6+ign raises IDK to 0.66. Gibberish stays far above 0.05 for
+  every response, the clamp included, so the gibberish line fails on WMDP-Bio-open alone.
+- **TOFU forget: ign leaks more than the clamp.** 0.63 vs 0.45 (+0.18 [+0.10, +0.27], p 0.0003). R6+ign 0.60 and R5+ign 0.62
+  are also significantly above the clamp. R6 alone (0.79) ≈ base (0.80). The L12 direction barely produces "I don't
+  know" on TOFU (IDK 0.03 for every condition, = base).
+- **Benign biology:** ign 0.06 correct = clamp 0.06 (base 0.17; R6 0.12, +0.06 vs clamp, p 0.031). ign adds IDK 0.09 and gibberish 0.20.
+  **TOFU retain** is unaffected by every response (0.85–0.86; the gate fires on 4 %).
+- The IDK and gibberish labels are not exclusive (R6+ign on WMDP: gibberish 0.73, IDK 0.66), so the columns do not sum to 1.
+- Limits: 100-item seeded subsets and 48 new tokens (shorter than E2f's 96 / 64 on WMDP / TOFU); L12 c1 was chosen
+  outside the fixed grid from the safe-entity check only (DEVIATIONS 2026-11-12). Not a claim input.
+
+### E2f-L12 tables (generated: `E2f-L12-summary`, copied from `runs/E2f-L12/summary/SUMMARY.md`, from "WMDP-Bio open")
+
+#### WMDP-Bio open (dev)
+
+Gate fire rate 0.910, threshold 16.82; switch generator = StreamGuard v1 stream on 10/10 checked items.
+
+| condition | leak (match) | vs clamp | gibberish | IDK or refusal | IDK |
+|---|---|---|---|---|---|
+| base | 0.130 [0.070, 0.200] (n 100) | +0.130 [+0.070, +0.200], p 0.00024 ↑ | 0.000 [0.000, 0.000] | 0.010 [0.000, 0.030] | 0.000 [0.000, 0.000] |
+| clamp | 0.000 [0.000, 0.000] (n 100) | - | 0.590 [0.490, 0.680] | 0.000 [0.000, 0.000] | 0.000 [0.000, 0.000] |
+| R6 | 0.010 [0.000, 0.030] (n 100) | +0.010 [+0.000, +0.030], p 1 | 0.590 [0.490, 0.690] | 0.010 [0.000, 0.030] | 0.000 [0.000, 0.000] |
+| ign | 0.000 [0.000, 0.000] (n 100) | +0.000 [+0.000, +0.000], p 1 | 0.260 [0.170, 0.350] | 0.370 [0.280, 0.460] | 0.360 [0.260, 0.450] |
+| R6+ign | 0.000 [0.000, 0.000] (n 100) | +0.000 [+0.000, +0.000], p 1 | 0.730 [0.640, 0.810] | 0.660 [0.570, 0.750] | 0.660 [0.570, 0.750] |
+| R5+ign | 0.000 [0.000, 0.000] (n 100) | +0.000 [+0.000, +0.000], p 1 | 0.730 [0.640, 0.820] | 0.510 [0.410, 0.610] | 0.510 [0.410, 0.610] |
+
+#### benign biology open (dev)
+
+Gate fire rate 0.580, threshold 16.82; switch generator = StreamGuard v1 stream on 10/10 checked items.
+
+| condition | correct (match) | vs clamp | gibberish | IDK or refusal | IDK |
+|---|---|---|---|---|---|
+| base | 0.170 [0.100, 0.240] (n 100) | +0.110 [+0.050, +0.180], p 0.00098 ↑ | 0.010 [0.000, 0.030] | 0.010 [0.000, 0.030] | 0.010 [0.000, 0.030] |
+| clamp | 0.060 [0.020, 0.110] (n 100) | - | 0.110 [0.050, 0.170] | 0.020 [0.000, 0.050] | 0.020 [0.000, 0.050] |
+| R6 | 0.120 [0.060, 0.190] (n 100) | +0.060 [+0.020, +0.110], p 0.031 ↑ | 0.230 [0.150, 0.310] | 0.010 [0.000, 0.030] | 0.010 [0.000, 0.030] |
+| ign | 0.060 [0.020, 0.110] (n 100) | +0.000 [+0.000, +0.000], p 1 | 0.200 [0.120, 0.280] | 0.090 [0.040, 0.150] | 0.090 [0.040, 0.150] |
+| R6+ign | 0.060 [0.020, 0.110] (n 100) | +0.000 [+0.000, +0.000], p 1 | 0.360 [0.270, 0.450] | 0.470 [0.380, 0.570] | 0.470 [0.380, 0.570] |
+| R5+ign | 0.060 [0.020, 0.110] (n 100) | +0.000 [+0.000, +0.000], p 1 | 0.310 [0.220, 0.400] | 0.270 [0.180, 0.360] | 0.250 [0.170, 0.340] |
+
+#### TOFU forget10
+
+Gate fire rate 0.600, threshold 5.475; switch generator = StreamGuard v1 stream on 10/10 checked items.
+
+| condition | leak (match) | vs clamp | gibberish | IDK or refusal | IDK |
+|---|---|---|---|---|---|
+| base | 0.800 [0.720, 0.870] (n 100) | +0.350 [+0.260, +0.440], p 5.8e-11 ↑ | 0.000 [0.000, 0.000] | 0.030 [0.000, 0.070] | 0.030 [0.000, 0.070] |
+| clamp | 0.450 [0.350, 0.550] (n 100) | - | 0.040 [0.010, 0.080] | 0.030 [0.000, 0.060] | 0.030 [0.000, 0.060] |
+| R6 | 0.790 [0.710, 0.870] (n 100) | +0.340 [+0.250, +0.430], p 1.2e-10 ↑ | 0.000 [0.000, 0.000] | 0.030 [0.000, 0.070] | 0.030 [0.000, 0.070] |
+| ign | 0.630 [0.540, 0.720] (n 100) | +0.180 [+0.100, +0.270], p 0.00028 ↑ | 0.010 [0.000, 0.030] | 0.030 [0.000, 0.070] | 0.030 [0.000, 0.070] |
+| R6+ign | 0.600 [0.510, 0.700] (n 100) | +0.150 [+0.070, +0.230], p 0.0015 ↑ | 0.000 [0.000, 0.000] | 0.030 [0.000, 0.070] | 0.030 [0.000, 0.070] |
+| R5+ign | 0.620 [0.520, 0.720] (n 100) | +0.170 [+0.080, +0.260], p 0.00049 ↑ | 0.010 [0.000, 0.030] | 0.030 [0.000, 0.070] | 0.030 [0.000, 0.070] |
+
+#### TOFU retain_perturbed
+
+Gate fire rate 0.040, threshold 5.475; switch generator = StreamGuard v1 stream on 10/10 checked items.
+
+| condition | correct (match) | vs clamp | gibberish | IDK or refusal | IDK |
+|---|---|---|---|---|---|
+| base | 0.860 [0.790, 0.920] (n 100) | +0.010 [-0.020, +0.040], p 1 | 0.000 [0.000, 0.000] | 0.000 [0.000, 0.000] | 0.000 [0.000, 0.000] |
+| clamp | 0.850 [0.780, 0.910] (n 100) | - | 0.000 [0.000, 0.000] | 0.010 [0.000, 0.030] | 0.010 [0.000, 0.030] |
+| R6 | 0.860 [0.790, 0.920] (n 100) | +0.010 [-0.020, +0.040], p 1 | 0.000 [0.000, 0.000] | 0.000 [0.000, 0.000] | 0.000 [0.000, 0.000] |
+| ign | 0.860 [0.790, 0.920] (n 100) | +0.010 [-0.020, +0.040], p 1 | 0.000 [0.000, 0.000] | 0.000 [0.000, 0.000] | 0.000 [0.000, 0.000] |
+| R6+ign | 0.850 [0.780, 0.920] (n 100) | +0.000 [-0.030, +0.030], p 1 | 0.000 [0.000, 0.000] | 0.000 [0.000, 0.000] | 0.000 [0.000, 0.000] |
+| R5+ign | 0.850 [0.780, 0.920] (n 100) | +0.000 [-0.030, +0.030], p 1 | 0.000 [0.000, 0.000] | 0.000 [0.000, 0.000] | 0.000 [0.000, 0.000] |
+
+#### Lines (fixed before any result)
+
+| response | gibberish <= 0.05 on every set | leak not above clamp | both |
+|---|---|---|---|
+| clamp | False | True | **False** |
+| R6 | False | False | **False** |
+| ign | False | False | **False** |
+| R6+ign | False | False | **False** |
+| R5+ign | False | False | **False** |
