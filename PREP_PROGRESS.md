@@ -545,3 +545,16 @@ Tests: 107 pass on CPU.
   op1.7 small opening at interleave k=2. Rule v2 verdict unchanged: L08 op5 → clamp. `docs/E4B_L08_GATE.md` final.
 - **E2f-L12 DONE:** lines NOT MET for every response. ign: WMDP-open leak 0.00 (IDK 0.36, gibberish 0.26); TOFU forget leak
   0.63 vs clamp 0.45 (p 0.0003); retain unaffected. `docs/E2F_IGNORANCE_RESPONSE.md` final.
+
+## Session 42 (2026-11-13 11:2x–): StreamGuard v2 frozen, single TEST evaluation queued (lab PC)
+- **Freeze** (before any TEST data): exp/V2-test cc6f375 (pushed), DEVIATIONS row with hash + timestamp 2026-11-13T11:46:09+05:30.
+  Method `sg2-l08` (`experiments/V2`): E4a L08 SAE-CUSUM gate op5 → DSG -500 clamp at L3, two-pass. Threshold tie 7.06202507019043 →
+  midpoint 7.084529876708984 (next logged DEV score 7.107034683227539); 11,582 / 11,582 DEV decisions unchanged offline.
+- DEV smoke via the queue: decisions 183 / 183; first smoke had 3 long bbio1600 prompts with scores off by <= 2.45 (~300-500, no decision
+  change); not reproduced in a fresh process, in a 6-run process, or on the queue rerun (183 / 183 bit-identical).
+- Queue: V2-devcheck (full DEV replay, 11,591 items; check task fails → TEST blocked on any decision change) → V2-test (31 jobs, 186 runs:
+  StreamGuard v2 5 seeds x (clean + MMLU, benign biology, 18 attacks); DSG 36 / StreamGuard v1 43 / base 7 runs only where no identical-item
+  lab log exists). Scheduler ETA 16h19m at 11:46 (long-pad runs slower: ~2026-11-14 05:00-06:00 IST).
+- Report: `dsgx/analysis/v2_test.py` (per condition forget / fire / attack success, paired vs DSG and StreamGuard v1, utility, false fires,
+  benign biology, R / F / damage per fire, evaluate_v2 V2 + V3). Watcher `scripts/v2_test_when_done.sh` (nohup) writes
+  docs/V2_TEST_RESULT.md, commits, pushes; it never re-runs anything.
