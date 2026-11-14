@@ -568,3 +568,11 @@ Tests: 107 pass on CPU.
   uses the 16 AXES conditions (B7 interleave excluded); worst over all 18 incl. B7: v2 0.297 (B7 interleave + split) vs DSG 0.633,
   still significantly lower in 5 / 5 seeds; v2 benign-bio fire 0.311 [0.269, 0.355]; MMLU false fires v2 vs DSG n.s. (p >= 0.40);
   base64 gate fire 0.000, base 0.265 (chance), stated as a limitation. Deck presentation/progress_nov14.tex (15 pages).
+
+## Session 44 (2026-11-14 12:3x–): E5 gate-triggered self-refusal (lab PC, DEV only, exploratory)
+- DEVIATIONS row (E5) at 2026-11-14T12:49:39+05:30 before any E5 code ran: Step-0 pass / selectivity lines, Step 1-4 rules.
+- AdvBench from the llm-attacks GitHub CSV (HF copy gated), only under `$DSG_PRIVATE/E5/data` (sha256 pinned); Alpaca from the HF cache.
+- Branch exp/E5-self-refusal (= exp/V2-test cc6f375 + merge exp/E2f-ignorance-response; b483b5f, 7a377de; pushed). 9 CPU tests pass.
+- Smoke 13/13 DONE (streaming v2 prompt score bit-identical to `l08_score`). Full E5 queued 13:08 (13 jobs), ETA ≈ 20:30–21:30 IST;
+  watcher `scripts/e5_when_done.sh` fills `docs/E5_SELF_REFUSAL.md`, commits, pushes.
+
