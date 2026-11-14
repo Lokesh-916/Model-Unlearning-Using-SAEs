@@ -558,3 +558,9 @@ Tests: 107 pass on CPU.
 - Report: `dsgx/analysis/v2_test.py` (per condition forget / fire / attack success, paired vs DSG and StreamGuard v1, utility, false fires,
   benign biology, R / F / damage per fire, evaluate_v2 V2 + V3). Watcher `scripts/v2_test_when_done.sh` (nohup) writes
   docs/V2_TEST_RESULT.md, commits, pushes; it never re-runs anything.
+
+## Session 43 (2026-11-14): StreamGuard v2 TEST check (lab PC)
+- No reboot since 2026-11-11 22:32. Queue: 321 done, 0 failed / waiting / blocked; V2-test 31 / 31 jobs, 186 / 186 run dirs DONE,
+  none FAILED or missing; nothing re-queued.
+- docs/V2_TEST_RESULT.md complete (watcher commit 49ded46, pushed): DEV replay PASS, comparator checks all OK, **V2 Supported**
+  (5 / 5 seeds), **V3 Supported** (worst case significantly lower 5 / 5, utility -0.0009, FPR 0.0187). Nothing tuned or re-run.
