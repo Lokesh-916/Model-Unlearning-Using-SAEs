@@ -579,3 +579,12 @@ Tests: 107 pass on CPU.
   s 0.5 refuses (<= 0.86) but is gibberish (0.97-1.00); s 1 and 2 are all gibberish. MCQ arm jobs archived before they started (DEVIATIONS row);
   doctor clean. docs/E5_SELF_REFUSAL.md final.
 
+
+## Session 45 (2026-11-14 18:4x–): E5b extended calibration of E5 (lab PC, DEV only, exploratory)
+- DEVIATIONS row (E5b) at 2026-11-14T18:51:10+05:30 before any E5b code: finer refusal strengths 0.30-0.45 at L10/L12 x modes
+  all / start8 (E5 directions reused), fresh-set confirmation, beyond-cutoff ignorance direction (300 unknowable 2025-26 vs 300 matched
+  pre-2023 questions, 100 held-out well-known), fallback >= 0.70 labelled "weaker setting", arm F; E5 Step-0 lines unchanged.
+- exp/E5-self-refusal 121bb37 (pushed); 15 CPU tests pass (E5 + E5b). Smoke 15/15 DONE (prompt scores bit-identical 3/3 per set).
+- Full E5b queued 19:09 (15 jobs), scheduler ETA ~9h30m (~2026-11-15 04:40 IST). Watcher `scripts/e5b_when_done.sh` (nohup) fills
+  docs/E5_SELF_REFUSAL.md E5b section, commits, pushes. If one direction selects nothing, its MCQ arm jobs raise: archive them
+  before they start (as for E5) and drop them from E5b-summary's deps.
