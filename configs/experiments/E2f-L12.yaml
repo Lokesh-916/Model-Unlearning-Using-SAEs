@@ -1,0 +1,64 @@
+# E2f-L12: reduced E2f Steps 2-3 with the ignorance direction at layer 12, c 1 x norm (lab PC, DEV only, never TEST).
+# EXPLORATORY, not a claim input (DEVIATIONS 2026-11-12 E2f-L12 row, logged before any result): layer 12 at c 1 is
+# outside the original grid (c 2 / 4 / 8) and was chosen from the Step-1 safe-entity check only (IDK 0.32, gibberish
+# 0.02, n 100). Same gate (StreamGuard v1 streaming CUSUM), responses, graders and lines as E2f; reduced to fit ~6 h:
+# 100 items per set (seeded random subset, seed 0, original order kept), max_new 48 tokens on every set, check_n 10.
+# Base-model direction = Step 1's (dsg_cache/E2f/E2f); TOFU-model direction at L12 from task tofu-dir (same recipe).
+exp_id: E2f-L12
+priority: must
+wave: 9
+tasks:
+  - id: tofu-dir
+    entry: experiments.E2f.l12:task
+    args: {layer: 12}
+    kind_slot: gpu
+    gpu_exclusive: true
+    est_minutes: 5
+    est_vram_gb: 7
+  - id: gen-wmdp
+    entry: experiments.E2f.gen:task
+    args: &base {items: wmdp-bio-open, split: dev, max_new: 48, n_items: 100, subset_seed: 0, check_n: 10,
+                 direction: base, ign: {layer: 12, coef: 1.0, dir_exp: E2f, label: exploratory}}
+    smoke_args: {limit: 3, max_new: 16, check_n: 3}
+    kind_slot: gpu
+    gpu_exclusive: true
+    est_minutes: 80
+    est_vram_gb: 9
+    deps: [tofu-dir]
+  - id: gen-benign
+    entry: experiments.E2f.gen:task
+    args: {<<: *base, items: "mmlu-open:college_biology,high_school_biology,anatomy,virology,medical_genetics"}
+    smoke_args: {limit: 3, max_new: 16, check_n: 3}
+    kind_slot: gpu
+    gpu_exclusive: true
+    est_minutes: 70
+    est_vram_gb: 9
+    deps: [gen-wmdp]
+  - id: gen-tofu-forget
+    entry: experiments.E2f.gen:task
+    args: &tofu {items: tofu-forget10, max_new: 48, n_items: 100, subset_seed: 0, check_n: 10, direction: tofu,
+                 ign: {layer: 12, coef: 1.0, label: exploratory}, model: {weights: "ckpt:E2f/tofu_full"},
+                 gate: {forget_corpus: tofu-forget10, retain_corpus: tofu-retain90}}
+    smoke_args: {limit: 3, max_new: 16, check_n: 3}
+    kind_slot: gpu
+    gpu_exclusive: true
+    est_minutes: 75
+    est_vram_gb: 9
+    deps: [gen-benign]
+  - id: gen-tofu-retain
+    entry: experiments.E2f.gen:task
+    args: {<<: *tofu, items: tofu-retain_perturbed}
+    smoke_args: {limit: 3, max_new: 16, check_n: 3}
+    kind_slot: gpu
+    gpu_exclusive: true
+    est_minutes: 75
+    est_vram_gb: 9
+    deps: [gen-tofu-forget]
+  - id: summary
+    entry: experiments.E2f.summary:task
+    args: {step1_exp: E2f}
+    smoke_args: {n_boot: 50}
+    kind_slot: cpu
+    est_minutes: 5
+    est_ram_gb: 4
+    deps: [gen-wmdp, gen-benign, gen-tofu-forget, gen-tofu-retain]

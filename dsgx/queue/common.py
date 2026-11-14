@@ -18,7 +18,11 @@ from dsgx import paths
 from dsgx.util import atomic_write_json, read_json
 
 WAITING, RUNNING, DONE, FAILED, HUNG, BLOCKED = "WAITING", "RUNNING", "DONE", "FAILED", "HUNG", "BLOCKED"
-TERMINAL = {DONE, FAILED, BLOCKED}
+# A job moved to the gpuws server (python -m dsgx.queue.move): never started here, results come from the
+# server job named in its state ("server_job"). Terminal for wave pauses; NOT DONE, so a lab job that
+# depends on it would never start (move.py refuses that; the doctor reports it as `moved-dependency`).
+MOVED = "MOVED-TO-SERVER"
+TERMINAL = {DONE, FAILED, BLOCKED, MOVED}
 PRIORITY_RANK = {"canary": -1, "must": 0, "should": 1, "stretch": 2, "backlog": 3}
 EXIT_OOM = 75
 EXIT_DRIFT = 3
