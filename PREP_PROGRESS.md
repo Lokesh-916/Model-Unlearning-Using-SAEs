@@ -588,3 +588,6 @@ Tests: 107 pass on CPU.
 - Full E5b queued 19:09 (15 jobs), scheduler ETA ~9h30m (~2026-11-15 04:40 IST). Watcher `scripts/e5b_when_done.sh` (nohup) fills
   docs/E5_SELF_REFUSAL.md E5b section, commits, pushes. If one direction selects nothing, its MCQ arm jobs raise: archive them
   before they start (as for E5) and drop them from E5b-summary's deps.
+- **Selections (fixed rule, 20:14):** refusal = fallback L10 s 0.45 start8 (0.89 / gib 0.01; "weaker setting"; fresh confirmation 0.94 /
+  0.00). Ignorance: IDK <= 0.03 everywhere, not selected; arm F MCQ job E5b-004 archived (`queue/_archive/manual-2026-11-14-e5b-noF/`),
+  dropped from E5b-summary deps; DEVIATIONS row. Queue 14 jobs, ETA ~7h23m (~03:40 IST 15 Nov); doctor clean.

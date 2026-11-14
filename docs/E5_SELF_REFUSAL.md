@@ -150,6 +150,21 @@ Lab PC queue, one GPU job at a time, item-level resume in every task: `E5b-smoke
 (50) → `-gen-wmdp-split3` (45) → `-gen-tofu-forget` (35) → `-gen-tofu-retain` (35) → MCQ arms `E5b-000..004` (B–F,
 ~40 min each) → `E5b-summary`. Sum of estimates ≈ 9 h 30 min.
 
+## E5b calibration (interim, 2026-11-14 20:15 IST; the full tables follow from `E5b-summary`)
+
+- **Step 1, refusal (n 100 held-out harmless; base refusal 0.03):** no cell meets the primary line. Mode `all` turns to
+  gibberish from s 0.35 (0.66–0.98), as in E5. Mode `start8` stays clean (gibberish <= 0.01) at every strength: L10
+  refusal 0.69 / 0.81 / 0.88 / 0.89 at s 0.30 / 0.35 / 0.40 / 0.45, and L12 0.26–0.73. **Fallback selects L10, s 0.45 ×
+  norm, mode start8 (refusal 0.89, gibberish 0.01): "weaker setting".** Confirmation on 100 fresh harmless instructions:
+  refusal 0.94, gibberish 0.00, so the setting is confirmed. The TOFU-model direction at L10 has cosine 0.978 with the
+  base direction.
+- **Step 2, beyond-cutoff ignorance (n 100 held-out well-known):** IDK <= 0.03 in every cell (base 0.00). The raw
+  unknowable − known difference is small: 12.9 / 25.5 vs residual norms 152 / 180 at L10 / L12. **Neither the line nor
+  the fallback is met, so arm F does not run** (its MCQ job was archived before it started; DEVIATIONS row). Caveat: base
+  gibberish on these short-answer questions is 0.39 (capitals and years, flagged by the heuristic). This does not affect
+  the verdict, because IDK fails on its own.
+- Steps 2–4 run with arms A–E at the weaker setting. Every downstream result carries the label "weaker setting".
+
 ## E5b results
 
 <!-- E5B-SUMMARY -->
