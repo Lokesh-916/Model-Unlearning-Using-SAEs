@@ -77,6 +77,37 @@ class BatchSteer:
         return resid + self.vecs.to(resid.dtype).unsqueeze(1)
 
 
+class StepSteer:
+    """E5b: per-row steering with an optional limit on generated positions. t = number of generated tokens fed so
+    far (0 during the pass over the prompt / re-fed sequence; k while generated token k is fed). Row i is steered
+    iff limits[i] is None (mode i: every position) or t <= limits[i] (mode ii: prompt + first `limit` generated)."""
+
+    def __init__(self, vecs, limits):
+        self.vecs = vecs
+        self.limits = list(limits)
+        self.t = 0
+
+    def __call__(self, resid, hook=None):
+        if self.t == 0:
+            v = self.vecs
+        else:
+            m = torch.tensor([lim is None or self.t <= lim for lim in self.limits], device=self.vecs.device)
+            v = self.vecs * m.view(-1, 1).to(self.vecs.dtype)
+        return resid + v.to(resid.dtype).unsqueeze(1)
+
+
+def _steer_hook(vecs, limits):
+    if limits is None or all(lim is None for lim in limits):
+        return BatchSteer(vecs)
+    return StepSteer(vecs, limits)
+
+
+def _set_t(hooks, t):
+    for h in hooks:
+        if isinstance(h, StepSteer):
+            h.t = t
+
+
 @torch.no_grad()
 def phase1(model, toks, det_hook_name=None, det=None, max_new=96):
     """-> (tokens, stop, fire_step | None, fire_score, prompt_score)."""
@@ -112,13 +143,14 @@ def phase1(model, toks, det_hook_name=None, det=None, max_new=96):
 
 @torch.no_grad()
 def continue_batch(model, seq, n_left, rows, clamp=None, steer_layer=None):
-    """seq [1, n]; rows: list of {"clamp": bool, "vec": tensor [d] | None}; clamp = (sae, feats, mult, hook_name).
-    -> list of (new tokens, stop) per row."""
+    """seq [1, n]; rows: list of {"clamp": bool, "vec": tensor [d] | None, "limit": int | None (E5b mode ii; optional)};
+    clamp = (sae, feats, mult, hook_name). -> list of (new tokens, stop) per row."""
     from transformer_lens.cache.key_value_cache import TransformerLensKeyValueCache
 
     dev = model.cfg.device
     end = end_ids(model)
     R = len(rows)
+    hooks = []
     model.reset_hooks()
     try:
         if any(r["clamp"] for r in rows):
@@ -127,15 +159,19 @@ def continue_batch(model, seq, n_left, rows, clamp=None, steer_layer=None):
             model.add_hook(hook_name, BatchClamp(sae, feats, mask, mult))
         if any(r["vec"] is not None for r in rows):
             d = model.cfg.d_model
-            V = torch.stack([r["vec"].float().to(dev) if r["vec"] is not None else torch.zeros(d, device=dev)
-                             for r in rows])
-            model.add_hook(f"blocks.{steer_layer}.hook_resid_post", BatchSteer(V))
+            lay = lambda r: r.get("layer", steer_layer)  # noqa: E731  (E5b arm F may steer another layer)
+            for Ls in sorted({lay(r) for r in rows if r["vec"] is not None}):
+                V = torch.stack([r["vec"].float().to(dev) if (r["vec"] is not None and lay(r) == Ls)
+                                 else torch.zeros(d, device=dev) for r in rows])
+                steer = _steer_hook(V, [r.get("limit") for r in rows])
+                model.add_hook(f"blocks.{Ls}.hook_resid_post", steer)
+                hooks.append(steer)
         cache = TransformerLensKeyValueCache.init_cache(model.cfg, dev, R)
         last = model(seq.repeat(R, 1), past_kv_cache=cache)[:, -1]
         outs = [[] for _ in range(R)]
         stops = ["max_new"] * R
         live = [True] * R
-        for _ in range(n_left):
+        for k in range(1, n_left + 1):
             nxt = last.argmax(dim=-1)
             for i, t in enumerate(nxt.tolist()):
                 if live[i]:
@@ -144,6 +180,7 @@ def continue_batch(model, seq, n_left, rows, clamp=None, steer_layer=None):
                         live[i], stops[i] = False, "eos"
             if not any(live):
                 break
+            _set_t(hooks, k)
             last = model(nxt.view(R, 1), past_kv_cache=cache)[:, -1]
     finally:
         model.reset_hooks()
@@ -151,15 +188,17 @@ def continue_batch(model, seq, n_left, rows, clamp=None, steer_layer=None):
 
 
 @torch.no_grad()
-def forced_batch(model, prompt, rows, steer_layers, max_new):
+def forced_batch(model, prompt, rows, steer_layers, max_new, limits=None):
     """Forced-on steering from the prompt (Steps 1-2, no gate): rows = list of (layer | None, vec | None); one hook
-    per layer adds each row's vector (zero for rows of other layers). -> list of token lists."""
+    per layer adds each row's vector (zero for rows of other layers). limits (E5b, optional): per-row None (every
+    position) or n (prompt + first n generated positions). -> list of token lists."""
     from transformer_lens.cache.key_value_cache import TransformerLensKeyValueCache
 
     dev = model.cfg.device
     end = end_ids(model)
     R = len(rows)
     toks = model.to_tokens(prompt, prepend_bos=False).to(dev)
+    hooks = []
     model.reset_hooks()
     try:
         d = model.cfg.d_model
@@ -167,12 +206,14 @@ def forced_batch(model, prompt, rows, steer_layers, max_new):
             V = torch.stack([v.float().to(dev) if (l == L and v is not None) else torch.zeros(d, device=dev)
                              for l, v in rows])
             if V.abs().sum() > 0:
-                model.add_hook(f"blocks.{L}.hook_resid_post", BatchSteer(V))
+                h = _steer_hook(V, limits)
+                model.add_hook(f"blocks.{L}.hook_resid_post", h)
+                hooks.append(h)
         cache = TransformerLensKeyValueCache.init_cache(model.cfg, dev, R)
         last = model(toks.repeat(R, 1), past_kv_cache=cache)[:, -1]
         outs = [[] for _ in range(R)]
         live = [True] * R
-        for _ in range(max_new):
+        for k in range(1, max_new + 1):
             nxt = last.argmax(dim=-1)
             for i, t in enumerate(nxt.tolist()):
                 if live[i]:
@@ -181,6 +222,7 @@ def forced_batch(model, prompt, rows, steer_layers, max_new):
                         live[i] = False
             if not any(live):
                 break
+            _set_t(hooks, k)
             last = model(nxt.view(R, 1), past_kv_cache=cache)[:, -1]
     finally:
         model.reset_hooks()

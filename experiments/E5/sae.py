@@ -88,9 +88,13 @@ def task(ctx):
                      heldout_ids=[q["id"] for q in held])
     ctx.progress.update(items_total=len(held), items_done=0, force=True)
     priv = ctx.private_dir()
-    ck = ItemCheckpoints(priv / "partial", ["E5-sae", [q["id"] for q in held], L, s_star, j0, levels, max_new])
-    done = ck.map(held, lambda q: forced_batch(m, chat(q["text"]), rows, [L], max_new), key=lambda q: q["id"],
-                  on_done=ctx.progress.advance)
+    ck_key = ["E5-sae", [q["id"] for q in held], L, s_star, j0, levels, max_new]
+    if "mode" in sel:
+        ck_key.append(sel["mode"])
+    ck = ItemCheckpoints(priv / "partial", ck_key)
+    lim = {"all": None, "start8": 8}[sel.get("mode", "all")]       # E5b mode (E5: always "all")
+    done = ck.map(held, lambda q: forced_batch(m, chat(q["text"]), rows, [L], max_new, [lim] * len(rows)),
+                  key=lambda q: q["id"], on_done=ctx.progress.advance)
     recs, gens = [], []
     for q, outs in zip(held, done):
         for name, ids in zip(names, outs):
@@ -109,9 +113,9 @@ def task(ctx):
         res[name] = {"k": k, "level": c, **{x: stats.bootstrap_ci(dd[x].astype(float).values) for x in ("refusal", "gibberish")}}
         if k is not None:
             lv.append({"k": k, "level": c, "refusal": res[name]["refusal"]["mean"], "gib": res[name]["gibberish"]["mean"]})
-    target = s1["cells"][f"L{L}s{s_star:g}"]["refusal"]["mean"]
+    target = float(sel["refusal"]) if "mode" in sel else s1["cells"][f"L{L}s{s_star:g}"]["refusal"]["mean"]
     chosen = select_level(lv, target)
-    out = {"layer": L, "s_star": s_star, "norm": norm, "sae_id": sae_id, "top": tops, "levels": res,
+    out = {"layer": L, "s_star": s_star, "mode": sel.get("mode", "all"), "norm": norm, "sae_id": sae_id, "top": tops, "levels": res,
            "target_refusal": target, "chosen": chosen, "n_heldout": len(held),
            "latent_vec_norm_over_resid_norm": float(chosen["level"] * tops[0]["dec_norm"] / norm)}
     ctx.write_metrics(out)

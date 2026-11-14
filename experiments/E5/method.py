@@ -4,6 +4,7 @@ threshold, same layer-3 clamp object) with an E5 arm as the response when the ga
 cfg: experiments.V2.common.METHOD + {name: sg2-arm, module: experiments.E5.method, arm: B | C | D | E, e5_exp: E5}.
   B  refusal direction at a* (no clamp)      C  top SAE refusal latent at its Step-2 level (no clamp)
   D  clamp + direction at a*                 E  direction at a* x (0.25 + 0.75 p), p from the prompt's L08 score
+  F  (E5b) beyond-cutoff ignorance direction at its selected setting (no clamp)
 The steering vector is added at blocks.L.hook_resid_post on all positions of the rows whose gate fired. The clamp
 (D) is v2's own _GateHook with forced = the decision; for B / C / E the same hook runs with forced all-False (it then
 only records), and pop_records restores gate_fired = the decision. Arm A is v2 itself (V2-devcheck clean run).
@@ -40,28 +41,43 @@ class StreamGuardV2Arm(StreamGuardV2):
         cfg = dict(cfg)
         super().__init__(cfg, bundle, seed)
         self.arm = cfg["arm"]
-        if self.arm not in ("B", "C", "D", "E"):
+        if self.arm not in ("B", "C", "D", "E", "F"):
             raise ValueError(f"arm {self.arm}")
         e5 = cfg.get("e5_exp", "E5")
         rd = paths.runs_dir() / e5
-        s1 = json.loads((rd / "refusal" / "metrics.json").read_text())
-        if not s1["selection"]["eligible"]:
-            raise RuntimeError("E5 Step 1 selected no cell: the MCQ arms do not run")
-        s2 = json.loads((rd / "sae" / "metrics.json").read_text())
-        self.L, self.s_star = int(s1["selection"]["layer"]), float(s1["selection"]["s"])
-        d, norm = load_dir(e5, "base", self.L)
-        self.v_star = self.s_star * norm * torch.tensor(d, dtype=torch.float32, device=bundle.device)
-        if self.arm == "C":
-            sae = get_sae(SAE_RELEASE, f"layer_{self.L}/width_16k/average_l0_{CANONICAL_L0[self.L]}", "float32", bundle.device)
-            j0 = int(s2["top"][0]["latent"])
-            self.v_arm = float(s2["chosen"]["level"]) * sae.W_dec[j0].detach().float().to(bundle.device)
-        else:
+        self.L = None
+        if self.arm == "F":                                   # E5b: beyond-cutoff ignorance direction (no clamp)
+            from experiments.E5.e5b import ign_cache_path, load_npz_dir
+
+            ig = json.loads((rd / "ignorance" / "metrics.json").read_text())["selection"]
+            if not ig["eligible"]:
+                raise RuntimeError("E5b Step 2 selected no ignorance setting: arm F does not run")
+            self.L, self.s_star = int(ig["layer"]), float(ig["s"])
+            d, norm = load_npz_dir(ign_cache_path(e5, "base"), self.L)
+            self.v_star = self.s_star * norm * torch.tensor(d, dtype=torch.float32, device=bundle.device)
             self.v_arm = self.v_star
+            s2 = None
+        else:
+            s1 = json.loads((rd / "refusal" / "metrics.json").read_text())
+            if not s1["selection"]["eligible"]:
+                raise RuntimeError("E5 Step 1 selected no cell: the MCQ arms do not run")
+            s2 = json.loads((rd / "sae" / "metrics.json").read_text())
+            self.L, self.s_star = int(s1["selection"]["layer"]), float(s1["selection"]["s"])
+            d, norm = load_dir(e5, "base", self.L)
+            self.v_star = self.s_star * norm * torch.tensor(d, dtype=torch.float32, device=bundle.device)
+            if self.arm == "C":
+                sae = get_sae(SAE_RELEASE, f"layer_{self.L}/width_16k/average_l0_{CANONICAL_L0[self.L]}", "float32",
+                              bundle.device)
+                j0 = int(s2["top"][0]["latent"])
+                self.v_arm = float(s2["chosen"]["level"]) * sae.W_dec[j0].detach().float().to(bundle.device)
+            else:
+                self.v_arm = self.v_star
         self.ref = ref_scores() if self.arm == "E" else None
         self.steer = _RowSteer()
         self._dec = []
         self.info.update({"arm": self.arm, "e5_exp": e5, "steer_layer": self.L, "s_star": self.s_star,
                           "latent": s2["top"][0]["latent"] if self.arm == "C" else None})
+        # MCQ scoring is one prompt-only forward: E5b's start8 mode (prompt + first 8 generated) equals mode "all" here.
 
     def install(self):
         m = self.bundle.model

@@ -25,6 +25,7 @@ from dsgx.itemckpt import ItemCheckpoints
 
 from experiments.E5.batchgen import L08Detector, continue_batch, phase1
 from experiments.E5.common import ARMS, CURVE, CURVE_ARMS, CANONICAL_L0, SAE_RELEASE, is_refusal, prop_strength
+from experiments.E5.cutoff import is_idk
 from experiments.E5.data import open_attack_prompt
 from experiments.E5.refusal import load_dir
 from experiments.V2.common import DSG_FEATURES, METHOD, THRESHOLD
@@ -66,11 +67,13 @@ def task(ctx):
 
     a = ctx.args
     s1exp = a.get("step1_exp", ctx.exp_id)
-    s1 = json.loads((paths.runs_dir() / s1exp / "refusal" / "metrics.json").read_text())
-    if not s1["selection"]["eligible"]:
-        return stopped(ctx, "Step 1: no eligible cell")
-    s2 = json.loads((paths.runs_dir() / s1exp / "sae" / "metrics.json").read_text())
-    L, s_star = int(s1["selection"]["layer"]), float(s1["selection"]["s"])
+    rd1 = paths.runs_dir() / s1exp
+    s1 = json.loads((rd1 / "refusal" / "metrics.json").read_text())
+    ign = json.loads((rd1 / "ignorance" / "metrics.json").read_text()) if (rd1 / "ignorance" / "metrics.json").exists() else None
+    ref_ok = bool(s1["selection"]["eligible"])
+    ign_ok = bool(ign is not None and ign["selection"]["eligible"])          # E5b arm F
+    if not ref_ok and not ign_ok:
+        return stopped(ctx, "Step 1: no eligible cell" + (" (refusal and ignorance)" if ign is not None else ""))
     items = item_set(a["items"], a.get("split", "dev"))
     if a.get("n_items") and len(items) > int(a["n_items"]):
         keep = np.sort(np.random.default_rng(int(a.get("subset_seed", 0))).choice(len(items), int(a["n_items"]), replace=False))
@@ -79,28 +82,46 @@ def task(ctx):
         items = items[: int(a["limit"])]
     attack = a.get("attack", "none")
     max_new = int(a.get("max_new", 96))
-    curve = bool(a.get("curve", False))
+    curve = bool(a.get("curve", False)) and ref_ok
     mc = a.get("model", {})
     b = get_bundle(weights=resolve_weights(mc.get("weights"), ctx.exp_id))
     m = b.model
     sae8, feats, w1, w0 = load_gate(b)
     dkey = a.get("direction", "base")
-    d, norm = load_dir(s1exp, dkey, L)
-    unit = torch.tensor(d, dtype=torch.float32, device=b.device)
-    v_star = s_star * norm * unit
-    sae_l = get_sae(SAE_RELEASE, f"layer_{L}/width_16k/average_l0_{CANONICAL_L0[L]}", "float32", b.device)
-    j0, level = int(s2["top"][0]["latent"]), float(s2["chosen"]["level"])
-    v_lat = level * sae_l.W_dec[j0].detach().float().to(b.device)
+    lim = {"all": None, "start8": 8}
+    L = s_star = norm = j0 = level = r_lim = None
+    if ref_ok:
+        s2 = json.loads((rd1 / "sae" / "metrics.json").read_text())
+        L, s_star = int(s1["selection"]["layer"]), float(s1["selection"]["s"])
+        r_lim = lim[s1["selection"].get("mode", "all")]
+        d, norm = load_dir(s1exp, dkey, L)
+        unit = torch.tensor(d, dtype=torch.float32, device=b.device)
+        v_star = s_star * norm * unit
+        sae_l = get_sae(SAE_RELEASE, f"layer_{L}/width_16k/average_l0_{CANONICAL_L0[L]}", "float32", b.device)
+        j0, level = int(s2["top"][0]["latent"]), float(s2["chosen"]["level"])
+        v_lat = level * sae_l.W_dec[j0].detach().float().to(b.device)
+    LF = sF = f_lim = None
+    if ign_ok:
+        from experiments.E5.e5b import ign_cache_path, load_npz_dir
+
+        isel = ign["selection"]
+        LF, sF, f_lim = int(isel["layer"]), float(isel["s"]), lim[isel["mode"]]
+        dF, nF = load_npz_dir(ign_cache_path(s1exp, dkey), LF)
+        v_F = torch.tensor(sF * nF * dF, dtype=torch.float32, device=b.device)
     ref = ref_scores()
     clamp = (b.sae, DSG_FEATURES, 500.0, b.hook_name)
-    conds = ["base"] + ARMS + (CURVE_ARMS if curve else [])
+    conds = ["base", "A"] + (ARMS[1:] if ref_ok else []) + (["F"] if ign_ok else []) + (CURVE_ARMS if curve else [])
     ctx.write_config(items=a["items"], attack=attack, n_items=len(items), max_new=max_new, model=mc, direction=dkey,
                      layer=L, s_star=s_star, norm=norm, latent=j0, latent_level=level, threshold=THRESHOLD,
-                     n_ref_scores=len(ref), conds=conds, item_ids=[it.item_id for it in items])
+                     n_ref_scores=len(ref), conds=conds, item_ids=[it.item_id for it in items],
+                     refusal_selection=s1["selection"], ignorance_selection=ign["selection"] if ign else None)
     ctx.progress.update(items_total=len(items), items_done=0, force=True)
     priv = ctx.private_dir()
-    ck = ItemCheckpoints(priv / "partial", ["E5-gen", a["items"], attack, [it.item_id for it in items], max_new, mc,
-                                            dkey, L, s_star, norm, j0, level, THRESHOLD, conds])
+    ck_key = ["E5-gen", a["items"], attack, [it.item_id for it in items], max_new, mc, dkey, L, s_star, norm, j0, level,
+              THRESHOLD, conds]
+    if ign is not None:
+        ck_key += [r_lim, LF, sF, f_lim]
+    ck = ItemCheckpoints(priv / "partial", ck_key)
 
     def one(it):
         p = open_attack_prompt(it.question, attack, it.item_id)
@@ -115,12 +136,19 @@ def task(ctx):
             for c in conds[1:]:
                 res[c] = list(out)
             return res
-        sE, pE = prop_strength(fscore, ref, s_star)
-        res["strength_E"], res["p_E"] = sE, pE
-        rows = [{"clamp": True, "vec": None}, {"clamp": False, "vec": v_star}, {"clamp": False, "vec": v_lat},
-                {"clamp": True, "vec": v_star}, {"clamp": False, "vec": (sE / s_star) * v_star}]
-        if curve:
-            rows += [{"clamp": False, "vec": c * v_star} for c in CURVE]
+        rowmap = {"A": {"clamp": True, "vec": None}}
+        if ref_ok:
+            sE, pE = prop_strength(fscore, ref, s_star)
+            res["strength_E"], res["p_E"] = sE, pE
+            rowmap.update({"B": {"clamp": False, "vec": v_star, "limit": r_lim},
+                           "C": {"clamp": False, "vec": v_lat, "limit": r_lim},
+                           "D": {"clamp": True, "vec": v_star, "limit": r_lim},
+                           "E": {"clamp": False, "vec": (sE / s_star) * v_star, "limit": r_lim}})
+            for c, x in zip(CURVE_ARMS, CURVE):
+                rowmap[c] = {"clamp": False, "vec": x * v_star, "limit": r_lim}
+        if ign_ok:
+            rowmap["F"] = {"clamp": False, "vec": v_F, "layer": LF, "limit": f_lim}
+        rows = [rowmap[c] for c in conds[1:]]
         prefix = out[:fire]
         seq = torch.cat([toks, torch.tensor([prefix], dtype=torch.long, device=b.device)], dim=1) if prefix else toks
         for c, (new, _) in zip(conds[1:], continue_batch(m, seq, max_new - len(prefix), rows, clamp, L)):
@@ -138,7 +166,7 @@ def task(ctx):
                          "fire_score": o["fire_score"], "prompt_score": o["prompt_score"],
                          "prompt_score_ref": o["prompt_score_ref"], "max_score": o["max_score"],
                          "strength_E": o["strength_E"], "p_E": o["p_E"], "prompt_len": o["prompt_len"],
-                         "n_tokens": len(o[c]), "text_hash": text_hash(text), "refusal": is_refusal(text),
+                         "n_tokens": len(o[c]), "text_hash": text_hash(text), "refusal": is_refusal(text), "idk": is_idk(text),
                          **gibberish(text, o[c]), "_text": text, "_ref": it.reference})
     with (priv / "generations.jsonl").open("w") as f:
         for g in gens:
@@ -158,7 +186,7 @@ def task(ctx):
                      "prompt_decision_diff": int(dec.sum()), "n": int(len(base))}}
     for c in conds:
         dd = df[(df["cond"] == c) & df["fired"]]
-        met[c] = {k: float(dd[k].astype(float).mean()) if len(dd) else None for k in ("match", "gibberish", "refusal")}
+        met[c] = {k: float(dd[k].astype(float).mean()) if len(dd) else None for k in ("match", "gibberish", "refusal", "idk")}
     ctx.write_metrics(met)
     ctx.finish({"view": f"e5-gen:{a['items']}:{attack}", "forget": met["A"]["match"], "check": met["check"]})
     ck.clear()

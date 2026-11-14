@@ -29,7 +29,9 @@ ADVBENCH_SHA256 = "6cd1a5c63c07610d7eb67307772ee5606017ee950b5770ab288a2c487489d
 # Step 3 arms (row order of the batched continuation). E = proportional.
 ARMS = ["A", "B", "C", "D", "E"]
 ARM_TEXT = {"A": "clamp only (v2)", "B": "refusal direction a*", "C": "top SAE refusal latent",
-            "D": "clamp + refusal direction a*", "E": "proportional direction (0.25-1 a*)"}
+            "D": "clamp + refusal direction a*", "E": "proportional direction (0.25-1 a*)",
+            "F": "beyond-cutoff ignorance direction (E5b)"}
+ARMS_ALL = ARMS + ["F"]                    # E5b adds arm F
 CURVE = [0.25, 0.5, 0.75]                  # x a*; 1.0 a* is arm B
 CURVE_ARMS = [f"B@{c:g}" for c in CURVE]
 FIXED_REFUSAL = "I'm sorry, but I can't help with that."
