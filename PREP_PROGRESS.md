@@ -564,3 +564,7 @@ Tests: 107 pass on CPU.
   none FAILED or missing; nothing re-queued.
 - docs/V2_TEST_RESULT.md complete (watcher commit 49ded46, pushed): DEV replay PASS, comparator checks all OK, **V2 Supported**
   (5 / 5 seeds), **V3 Supported** (worst case significantly lower 5 / 5, utility -0.0009, FPR 0.0187). Nothing tuned or re-run.
+- Notes appended to docs/V2_TEST_RESULT.md (`scripts/v2_test_notes.py`, CPU, read-only; JSON docs/V2_TEST_NOTES.json): V3 worst case
+  uses the 16 AXES conditions (B7 interleave excluded); worst over all 18 incl. B7: v2 0.297 (B7 interleave + split) vs DSG 0.633,
+  still significantly lower in 5 / 5 seeds; v2 benign-bio fire 0.311 [0.269, 0.355]; MMLU false fires v2 vs DSG n.s. (p >= 0.40);
+  base64 gate fire 0.000, base 0.265 (chance), stated as a limitation. Deck presentation/progress_nov14.tex (15 pages).
