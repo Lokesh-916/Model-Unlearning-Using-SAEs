@@ -575,4 +575,7 @@ Tests: 107 pass on CPU.
 - Branch exp/E5-self-refusal (= exp/V2-test cc6f375 + merge exp/E2f-ignorance-response; b483b5f, 7a377de; pushed). 9 CPU tests pass.
 - Smoke 13/13 DONE (streaming v2 prompt score bit-identical to `l08_score`). Full E5 queued 13:08 (13 jobs), ETA ≈ 20:30–21:30 IST;
   watcher `scripts/e5_when_done.sh` fills `docs/E5_SELF_REFUSAL.md`, commits, pushes.
+- **E5 STOPPED at Step 1 (13:39, fixed rule):** no cell met refusal >= 0.90 and gibberish <= 0.02. s 0.25 is clean (refusal <= 0.45, L10);
+  s 0.5 refuses (<= 0.86) but is gibberish (0.97-1.00); s 1 and 2 are all gibberish. MCQ arm jobs archived before they started (DEVIATIONS row);
+  doctor clean. docs/E5_SELF_REFUSAL.md final.
 
