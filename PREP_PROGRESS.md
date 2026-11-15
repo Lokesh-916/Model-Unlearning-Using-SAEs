@@ -591,3 +591,9 @@ Tests: 107 pass on CPU.
 - **Selections (fixed rule, 20:14):** refusal = fallback L10 s 0.45 start8 (0.89 / gib 0.01; "weaker setting"; fresh confirmation 0.94 /
   0.00). Ignorance: IDK <= 0.03 everywhere, not selected; arm F MCQ job E5b-004 archived (`queue/_archive/manual-2026-11-14-e5b-noF/`),
   dropped from E5b-summary deps; DEVIATIONS row. Queue 14 jobs, ETA ~7h23m (~03:40 IST 15 Nov); doctor clean.
+
+## Session 46 (2026-11-15 09:4x): E5b stall recovered
+- E5b-gen-wmdp-pad400 finished rc 0 at 23:27 (150/150), but the scheduler crash-looped (63x, supervisor restart every 30 s) in
+  `status._ci` on a plain-float `forget` headline, so nothing new started for ~10 h. No reboot (up since 11 Nov). Display-only fix
+  (v2-harness 771e143, prep same); no method, setting or rule changed. Queue resumed 09:48 (split3 started); doctor clean;
+  ETA ~4h48m (~14:40 IST). Watcher e5b_when_done.sh still alive (pid 478645).
