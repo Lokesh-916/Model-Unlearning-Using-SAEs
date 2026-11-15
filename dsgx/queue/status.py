@@ -26,7 +26,9 @@ def _fmt_dur(s):
 
 
 def _ci(x):
-    if not x or x.get("mean") is None:
+    if isinstance(x, (int, float)) and not isinstance(x, bool):
+        return f"{x:.4f}"
+    if not isinstance(x, dict) or x.get("mean") is None:
         return "-"
     lo, hi = x.get("lo"), x.get("hi")
     ci = f" [{lo:.3f},{hi:.3f}]" if lo is not None else ""
