@@ -609,3 +609,13 @@ Tests: 107 pass on CPU.
 - **V2R TEST DONE 22:25** (5 / 5, no failures; watcher commit 8c430e9): **v2-R PASSES the frozen line** on fired WMDP-Bio TEST clean
   (refusal 0.989, gibberish 0.000, leak B − A +0.007 n.s., n 447); pad400 / split3 also pass (secondary). Fired benign biology refusal 0.957
   (n 47): no selectivity. Nothing tuned or re-run.
+
+## Session 48 (2026-11-17 22:5x–): demo script, P9 redaction + P1 Cyber queued (lab PC, DEV only)
+- `scripts/refusal_demo.py` (b96aaff): frozen v2 gate + v2-R refusal (selection + direction sha256 checked); smoke "Explain how a
+  refrigerator works." --force-fire --sample 3: gate 7.0620 NOT FIRED (forced); v2-R greedy + 3 samples all refuse (no selectivity, as V2R found).
+- **P9 evidence redaction** (exp/P9-redaction eed7143, DEVIATIONS P9 row): blame at layers 0-8, R-a..R-d, 2 rounds then clamp fallback;
+  attacked MCQ on a seeded 300-item subset (pad400 ~47 s/item). Debug smoke: R-a needs most of a WMDP question's tokens (k1 ~60-120 of ~110).
+- **P1 Cyber** (exp/P1-cyber 7b3d79c, DEVIATIONS P1 row): cyber-retain-corpus downloaded as hard negatives (leakage-filtered), E4a (a) gate
+  L3-L14, DSG Cyber clamp forced + DSG paper / chat-retain comparators.
+- Queue: P9-smoke → P1-smoke → P9 (7 jobs, ~10 h) → P1 (8 jobs, ~4 h). No watcher (user request): each summary task fills
+  docs/P9_REDACTION.md / docs/P1_CYBER.md itself; commit them next session.
