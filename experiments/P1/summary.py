@@ -110,11 +110,17 @@ def task(ctx):
     for tag in tags:
         col = f"a-sae-cusum|{tag}"
         s_cal = qm.loc[cal_idx, col].astype(float).values
-        ops = {"op5": conformal_threshold(s_cal, ALPHA5)}
+        ops = {}
+        try:
+            ops["op5"] = conformal_threshold(s_cal, ALPHA5)
+        except ValueError:
+            if not ctx.smoke:
+                raise
         try:
             ops["opDSG"] = conformal_threshold(s_cal, max(alpha_dsg, 1.0 / (len(s_cal) + 1)))
         except ValueError:
-            pass
+            if not ctx.smoke:
+                raise
         sc = {k: q[q["cond"] == f"cyber_{k}"].set_index("item_id")[col].astype(float) for k in ATTACKS}
         sc_m = qm[col].astype(float)
         sc_b = q[q["cond"] == "benign_cs"].set_index("item_id")[col].astype(float)
@@ -159,6 +165,9 @@ def task(ctx):
             cell["line_c"] = bool(all(cell[f"recall_{k}"]["mean"] >= RECALL_LINE - 1e-12 for k in ("pad400", "split3")))
             cell["all"] = bool(cell["line_a"] and cell["line_b"] and cell["line_c"])
             R["cells"][f"{tag}|{op}"] = cell
+    if not R["cells"] and ctx.smoke:
+        R["cells"]["smoke|none"] = None
+        R["cells"] = {}
     elig = [c for c in R["cells"].values() if c["line_a"]]
     pick = sorted(elig, key=lambda c: (c["worst_forget"], c["util_loss"], c["op"] != "op5",
                                        next(l for t, l, _ in SAES if t == c["tag"]), c["tag"]))[0] if elig else None
