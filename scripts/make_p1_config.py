@@ -16,6 +16,7 @@ cfg = {
     "exp_id": "P1", "priority": "must", "wave": 9,
     "base": {"case": "cyber", "split": "dev", "purpose": "explore", "view": "raw", "batch_size": 1, "seed": 0},
     "runs": runs,
+    "smoke": {"base": {"limit": 4}},
     "jobs": {"group_size": 3, "gpu_exclusive": True, "est_seconds_per_item": 0.22, "est_vram_gb": 9,
              "deps": ["questions"]},
     "tasks": [
