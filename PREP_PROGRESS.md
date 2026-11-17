@@ -617,5 +617,5 @@ Tests: 107 pass on CPU.
   attacked MCQ on a seeded 300-item subset (pad400 ~47 s/item). Debug smoke: R-a needs most of a WMDP question's tokens (k1 ~60-120 of ~110).
 - **P1 Cyber** (exp/P1-cyber 7b3d79c, DEVIATIONS P1 row): cyber-retain-corpus downloaded as hard negatives (leakage-filtered), E4a (a) gate
   L3-L14, DSG Cyber clamp forced + DSG paper / chat-retain comparators.
-- Queue: P9-smoke → P1-smoke → P9 (7 jobs, ~10 h) → P1 (8 jobs, ~4 h). No watcher (user request): each summary task fills
+- Smokes 15/15 DONE (P1 summary fixed for tiny smoke calibration sets, exp/P1-cyber 31eed0a; forced Cyber clamp == DSG gated on DSG-fired prompts 1.0000). P9 full started 23:4x; then P1 (~10 h + ~4 h). No watcher (user request): each summary task fills
   docs/P9_REDACTION.md / docs/P1_CYBER.md itself; commit them next session.
