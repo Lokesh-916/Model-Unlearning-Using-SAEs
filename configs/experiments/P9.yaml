@@ -1,0 +1,68 @@
+# P9 evidence redaction (POST-v2 EXTENSION, EXPLORATORY, DEV only, lab PC; frozen StreamGuard v2 / v2-R unchanged).
+# Rules, variants and lines: DEVIATIONS 2026-11-17 P9 row (logged before any P9 result); experiments/P9/common.py.
+# One GPU job at a time (chained), item-level resume in every task. Report: prep docs/P9_REDACTION.md.
+exp_id: P9
+priority: must
+wave: 9
+tasks:
+  - id: mcq-clean
+    entry: experiments.P9.mcq:task
+    args: {cond: clean}
+    smoke_args: {limit: 2}
+    kind_slot: gpu
+    gpu_exclusive: true
+    est_minutes: 90
+    est_vram_gb: 12
+  - id: gen-wmdp
+    entry: experiments.P9.gen:task
+    args: {set: wmdp}
+    smoke_args: {limit: 2, max_new: 16}
+    kind_slot: gpu
+    gpu_exclusive: true
+    est_minutes: 110
+    est_vram_gb: 12
+    deps: [mcq-clean]
+  - id: gen-benign
+    entry: experiments.P9.gen:task
+    args: {set: benign}
+    smoke_args: {limit: 2, max_new: 16}
+    kind_slot: gpu
+    gpu_exclusive: true
+    est_minutes: 50
+    est_vram_gb: 12
+    deps: [gen-wmdp]
+  - id: mcq-split3
+    entry: experiments.P9.mcq:task
+    args: {cond: split3}
+    smoke_args: {limit: 2}
+    kind_slot: gpu
+    gpu_exclusive: true
+    est_minutes: 35
+    est_vram_gb: 12
+    deps: [gen-benign]
+  - id: mcq-hindi
+    entry: experiments.P9.mcq:task
+    args: {cond: hindi}
+    smoke_args: {limit: 2}
+    kind_slot: gpu
+    gpu_exclusive: true
+    est_minutes: 60
+    est_vram_gb: 12
+    deps: [mcq-split3]
+  - id: mcq-pad400
+    entry: experiments.P9.mcq:task
+    args: {cond: pad400}
+    smoke_args: {limit: 2}
+    kind_slot: gpu
+    gpu_exclusive: true
+    est_minutes: 240
+    est_vram_gb: 12
+    deps: [mcq-hindi]
+  - id: summary
+    entry: experiments.P9.summary:task
+    args: {doc: /home/amaloch/projects/mechunlearn-project/prep/docs/P9_REDACTION.md}
+    smoke_args: {doc: "", n_boot: 200}
+    kind_slot: cpu
+    est_minutes: 5
+    est_ram_gb: 4
+    deps: [mcq-pad400]
