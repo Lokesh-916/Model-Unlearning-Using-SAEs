@@ -597,3 +597,12 @@ Tests: 107 pass on CPU.
   `status._ci` on a plain-float `forget` headline, so nothing new started for ~10 h. No reboot (up since 11 Nov). Display-only fix
   (v2-harness 771e143, prep same); no method, setting or rule changed. Queue resumed 09:48 (split3 started); doctor clean;
   ETA ~4h48m (~14:40 IST). Watcher e5b_when_done.sh still alive (pid 478645).
+
+## Session 47 (2026-11-17 10:3x–): StreamGuard v2-R single TEST evaluation queued (lab PC)
+- E5b check: 14 / 14 DONE, no failures, no reboot since 11 Nov; docs/E5_SELF_REFUSAL.md E5b section already complete; v2-harness 771e143 pushed.
+- **Freeze** (before any TEST data): exp/V2R-test 16416f7 (pushed; = exp/E5-self-refusal 121bb37 + `arms` / `frozen` args in gen.py,
+  v2r_summary, config, 3 CPU tests; 18 E5/E5b/V2R tests pass), DEVIATIONS row 2026-11-17T10:51:50+05:30, config sha256 f715808d….
+  v2-R = frozen v2 gate (experiments/V2 identical to cc6f375) → E5b arm B (L10, 0.45 x 191.01, start8), greedy, 96 tokens, "weaker setting".
+- DEV smoke 5 / 5 DONE (3 items per set, prompt scores bit-identical). TEST queued 10:55: V2R-gen-wmdp → -gen-benign → -gen-wmdp-pad400 →
+  -gen-wmdp-split3 → V2R-summary (476 x 3 + 163 items, base / A / B), ETA ~8h10m (~19:00 IST). Watcher `scripts/v2r_when_done.sh`
+  (nohup, log $DSG_RESULTS/v2r_watch.log) fills docs/V2R_TEST_RESULT.md, commits, pushes; never re-runs anything.
