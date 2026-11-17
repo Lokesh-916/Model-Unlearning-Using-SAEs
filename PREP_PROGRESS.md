@@ -606,3 +606,6 @@ Tests: 107 pass on CPU.
 - DEV smoke 5 / 5 DONE (3 items per set, prompt scores bit-identical). TEST queued 10:55: V2R-gen-wmdp → -gen-benign → -gen-wmdp-pad400 →
   -gen-wmdp-split3 → V2R-summary (476 x 3 + 163 items, base / A / B), ETA ~8h10m (~19:00 IST). Watcher `scripts/v2r_when_done.sh`
   (nohup, log $DSG_RESULTS/v2r_watch.log) fills docs/V2R_TEST_RESULT.md, commits, pushes; never re-runs anything.
+- **V2R TEST DONE 22:25** (5 / 5, no failures; watcher commit 8c430e9): **v2-R PASSES the frozen line** on fired WMDP-Bio TEST clean
+  (refusal 0.989, gibberish 0.000, leak B − A +0.007 n.s., n 447); pad400 / split3 also pass (secondary). Fired benign biology refusal 0.957
+  (n 47): no selectivity. Nothing tuned or re-run.
