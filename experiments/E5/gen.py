@@ -53,6 +53,22 @@ def load_gate(b):
     return sae8, feats, w1, w0
 
 
+def check_frozen(fz: dict, s1: dict, s1exp: str, dkey: str):
+    """V2R-test guard: refuse to run unless the Step-1 selection and the direction file are the frozen ones."""
+    import hashlib
+
+    from experiments.E5.common import cache_path
+
+    sel = s1["selection"]
+    got = {"layer": int(sel["layer"]), "s": float(sel["s"]), "mode": sel.get("mode", "all")}
+    want = {"layer": int(fz["layer"]), "s": float(fz["s"]), "mode": fz["mode"]}
+    if got != want:
+        raise RuntimeError(f"frozen selection mismatch: {got} != {want}")
+    h = hashlib.sha256(cache_path(s1exp, dkey).read_bytes()).hexdigest()
+    if h != fz["direction_sha256"]:
+        raise RuntimeError(f"direction file sha256 {h} != frozen {fz['direction_sha256']}")
+
+
 def stopped(ctx, why):
     ctx.write_metrics({"stopped": True, "reason": why})
     ctx.finish({"view": f"e5-gen:{ctx.args.get('items')}", "forget": None, "stopped": True})
@@ -108,9 +124,16 @@ def task(ctx):
         LF, sF, f_lim = int(isel["layer"]), float(isel["s"]), lim[isel["mode"]]
         dF, nF = load_npz_dir(ign_cache_path(s1exp, dkey), LF)
         v_F = torch.tensor(sF * nF * dF, dtype=torch.float32, device=b.device)
+    frozen = a.get("frozen")                 # V2R-test: the frozen response setting must be exactly what is loaded
+    if frozen:
+        check_frozen(frozen, s1, s1exp, dkey)
     ref = ref_scores()
     clamp = (b.sae, DSG_FEATURES, 500.0, b.hook_name)
     conds = ["base", "A"] + (ARMS[1:] if ref_ok else []) + (["F"] if ign_ok else []) + (CURVE_ARMS if curve else [])
+    if a.get("arms"):                        # V2R-test: restrict to these arms (default: every arm, as in E5 / E5b)
+        want = list(a["arms"])
+        assert set(want) <= set(conds[1:]), (want, conds)
+        conds = ["base"] + [c for c in conds[1:] if c in want]
     ctx.write_config(items=a["items"], attack=attack, n_items=len(items), max_new=max_new, model=mc, direction=dkey,
                      layer=L, s_star=s_star, norm=norm, latent=j0, latent_level=level, threshold=THRESHOLD,
                      n_ref_scores=len(ref), conds=conds, item_ids=[it.item_id for it in items],
