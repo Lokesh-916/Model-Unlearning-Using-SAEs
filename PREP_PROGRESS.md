@@ -619,3 +619,16 @@ Tests: 107 pass on CPU.
   L3-L14, DSG Cyber clamp forced + DSG paper / chat-retain comparators.
 - Smokes 15/15 DONE (P1 summary fixed for tiny smoke calibration sets, exp/P1-cyber 31eed0a; forced Cyber clamp == DSG gated on DSG-fired prompts 1.0000). P9 full started 23:4x; then P1 (~10 h + ~4 h). No watcher (user request): each summary task fills
   docs/P9_REDACTION.md / docs/P1_CYBER.md itself; commit them next session.
+
+## Session 49 (2026-11-18 22:2x–): P1-T Cyber gate single TEST + P8 jailbreak wrappers vs v2-R queued (lab PC)
+- **P1-T frozen** before any TEST data: exp/P1-cyber ec8c3a4 (pushed), DEVIATIONS P1-T row 2026-11-18T22:36:35+05:30 with the
+  verbatim post-hoc disclosure (L10 op5 picked by P1's rule failed split3 recall 0.629; L08 chosen after DEV as the bio v2 layer).
+  Method `p1t-l08` (P1 L08 fit sha 14994871…, t 13.750207901000977, DSG Cyber clamp paper recipe forced iff fired, two-pass, bs 1).
+  DEV smoke 32 / 32 scores bit-identical to P1, 0 decision / prediction differences. Queue: P1T-devcheck (blocks TEST) → P1T-000..015
+  (gate, DSG paper, DSG chat-retain x seeds 0-4; base s0; 48 runs, no subsets) → P1T-summary. Line (a)-(c) per seed, overall = 5 / 5.
+- **P8** (DEV only): exp/P8-refusal-jailbreaks f359ab4 (from V2R-test 16416f7; E5 gen reused unchanged, prompt builder swapped),
+  DEVIATIONS P8 row before any result. 6 fixed wrappers x {alone, pad400, split3} + no attack, 150 DEV items, base / A / B.
+  P8-smoke first, full P8 after every P1T job.
+- ETA (own estimate from P1 / V2R timings): P1-T ~14 h (done ~2026-11-19 13:00 IST), P8 ~22 h more (done ~2026-11-20 11:00-13:00 IST).
+  The scheduler's whole-queue ETA also counts the 71 MOVED-TO-SERVER jobs. Watchers in tmux `p1t-watch`, `p8-watch`
+  (`scripts/p1t_when_done.sh`, `scripts/p8_when_done.sh`; logs $DSG_RESULTS/p1t_watch.log, p8_watch.log; restart after a reboot).
