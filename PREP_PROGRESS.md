@@ -632,3 +632,15 @@ Tests: 107 pass on CPU.
 - ETA (own estimate from P1 / V2R timings): P1-T ~14 h (done ~2026-11-19 13:00 IST), P8 ~22 h more (done ~2026-11-20 11:00-13:00 IST).
   The scheduler's whole-queue ETA also counts the 71 MOVED-TO-SERVER jobs. Watchers in tmux `p1t-watch`, `p8-watch`
   (`scripts/p1t_when_done.sh`, `scripts/p8_when_done.sh`; logs $DSG_RESULTS/p1t_watch.log, p8_watch.log; restart after a reboot).
+
+## Session 50 (2026-11-20 11:5x–): P1-T + P8 results checked; P4 sensitivity of StreamGuard v2 queued (lab PC, DEV only)
+- **Queue:** every job DONE, 0 failures, no reboot since 2026-11-18 14:00 (before P1-T was queued); doctor clean. Both watchers
+  had filled and pushed their docs. **P1-T: PASS** (5 / 5 seeds: utility loss 0.0147, clean forget not above DSG chat-retain,
+  recall >= 0.996 pad400 / split3; L08 = disclosed post-hoc layer). **P8: FAIL** 11 / 18 (recall >= 0.953 everywhere, leak
+  never sig. above no-attack; v2-R fired refusal < 0.90 under roleplay x3, fiction, fiction+split3, prefill, prefill+pad400).
+- **P4** (exp/P4-sensitivity 772ab8b from exp/V2-test cc6f375; DEVIATIONS P4 row 2026-11-20T12:04:58+05:30 before any result):
+  11 settings (S0, F10, F40, L07, L09, W65k, OP1.15, OP3, D0.5 / D1.0 / D1.5); drift unit delta 0.8014 because frozen drift is 0;
+  OP3 = op5 (3 % not achievable at the floor tie). Gemma Scope 65k L8 (average_l0_111) downloaded. CPU checks: L07/L08/L09
+  re-fit first 20 == E4a; dry run with E4a scores reproduces E4b's frozen-v2 DEV levels exactly. Smoke 4 / 4 DONE (85 / 85 scores
+  bit-identical, 0 decision differences). Full P4 running; ETA ~13:00-13:15 IST. Watcher tmux `p4-watch`
+  (`scripts/p4_when_done.sh`, log $DSG_RESULTS/p4_watch.log; restart after a reboot) fills docs/P4_SENSITIVITY.md, commits, pushes.
