@@ -653,3 +653,11 @@ Tests: 107 pass on CPU.
 - Two harmless refusal examples: `scripts/refusal_demo.py --force-fire --max-new-tokens 48` on CPU (get_bundle device patched
   to cpu in a scratch wrapper; the script itself unchanged); output in `presentation/gen/refusal_demo_output.txt`.
 - Talk notes per slide + 5-sentence summary: `docs/GUIDE_TALK_FINAL.md`.
+
+## Session 52 (2026-11-20): deck number check (CPU only; queue not touched)
+- Every deck macro regenerated from its source (gen_progress_nov12/nov14/final): identical to the committed values.
+- Cyber slide: the deck already showed the 5-seed mean; the doc only had per-seed tables, so seed 0 (0.335 / 0.282 /
+  0.811 / 0.243) looked like a mismatch. Added "Mean over the 5 seeds" table to docs/P1T_CYBER_TEST.md (outside the
+  summary markers; no run, rule or verdict changed); slide 11 now says every cell is that mean.
+- Slide 4: split 0.538 is the V2-test 5-seed mean while the padding numbers are B1 seed 0; both now labelled.
+- Slide 10 caption replaced. Presentation 6e0d025.

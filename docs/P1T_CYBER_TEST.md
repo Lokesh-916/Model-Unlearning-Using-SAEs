@@ -154,3 +154,17 @@ Lines, seed 4: (a) utility loss +0.0147 <= 0.02 met; (b) clean forget vs DSG cha
 
 **Overall (every seed must pass): PASS** (5 / 5 seeds; (a) met, (b) met, (c) met). Layer 8 was a disclosed post-hoc choice made after seeing DEV results; this is its only evaluation. Nothing was tuned or re-run after TEST numbers existed.
 <!-- /P1T-SUMMARY -->
+
+## Mean over the 5 seeds (point estimates)
+
+Arithmetic mean of the 5 per-seed point estimates above (seeds 0-4; per-seed 95 % CIs are in the seed tables). The gate and base
+rows are identical in every seed (gate decisions seed-invariant; base run once), so their mean equals each seed; the DSG
+comparators recalibrate per seed. This is the table the final guide deck (slide 11) shows. Added 2026-11-20 from the tables
+above; no run, rule or verdict changed.
+
+| method | forget clean | forget pad400 | forget split3 | utility (Cyber set) | MMLU false fires | benign computing accuracy |
+|---|---|---|---|---|---|---|
+| P1 Cyber gate L08 op5 → DSG Cyber clamp | 0.234 | 0.259 | 0.247 | 0.559 | 0.057 | 0.452 |
+| base (seed 0) | 0.392 | 0.391 | 0.409 | 0.573 | – | 0.527 |
+| DSG paper recipe (N100, pct 90, x1000) | 0.234 | 0.328 | 0.247 | 0.292 | 0.772 | 0.276 |
+| DSG chat-retain (N200, pct 95, x1000) | 0.254 | 0.314 | 0.248 | 0.482 | 0.379 | 0.300 |
