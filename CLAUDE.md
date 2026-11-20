@@ -73,6 +73,7 @@ Never disturb the lab PC queue (dsg_worktrees, dsg-* tmux sessions, $DSG_RESULTS
 | StreamGuard v2 claim rules V1-V4 (separate from C-H1..C-H7) | `dsgx/analysis/claims.py` `evaluate_v2` |
 | E1 three-number audit (R, F, a_miss/a_fire, u_base/u_fire, predicted vs observed, worst-case attack; per machine, CPU) | `python -m dsgx.analysis.rfd_audit --out docs/E1_RFD_AUDIT.md` |
 | GPU hours per machine and experiment group (Responsible NLP checklist C1; counted vs smoke / failed / superseded) | `python scripts/gpu_hours.py [--md]`; table in `paper-srw/SRW_SUBMISSION_NOTES.md` C1 |
+| final guide deck (15 + 3 backup, lab PC only, slide-size figures) + talk notes | `../presentation/make_progress_final.sh` (CPU) → `progress_final.pdf`; `docs/GUIDE_TALK_FINAL.md` |
 
 Harness changes (both backward compatible; existing results stay valid): `dsgx/methods/gates.py`
 `calibrate(..., rule="conformal")` (cache key unchanged for the default quantile rule); `dsgx/attacks/transforms.py`
@@ -636,3 +637,5 @@ $DSG_PRIVATE or ~/dsg_cluster private folders; work with ids, hashes and metrics
   residuals/A4 (TMLR App. E Q5/Q6 figures), legacy bio L3 act_fgt/act_ret.pkl. D1 v3 CPU plan still PLAN OK.
 - baselines_DSG main pushed (c0535b4, MASTER_PLAN.md only); REPO_REPORT.md moved to prep/docs.
 
+### Session 51 — 2026-11-20 (end state)
+- Final guide deck `presentation/progress_final.pdf` (e601c3f, pushed) + `docs/GUIDE_TALK_FINAL.md`. CPU only; queue untouched.

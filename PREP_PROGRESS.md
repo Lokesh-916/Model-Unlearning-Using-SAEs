@@ -644,3 +644,12 @@ Tests: 107 pass on CPU.
   re-fit first 20 == E4a; dry run with E4a scores reproduces E4b's frozen-v2 DEV levels exactly. Smoke 4 / 4 DONE (85 / 85 scores
   bit-identical, 0 decision differences). Full P4 running; ETA ~13:00-13:15 IST. Watcher tmux `p4-watch`
   (`scripts/p4_when_done.sh`, log $DSG_RESULTS/p4_watch.log; restart after a reboot) fills docs/P4_SENSITIVITY.md, commits, pushes.
+
+## Session 51 (2026-11-20): final guide deck (CPU only; queue not touched)
+- `../presentation/progress_final.tex` → `progress_final.pdf` (18 pages = 15 + 3 backup; 0 errors, 0 overfull boxes; every
+  page image checked). Built from progress_nov14 (same theme); `gen_progress_final.py` (CPU) makes 5 slide-size figures from
+  the B1 run files, V2_TEST.json / V2_TEST_NOTES.json and the docs (V2R, P1T, P4, P8, E3); `make_progress_final.sh` rebuilds.
+  Presentation commit e601c3f (pushed). Main slides lab PC only; split labelled on every slide.
+- Two harmless refusal examples: `scripts/refusal_demo.py --force-fire --max-new-tokens 48` on CPU (get_bundle device patched
+  to cpu in a scratch wrapper; the script itself unchanged); output in `presentation/gen/refusal_demo_output.txt`.
+- Talk notes per slide + 5-sentence summary: `docs/GUIDE_TALK_FINAL.md`.
