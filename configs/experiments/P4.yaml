@@ -1,0 +1,47 @@
+# P4 "sensitivity of StreamGuard v2" (lab PC, DEV split only, never TEST; exploratory, not a claim input).
+# One-at-a-time changes from frozen v2 (features 10/40, layer 7/9, SAE width 65k, operating point 1.15 % / nearest 3 %,
+# CUSUM drift 0.5/1.0/1.5 x delta); rules and lines fixed in experiments/P4/common.py and DEVIATIONS (2026-11-20, P4)
+# before any result. Frozen v2 and its TEST result are not changed or re-selected.
+exp_id: P4
+priority: must
+wave: 9
+tasks:
+  - id: docs65
+    entry: experiments.P4.docs65:task
+    args: {}
+    smoke_args: {limit: 24}
+    kind_slot: gpu
+    gpu_exclusive: true
+    est_minutes: 25
+    est_vram_gb: 8
+    est_ram_gb: 12
+  - id: fit
+    entry: experiments.P4.fit:task
+    args: {}
+    smoke_args: {smoke: true}
+    kind_slot: cpu
+    gpu_exclusive: false
+    est_minutes: 5
+    est_vram_gb: 0
+    est_ram_gb: 6
+    deps: [docs65]
+  - id: questions
+    entry: experiments.P4.questions:task
+    args: {}
+    smoke_args: {limit: 8}
+    kind_slot: gpu
+    gpu_exclusive: true
+    est_minutes: 25
+    est_vram_gb: 9
+    est_ram_gb: 16
+    deps: [fit]
+  - id: summary
+    entry: experiments.P4.summary:task
+    args: {}
+    smoke_args: {smoke: true, n_boot: 50}
+    kind_slot: cpu
+    gpu_exclusive: false
+    est_minutes: 10
+    est_vram_gb: 0
+    est_ram_gb: 8
+    deps: [questions]
