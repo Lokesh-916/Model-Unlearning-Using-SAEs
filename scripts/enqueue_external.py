@@ -25,9 +25,11 @@ def main(argv=None):
     ap.add_argument("--deps", nargs="*", default=[])
     ap.add_argument("--est-minutes", type=float, default=60)
     ap.add_argument("--est-vram-gb", type=float, default=12)
-    ap.add_argument("cmd", nargs=argparse.REMAINDER)
-    a = ap.parse_args(argv)
-    cmd = a.cmd[1:] if a.cmd[:1] == ["--"] else a.cmd
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if "--" not in argv:
+        ap.error("give the command after --")
+    i = argv.index("--")
+    a, cmd = ap.parse_args(argv[:i]), argv[i + 1:]
     if not cmd:
         ap.error("no command after --")
     git = lambda *x: subprocess.run(["git", *x], cwd=ROOT, capture_output=True, text=True).stdout.strip()
