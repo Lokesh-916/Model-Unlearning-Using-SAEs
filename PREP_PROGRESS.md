@@ -681,3 +681,8 @@ Tests: 107 pass on CPU.
 - P3 **STOPPED** by its rule: the 100 % fits equal frozen v2, but 3 / 9,038 DEV scores (long pad400/Hindi prompts, scores ~450-665)
   differ, with 0 decisions changed. Likely cause: P3-questions `stop_at_layer=9` vs E4a 15. Not re-run and not added to
   streamguard-clean; waiting for a user decision (diagnosis in docs/P3_DATA_EFFICIENCY.md).
+- P3 re-run (user decision, DEVIATIONS "P3 re-run" row logged before it): P3-questions now calls run_with_cache exactly as
+  E4a.questions (exp/P3-data-efficiency 2498107); first-run outputs in runs/P3/_superseded/stop-layer9-2026-11-21/, old job
+  files in queue/_archive/manual-2026-11-21-p3-rerun/. Check passes: 9,038 / 9,038 scores bit-identical, threshold and decisions equal.
+  **P3 PASS** at 20 % (means of 3 seeds): recall 0.962 / 0.965 / 0.960 / 0.941, benign-bio fire 0.334, forget 0.240-0.245
+  (v2 0.241-0.247), 19.3 / 20 features shared. docs/P3_DATA_EFFICIENCY.md; streamguard-clean 8810b68 (leak scan OK, 115 tests).
