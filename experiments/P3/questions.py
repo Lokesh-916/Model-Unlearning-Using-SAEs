@@ -1,7 +1,7 @@
 """P3 questions task (GPU): every E4a DEV question scored by every P3 fit (batch 1, exact positions).
 
 Prompts: experiments.E4a.common.question_items + the shared attack suite, as E4a / P4 (built in memory only). Per prompt:
-model to layer 8, canonical L8 16k SAE, per fit: x = 1[SAE act > 0] on the fit's 20 features (non-BOS positions), score
+model run exactly as E4a.questions (stop after layer 14, same cached layers), canonical L8 16k SAE, per fit: x = 1[SAE act > 0] on the fit's 20 features (non-BOS positions), score
 = cusum_max of x @ w1 + (1 - x) @ w0 (float32 on the device, then python floats), exactly as E4a / P4, so the 100 % fit
 reproduces E4a's logged L08 score bit for bit. Item-level resume. items.parquet: ids and scores only, no text.
 """
@@ -12,7 +12,7 @@ import torch
 
 from dsgx.itemckpt import ItemCheckpoints
 
-from experiments.E4a.common import ATTACKS, question_items
+from experiments.E4a.common import ATTACKS, LAYERS, question_items
 from experiments.E4a.questions import cusum_max
 from experiments.P3.common import LAYER, RELEASE, SAE_ID, work_dir
 
@@ -60,7 +60,7 @@ def task(ctx):
     sc = Scorer(exp, b)
     attacks = {k: make_attack({**v, "_exp_id": "E4a"}) for k, v in ATTACKS.items()}
     items = question_items(a.get("limit"))
-    name = f"blocks.{LAYER}.hook_resid_post"
+    e4a_names = [f"blocks.{l}.hook_resid_post" for l in LAYERS]   # E4a.questions: same layers cached, same stop
     ctx.write_config(fit_exp=exp, n_items=len(items), fits=sc.names, aliases=sc.alias)
     ctx.progress.update(items_total=len(items), items_done=0, force=True)
 
@@ -72,7 +72,7 @@ def task(ctx):
             return {"key": key, "cond": cond, "skip": str(info.get("skip"))}
         t = m.to_tokens(prompt, prepend_bos=False).to(b.device)
         n = t.shape[1]
-        _, cache = m.run_with_cache(t, stop_at_layer=LAYER + 1, names_filter=lambda nm: nm == name)
+        _, cache = m.run_with_cache(t, stop_at_layer=max(LAYERS) + 1, names_filter=lambda nm: nm in e4a_names)  # exactly E4a's call
         return {"key": key, "cond": cond, "skip": "", "n_tok": int(n), **sc.score(cache, n)}
 
     ck = ItemCheckpoints(ctx.run_dir() / "partial", ["P3-questions", exp, sc.names, [k for k, _, _ in items]])
