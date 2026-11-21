@@ -673,3 +673,11 @@ Tests: 107 pass on CPU.
 - Full jobs queued 17:12 (P2-cross, -summary; P3-docs, -fit, -questions, -summary), own ETA ~18:45-19:15 IST. Watcher tmux
   `p23-watch` (`scripts/p23_when_done.sh`, log $DSG_RESULTS/p23_watch.log; restart after a reboot) fills docs/P2_TWO_TOPICS.md
   and docs/P3_DATA_EFFICIENCY.md, commits, pushes. Pre-existing CLEANREPRO-p9 code-error left untouched.
+
+### Session 53 results (2026-11-21 18:23)
+- P2 DONE, **FAIL**: (a) met (combined forget never significantly above the single gate, either topic, clean/pad400/split3);
+  (b) utility43 combined 0.5564 vs bio-alone 0.5695 − 0.005 (not met); (c) MMLU fires 0.055 (not met). Both gates fire on
+  0.846 of WMDP-Bio clean and 0.331 of WMDP-Cyber clean. Added to streamguard-clean (5e67cc0, leak scan OK, 112 CPU tests pass).
+- P3 **STOPPED** by its rule: the 100 % fits equal frozen v2, but 3 / 9,038 DEV scores (long pad400/Hindi prompts, scores ~450-665)
+  differ, with 0 decisions changed. Likely cause: P3-questions `stop_at_layer=9` vs E4a 15. Not re-run and not added to
+  streamguard-clean; waiting for a user decision (diagnosis in docs/P3_DATA_EFFICIENCY.md).
