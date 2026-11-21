@@ -1,0 +1,47 @@
+# P3 "data efficiency of the StreamGuard v2 gate" (lab PC, DEV split only, never TEST; exploratory, not a claim input).
+# Re-builds only the gate's fitted parts (L8 feature selection, CUSUM weights, threshold by the frozen tie-aware rule) from
+# 20 / 40 / 60 / 80 / 100 % of the forget and benign-biology documents (3 seeds); 100 % must reproduce frozen v2 exactly.
+# Rules and lines: DEVIATIONS 2026-11-21 (P3), before any result. Frozen v2 and its TEST result never change.
+exp_id: P3
+priority: must
+wave: 9
+tasks:
+  - id: docs
+    entry: experiments.P3.docs:task
+    args: {}
+    smoke_args: {limit: 24}
+    kind_slot: gpu
+    gpu_exclusive: true
+    est_minutes: 20
+    est_vram_gb: 8
+    est_ram_gb: 12
+  - id: fit
+    entry: experiments.P3.fit:task
+    args: {}
+    smoke_args: {smoke: true}
+    kind_slot: cpu
+    gpu_exclusive: false
+    est_minutes: 5
+    est_vram_gb: 0
+    est_ram_gb: 8
+    deps: [docs]
+  - id: questions
+    entry: experiments.P3.questions:task
+    args: {}
+    smoke_args: {limit: 8}
+    kind_slot: gpu
+    gpu_exclusive: true
+    est_minutes: 12
+    est_vram_gb: 8
+    est_ram_gb: 12
+    deps: [fit]
+  - id: summary
+    entry: experiments.P3.summary:task
+    args: {}
+    smoke_args: {smoke: true, n_boot: 50}
+    kind_slot: cpu
+    gpu_exclusive: false
+    est_minutes: 10
+    est_vram_gb: 0
+    est_ram_gb: 8
+    deps: [questions]
