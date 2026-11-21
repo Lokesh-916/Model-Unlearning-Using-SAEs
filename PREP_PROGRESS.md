@@ -661,3 +661,15 @@ Tests: 107 pass on CPU.
   summary markers; no run, rule or verdict changed); slide 11 now says every cell is that mean.
 - Slide 4: split 0.538 is the V2-test 5-seed mean while the padding numbers are B1 seed 0; both now labelled.
 - Slide 10 caption replaced. Presentation 6e0d025.
+
+## Session 53 (2026-11-21 16:5x–): P2 bio + cyber gates together and P3 data efficiency of the v2 gate queued (lab PC, DEV only)
+- DEVIATIONS rows P2 and P3 at 2026-11-21T17:00:05+05:30 before any code ran (lines as in the user request; P2 combined = either
+  gate fires, each its own clamp, both hooks bio first; utility on the 43 subjects in both @utility sets; P3 subsets
+  default_rng([seed, percent, corpus]), threshold = conformal op5 + v2 midpoint, 100 % must reproduce frozen v2 or STOP).
+- exp/P2-two-topics a531eeb (= exp/P4-sensitivity + merge exp/P1-cyber), exp/P3-data-efficiency 38cf290; both pushed; 5 + 3 CPU tests.
+- CPU checks: E2d base == P1 base on all 6,503 shared clean MMLU items; the v2 threshold rule on E4a's logged scores gives
+  7.084529876708984 exactly. Smokes 6/6 DONE (P2: recomputed scores == logged 23/23 each gate). Both gates cross-fire often
+  on the other topic's WMDP items (smoke), so P2-cross predicts more items than planned.
+- Full jobs queued 17:12 (P2-cross, -summary; P3-docs, -fit, -questions, -summary), own ETA ~18:45-19:15 IST. Watcher tmux
+  `p23-watch` (`scripts/p23_when_done.sh`, log $DSG_RESULTS/p23_watch.log; restart after a reboot) fills docs/P2_TWO_TOPICS.md
+  and docs/P3_DATA_EFFICIENCY.md, commits, pushes. Pre-existing CLEANREPRO-p9 code-error left untouched.
