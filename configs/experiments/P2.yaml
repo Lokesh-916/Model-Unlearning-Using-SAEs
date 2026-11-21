@@ -1,0 +1,27 @@
+# P2 "bio and cyber gates together" (lab PC, DEV split only, never TEST; exploratory, not a claim input).
+# Frozen StreamGuard v2 (bio) and the frozen L08 Cyber gate (P1-T) unchanged; combined = either fires, each its own clamp.
+# Composed from logged per-item DEV predictions (E2d base, E2e sgF, P1 base / clampF) and scores (E4a, P1 questions);
+# the cross task runs on the GPU only what is missing. Rules and lines: DEVIATIONS 2026-11-21 (P2), before any result.
+exp_id: P2
+priority: must
+wave: 9
+tasks:
+  - id: cross
+    entry: experiments.P2.cross:task
+    args: {}
+    smoke_args: {limit: 6}
+    kind_slot: gpu
+    gpu_exclusive: true
+    est_minutes: 25
+    est_vram_gb: 10
+    est_ram_gb: 16
+  - id: summary
+    entry: experiments.P2.summary:task
+    args: {}
+    smoke_args: {smoke: true, n_boot: 50}
+    kind_slot: cpu
+    gpu_exclusive: false
+    est_minutes: 5
+    est_vram_gb: 0
+    est_ram_gb: 8
+    deps: [cross]
