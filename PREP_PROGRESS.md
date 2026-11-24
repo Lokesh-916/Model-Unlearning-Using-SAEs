@@ -686,3 +686,13 @@ Tests: 107 pass on CPU.
   files in queue/_archive/manual-2026-11-21-p3-rerun/. Check passes: 9,038 / 9,038 scores bit-identical, threshold and decisions equal.
   **P3 PASS** at 20 % (means of 3 seeds): recall 0.962 / 0.965 / 0.960 / 0.941, benign-bio fire 0.334, forget 0.240-0.245
   (v2 0.241-0.247), 19.3 / 20 features shared. docs/P3_DATA_EFFICIENCY.md; streamguard-clean 8810b68 (leak scan OK, 115 tests).
+
+## Session 54 (2026-11-23 16:5x – 2026-11-24): latency benchmark of v2 / v2-R (lab PC, measurement only)
+- `scripts/latency_v2.py` (bench + report), `scripts/latency_v2_run.sh` (tmux `lat-watch`; resumes cell by cell), raw cells `docs/LATENCY_V2.json`,
+  doc `docs/LATENCY_V2.md`. 8 / 8 cells FINISHED, uninterrupted; checks 0 mismatches. No method, threshold or result changed.
+- One forward pass: v2 / v2-R +34-38 %, DSG / v1 +1-3 %, cached v2 +24-27 % (not used in the paper's results). 96-token answer: DSG / v1 <= +1.3 %,
+  v2 <= +2.7 %, v2-R <= +6.0 % (fired, 2,048 tokens). Peak memory <= +0.34 GiB.
+- Incidental: unforced v2 gate fires on WikiText-padded harmless prompts 2 / 1 / 6 / 15 of 60 (mcq) and 1 / 2 / 9 / 16 (answer) at 64 / 256 /
+  1024 / 2048 tokens; 0.019 was measured on plain MMLU. Not a designed test, not investigated.
+- streamguard-clean: one commit (leak scan OK, structural only, dsg_private not opened; 121 CPU tests pass).
+- Also noticed (demo, not investigated): `openqa.gibberish` missed 4 / 4 visibly degenerate DSG outputs; check before quoting gibberish rates.
