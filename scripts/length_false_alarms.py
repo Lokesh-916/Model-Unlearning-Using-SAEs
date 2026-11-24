@@ -121,7 +121,7 @@ def run(a):
     done = {int(r["passage"]) for r in csv.DictReader(path.open())} if path.exists() else set()
     toks = lambda p, L: torch.tensor([prompt_ids(head, tail, p, L)], device=b.device)  # noqa: E731
     # checks: scorer = the frozen method object; DSG gate with an early stop = the full forward; scores repeat bit for bit
-    chk = {"n": 0, "v2_vs_method": 0, "dsg_vs_full": 0, "v2_repeat": 0, "decision_repeat": 0}
+    chk = {"n": 0, "v2_vs_method": 0, "dsg_vs_full": 0, "v2_repeat": 0}
     for pid, _, p in sel[:10]:
         for L in LENGTHS:
             t = toks(p, L)
@@ -232,7 +232,7 @@ def fmt(x, c=None, d=3):
 
 
 def pval(p):
-    return "1" if p == 1 else (f"{p:.2g}" if p < 0.001 else f"{p:.3f}")
+    return "1" if p == 1 else "< 1e-300" if p < 1e-300 else f"{p:.2g}" if p < 0.001 else f"{p:.3f}"
 
 
 def tables(rows):
@@ -279,7 +279,7 @@ def plot(rows, png):
     ax.set_axisbelow(True)
     for s in ("top", "right"):
         ax.spines[s].set_visible(False)
-    ax.legend(frameon=False, loc="upper left")
+    ax.legend(frameon=False, loc="upper left", handlelength=4)
     fig.tight_layout()
     fig.savefig(png)
 

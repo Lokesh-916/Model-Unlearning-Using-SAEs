@@ -696,3 +696,11 @@ Tests: 107 pass on CPU.
   1024 / 2048 tokens; 0.019 was measured on plain MMLU. Not a designed test, not investigated.
 - streamguard-clean: one commit (leak scan OK, structural only, dsg_private not opened; 121 CPU tests pass).
 - Also noticed (demo, not investigated): `openqa.gibberish` missed 4 / 4 visibly degenerate DSG outputs; check before quoting gibberish rates.
+
+## Session 55 (2026-11-24): L2 false alarms against prompt length (lab PC, measurement only; v2 and DSG unchanged)
+- DEVIATIONS L2 row 10:32, before any score. `scripts/length_false_alarms.py` (v2 code = exp/V2-test cc6f375), raw scores `docs/L2_LENGTH_FALSE_ALARMS.csv`,
+  doc + plot `docs/L2_LENGTH_FALSE_ALARMS.{md,png}`. Checks 0 / 50 mismatches. DSG_PRIVATE pointed to an empty folder.
+- Text: MUSE-News BBC articles (WikiText test = v2 selection; WikiText-2 train = DEV filler). 1,500 passages = 5 draws x 300 at 64-2,048 tokens.
+- **v2 fire rate 0.157 / 0.254 / 0.358 / 0.521 / 0.743** at 64 / 256 / 512 / 1,024 / 2,048 tokens; DSG <= 0.006. Higher than MMLU (0.019) already at 64 tokens.
+  Floor 7.0620, threshold 7.0845: the running maximum with drift 0 exceeds the floor more often on longer text. Any fix is a new version.
+- streamguard-clean 3ed8f79 (leak scan OK structural only, dsg_private not opened; 125 tests pass).

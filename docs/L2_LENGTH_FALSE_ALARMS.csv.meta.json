@@ -1,0 +1,40 @@
+{
+ "raw_articles": 6598,
+ "articles": 5889,
+ "passages_available": 1621,
+ "used": 1500,
+ "template_tokens": 9,
+ "checks": {
+  "n": 50,
+  "v2_vs_method": 0,
+  "dsg_vs_full": 0,
+  "v2_repeat": 0
+ },
+ "dsg_tau": 0.5458007812500021,
+ "v2_threshold": 7.084529876708984,
+ "fit_sha256": "d4ff0a1bc37b7dc31c86b8eed0d1c30059f76188160bd93640e4673cd8c570be",
+ "dsg_features": [
+  8459,
+  10229,
+  9953,
+  12260,
+  794,
+  6481,
+  8908,
+  9398,
+  11392,
+  9292,
+  6020,
+  8786,
+  9986,
+  6687,
+  14821,
+  1676,
+  8802,
+  4235,
+  12407,
+  6673
+ ],
+ "gpu": "NVIDIA RTX 2000 Ada Generation",
+ "torch": "2.11.0+cu128"
+}
